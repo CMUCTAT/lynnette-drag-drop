@@ -3,6 +3,10 @@
 	import { onMount } from 'svelte';
     import { draggable } from './draggable.js';
     import ContextMenu from './ContextMenu.svelte'
+    import Flaggable from './Flaggable.svelte'
+
+    export let error;
+    export let hint;
 
     const audioFiles = {
         dragStart: {file: 'pop.wav', volume: 0.25},
@@ -84,36 +88,38 @@
     }
 </script>
 
-<div class="draggable"
-	class:dragging={dragging}
-    class:hovering={hovering && !dropAnim}
-    class:dragover={dragover}
-	class:onTop={dragging || Math.abs($coords.x) + Math.abs($coords.y) > 0.1}
-	use:draggable
-	on:dragstart={handleDragStart}
-	on:dragmove={handleDragMove}
-	on:dragend={handleDragEnd}
-    on:dragmouseenter={handleMouseEnter}
-    on:dragmouseexit={handleMouseExit}
-    on:dragenter={handleDragEnter}
-    on:dragexit={handleDragExit}
-    on:dropsend={handleDropSend}
-    on:droprecieve={handleDropRecieve}
-    on:mouseup={() => {dragover = false;}}
-    on:click={() => {if (Math.abs($coords.x) + Math.abs($coords.y) < 3) showcontext = !showcontext}}>
-    <div class="content">
-        <slot>Content</slot>
-    </div>
-    <!-- <ContextMenu show={showcontext}/> -->
-	<div class="mover"
-        class:fade={dropAnim}
-		style="transform:
-		translate({$coords.x}px,{$coords.y}px)">
+<Flaggable error={error} hint={hint}>
+    <div class="draggable"
+        class:dragging={dragging}
+        class:hovering={hovering && !dropAnim}
+        class:dragover={dragover}
+        class:onTop={dragging || Math.abs($coords.x) + Math.abs($coords.y) > 0.1}
+        use:draggable
+        on:dragstart={handleDragStart}
+        on:dragmove={handleDragMove}
+        on:dragend={handleDragEnd}
+        on:dragmouseenter={handleMouseEnter}
+        on:dragmouseexit={handleMouseExit}
+        on:dragenter={handleDragEnter}
+        on:dragexit={handleDragExit}
+        on:dropsend={handleDropSend}
+        on:droprecieve={handleDropRecieve}
+        on:mouseup={() => {dragover = false;}}
+        on:click={() => {if (Math.abs($coords.x) + Math.abs($coords.y) < 3) showcontext = !showcontext}}>
         <div class="content">
-		    <slot>Content</slot>
+            <slot>Content</slot>
         </div>
-	</div>
-</div>
+        <!-- <ContextMenu show={showcontext}/> -->
+        <div class="mover"
+            class:fade={dropAnim}
+            style="transform:
+            translate({$coords.x}px,{$coords.y}px)">
+            <div class="content">
+                <slot>Content</slot>
+            </div>
+        </div>
+    </div>
+</Flaggable>
 
 <style>
     :root{

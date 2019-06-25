@@ -18,6 +18,8 @@ export function draggable(node) {
 
 		window.addEventListener('mousemove', handleMousemove);
 		window.addEventListener('mouseup', handleMouseup);
+		window.addEventListener('touchmove', handleMousemove);
+		window.addEventListener('touchend', handleMouseup);
 		window.drag = node;
 		window.drop = null;
 	}
@@ -50,6 +52,8 @@ export function draggable(node) {
 
 		window.removeEventListener('mousemove', handleMousemove);
 		window.removeEventListener('mouseup', handleMouseup);
+		window.removeEventListener('touchmove', handleMousemove);
+		window.removeEventListener('touchend', handleMouseup);
 	}
 
 	function handleMouseEnter(event) {
@@ -95,6 +99,9 @@ export function draggable(node) {
 			}));
 		}
 	}
+
+	node.addEventListener('touchstart', handleMousedown);
+	node.addEventListener('touchend', handleDrop);
 
 	node.addEventListener('mousedown', handleMousedown);
 	node.addEventListener('mouseup', handleDrop);

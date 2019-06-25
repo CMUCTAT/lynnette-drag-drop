@@ -10,6 +10,9 @@
 </div>
 
 <style>
+    .Flaggable {
+        position: relative;
+    }
     .Flaggable:before {
         content: '';
         position: absolute;
