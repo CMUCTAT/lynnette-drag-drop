@@ -179,9 +179,8 @@ export function draggable(node) {
 			window.drag[touchIndex] = null;
 			window.drop[touchIndex] = null;
 
-			window.removeEventListener('touchmove', handleTouchMove);
-			window.removeEventListener('touchend', handleTouchEnd);
-
+			// window.removeEventListener('touchmove', handleTouchMove);
+			// window.removeEventListener('touchend', handleTouchEnd);
 		}
 
 	node.addEventListener('touchstart', handleTouchDown);
