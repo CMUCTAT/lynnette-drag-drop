@@ -158,6 +158,8 @@ export function draggable(node) {
 
 	function handleTouchEnd(event) {
 			let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
+			if (!dropped)
+				alert(JSON.stringify(window.drag))
 
 			if (dropped) {
 				node.dispatchEvent(new CustomEvent('dropsend', {
@@ -179,8 +181,8 @@ export function draggable(node) {
 			window.drag[touchIndex] = null;
 			window.drop[touchIndex] = null;
 
-			// window.removeEventListener('touchmove', handleTouchMove);
-			// window.removeEventListener('touchend', handleTouchEnd);
+			window.removeEventListener('touchmove', handleTouchMove);
+			window.removeEventListener('touchend', handleTouchEnd);
 		}
 
 	node.addEventListener('touchstart', handleTouchDown);
