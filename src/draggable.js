@@ -54,7 +54,6 @@ export function draggable(node) {
 	function handleMouseup(event) {
 		x = event.clientX;
         y = event.clientY;
-        // console.log({ x: x - offset.x, y: y - offset.y });
 		let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
 
 		if (dropped) {
@@ -135,7 +134,6 @@ export function draggable(node) {
 		}));
 
 		window.addEventListener('touchmove', handleTouchMove);
-		window.addEventListener('touchend', handleTouchEnd);
 		window.drag[touchIndex] = node;
 		window.drop[touchIndex] = null;
 	}
@@ -149,6 +147,8 @@ export function draggable(node) {
 		}));
 
 		var element = document.elementFromPoint(x, y);
+		if (!element)
+			return;
 		if (element !== entered) {
 			if (entered) {
 				entered.parentNode.dispatchEvent(new CustomEvent('mouseleave', {detail: {index: touchIndex}}));
@@ -182,10 +182,10 @@ export function draggable(node) {
 			window.drop[touchIndex] = null;
 
 			window.removeEventListener('touchmove', handleTouchMove);
-			window.removeEventListener('touchend', handleTouchEnd);
 		}
 
 	node.addEventListener('touchstart', handleTouchDown);
+	node.addEventListener('touchend', handleTouchEnd);
 
 	node.addEventListener('mousedown', handleMousedown);
 	node.addEventListener('mouseup', handleDrop);
@@ -200,6 +200,7 @@ export function draggable(node) {
 			node.removeEventListener('mouseup', handleDrop);
 			node.removeEventListener('mouseenter', handleMouseEnter);
 			node.removeEventListener('mouseleave', handleMouseExit);
+			node.removeEventListener('touchend', handleTouchEnd);
 		}
 	};
 }
