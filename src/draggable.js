@@ -60,8 +60,8 @@ export function draggable(node) {
 	}
 
 	function handleTouchMove(event) {
-		x = event.touches.find(t => t.identifier === touchIndex).clientX;
-		y = event.touches.find(t => t.identifier === touchIndex).clientY;
+		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
+		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
 
 		node.dispatchEvent(new CustomEvent('dragmove', {
 			detail: { x: x - offset.x, y: y - offset.y }
