@@ -122,7 +122,7 @@ export function draggable(node) {
 		
 		if (!(event instanceof TouchEvent))
 			return;
-		touchIndex = event.changedTouches[event.changedTouches.length - 1].identifier;
+		touchIndex = event.changedTouches[0].identifier;
 		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
 		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
         offset = {x: x, y: y}
