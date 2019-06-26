@@ -93,7 +93,7 @@
         class:dragging={dragging}
         class:hovering={hovering && !dropAnim}
         class:dragover={dragover}
-        class:onTop={dragging || Math.abs($coords.x) + Math.abs($coords.y) > 0.1}
+        class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
         use:draggable
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
