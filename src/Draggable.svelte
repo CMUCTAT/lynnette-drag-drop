@@ -126,6 +126,7 @@
         --draggable-size: 50px;
     }
 	.draggable {
+        touch-action: none;
         font-family: 'Dosis', sans-serif;
         color: #fff0;
 		position: relative;
@@ -150,12 +151,14 @@
         z-index: 10;
     }
 	.mover {
+        touch-action: none;
         position: absolute;
         pointer-events: none;
 		top: 0;
 		left: 0;
     }
     .content {
+        touch-action: none;
         transition: transform 0.25s ease;
     }
     .mover .content {
