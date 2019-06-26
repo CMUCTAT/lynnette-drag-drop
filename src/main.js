@@ -15,7 +15,8 @@ import App from './App.svelte';
 // import CTATExampleTracer from './ctat.full.js';\
 // const a = new CTATExampleTracer()
 // console.log(a);
-
+window.drag = {}
+window.drop = {}
 var app = new App({
 	target: document.body
 });

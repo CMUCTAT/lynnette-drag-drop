@@ -17,6 +17,8 @@ export function draggable(node) {
 	let y;
 
 	let offset;
+	let entered = null;
+	let touchIndex = 0;
 
 	function handleMousedown(event) {
 		if (event.button !== 0)
@@ -32,11 +34,10 @@ export function draggable(node) {
 
 		window.addEventListener('mousemove', handleMousemove);
 		window.addEventListener('mouseup', handleMouseup);
-		window.drag = node;
-		window.drop = null;
+		window.drag[touchIndex] = node;
+		window.drop[touchIndex] = null;
 	}
 
-	let touchIndex;
 	function handleTouchDown(event) {
 		if (!(event instanceof TouchEvent))
 			return;
@@ -52,11 +53,10 @@ export function draggable(node) {
 
 		window.addEventListener('touchmove', handleTouchMove);
 		window.addEventListener('touchend', handleTouchEnd);
-		window.drag = node;
-		window.drop = null;
+		window.drag[touchIndex] = node;
+		window.drop[touchIndex] = null;
 	}
 
-	let entered = null;
 	function handleTouchMove(event) {
 		x = event.touches[touchIndex].clientX;
 		y = event.touches[touchIndex].clientY;
@@ -85,7 +85,7 @@ export function draggable(node) {
 	}
 
 	function handleTouchEnd(event) {
-		let dropped = window.drop && window.drop !== node;
+		let dropped = window.drag[touchIndex] && window.drop[touchIndex] !== node;
 
 		if (dropped) {
 			node.dispatchEvent(new CustomEvent('dropsend', {
@@ -97,14 +97,15 @@ export function draggable(node) {
 			}));
 		}
 		if (entered) {
-			if (window.drag && window.drop) {
+			if (window.drag[touchIndex] && window.drop[touchIndex]) {
 				entered.parentNode.dispatchEvent(new CustomEvent('droprecieve', {
-					detail: { x, y, drag: window.drag, drop: window.drop }
+					detail: { x, y, drag: node, drop: window.drop[touchIndex] }
 				}));
 				triggerEvent(entered.parentNode, 'mouseleave');
 			}
 		}
-		window.drag = null;
+		window.drag[touchIndex] = null;
+		window.drop[touchIndex] = null;
 
 		window.removeEventListener('touchmove', handleTouchMove);
 		window.removeEventListener('touchend', handleTouchEnd);
@@ -115,7 +116,7 @@ export function draggable(node) {
 		x = event.clientX;
         y = event.clientY;
         // console.log({ x: x - offset.x, y: y - offset.y });
-		let dropped = window.drop && window.drop !== node;
+		let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
 
 		if (dropped) {
 			node.dispatchEvent(new CustomEvent('dropsend', {
@@ -126,7 +127,8 @@ export function draggable(node) {
 				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y }
 			}));
 		}
-		window.drag = null;
+		window.drag[touchIndex] = null;
+		window.drop[touchIndex] = null;
 
 		window.removeEventListener('mousemove', handleMousemove);
 		window.removeEventListener('mouseup', handleMouseup);
@@ -136,9 +138,9 @@ export function draggable(node) {
 		x = event.clientX;
 		y = event.clientY;
 		
-		if (window.drag && window.drag !== node) {
+		if (window.drag[touchIndex] && window.drag[touchIndex] !== node) {
 			// console.log("drag enter");
-			window.drop = node;
+			window.drop[touchIndex] = node;
 			node.dispatchEvent(new CustomEvent('dragenter', {
 				detail: { x, y }
 			}));
@@ -154,12 +156,12 @@ export function draggable(node) {
 		x = event.clientX;
 		y = event.clientY;
 
-		if (window.drag) {
+		if (window.drag[touchIndex]) {
 			// console.log("drag exit");
 			node.dispatchEvent(new CustomEvent('dragexit', {
 				detail: { x, y }
 			}));
-			window.drop = null;
+			window.drop[touchIndex] = null;
 		} else {
 			// console.log("mouse exit");
 			node.dispatchEvent(new CustomEvent('dragmouseexit', {
@@ -169,9 +171,9 @@ export function draggable(node) {
 	}
 
 	function handleDrop(event) {
-		if (window.drag && window.drop) {
+		if (window.drag[touchIndex] && window.drop[touchIndex]) {
 			node.dispatchEvent(new CustomEvent('droprecieve', {
-				detail: { x, y, drag: window.drag, drop: window.drop }
+				detail: { x, y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] }
 			}));
 		}
 	}
