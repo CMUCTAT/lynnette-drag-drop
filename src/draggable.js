@@ -36,11 +36,13 @@ export function draggable(node) {
 		window.drop = null;
 	}
 
+	let touchIndex;
 	function handleTouchDown(event) {
 		if (!(event instanceof TouchEvent))
 			return;
-		x = event.touches[0].clientX;
-		y = event.touches[0].clientY;
+		touchIndex = event.touches.length - 1;
+		x = event.touches[touchIndex].clientX;
+		y = event.touches[touchIndex].clientY;
         offset = {x: x, y: y}
         
 
@@ -56,8 +58,8 @@ export function draggable(node) {
 
 	let entered = null;
 	function handleTouchMove(event) {
-		x = event.touches[0].clientX;
-		y = event.touches[0].clientY;
+		x = event.touches[touchIndex].clientX;
+		y = event.touches[touchIndex].clientY;
 
 		node.dispatchEvent(new CustomEvent('dragmove', {
 			detail: { x: x - offset.x, y: y - offset.y }
