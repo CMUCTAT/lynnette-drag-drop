@@ -36,7 +36,6 @@
 </div>
 Hint: <input type=checkbox bind:checked={hint}>
 Error: <input type=checkbox bind:checked={error}>
-2
 
 <style>
 	.stuff {

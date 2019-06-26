@@ -122,8 +122,6 @@ export function draggable(node) {
 	}
 
 	function handleTouchDown(event) {
-		console.log(event);
-		
 		if (!(event instanceof TouchEvent))
 			return;
 		touchIndex = event.changedTouches[0].identifier;
@@ -162,8 +160,6 @@ export function draggable(node) {
 
 	function handleTouchEnd(event) {
 			let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
-			if (!dropped)
-				alert(JSON.stringify(window.drag) + " " + touchIndex)
 
 			if (dropped) {
 				node.dispatchEvent(new CustomEvent('dropsend', {
