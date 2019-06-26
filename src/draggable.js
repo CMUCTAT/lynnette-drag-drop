@@ -133,7 +133,7 @@ export function draggable(node) {
 			detail: { x: x - offset.x, y: y - offset.y }
 		}));
 
-		window.addEventListener('touchmove', handleTouchMove);
+		window.addEventListener('touchmove', handleTouchMove, {passive: true});
 		window.drag[touchIndex] = node;
 		window.drop[touchIndex] = null;
 	}
@@ -184,8 +184,8 @@ export function draggable(node) {
 			window.removeEventListener('touchmove', handleTouchMove);
 		}
 
-	node.addEventListener('touchstart', handleTouchDown);
-	node.addEventListener('touchend', handleTouchEnd);
+	node.addEventListener('touchstart', handleTouchDown, {passive: true});
+	node.addEventListener('touchend', handleTouchEnd, {passive: true});
 
 	node.addEventListener('mousedown', handleMousedown);
 	node.addEventListener('mouseup', handleDrop);
