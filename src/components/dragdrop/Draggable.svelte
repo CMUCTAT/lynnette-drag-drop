@@ -2,11 +2,12 @@
 	import { spring } from 'svelte/motion';
 	import { onMount } from 'svelte';
     import { draggable } from './draggable.js';
-    import ContextMenu from './ContextMenu.svelte'
-    import Flaggable from './Flaggable.svelte'
+    import Flaggable from '../Flaggable.svelte'
 
+    export let styles;
     export let error;
     export let hint;
+
 
     const audioFiles = {
         dragStart: {file: 'pop.wav', volume: 0.25},
@@ -20,7 +21,6 @@
     let dragging = false;
     let hovering = false;
     let dragover = false;
-    let showcontext = false;
     let dropAnim = false;
 
     let fadeAnimTime = 300;
@@ -80,21 +80,23 @@
         dragover = false;
         hovering = false;
     }
-    function handleDropRecieve(event) {
-        // console.log(event);
+    function handleDropReceive(event) {
         audioSource.src = audioFiles.dropRecieve.file;
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
     }
+    function dropValid(dropTarget) {
+
+    }
 </script>
 
-<Flaggable error={error} hint={hint}>
-    <div class="draggable"
+<Flaggable error={error} hint={hint} styles={styles}>
+    <div class="Draggable"
         class:dragging={dragging}
         class:hovering={hovering && !dropAnim}
         class:dragover={dragover}
         class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
-        use:draggable
+        use:draggable={dropValid || (() => true)}
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
         on:dragend={handleDragEnd}
@@ -103,40 +105,29 @@
         on:dragenter={handleDragEnter}
         on:dragexit={handleDragExit}
         on:dropsend={handleDropSend}
-        on:droprecieve={handleDropRecieve}
-        on:mouseup={() => {dragover = false;}}
-        on:click={() => {if (Math.abs($coords.x) + Math.abs($coords.y) < 3) showcontext = !showcontext}}>
+        on:dropreceive={handleDropReceive}
+        on:mouseup={() => {dragover = false;}}>
         <div class="content">
-            <slot>Content</slot>
+            <slot></slot>
         </div>
-        <!-- <ContextMenu show={showcontext}/> -->
         <div class="mover"
             class:fade={dropAnim}
             style="transform:
             translate({$coords.x}px,{$coords.y}px)">
             <div class="content">
-                <slot>Content</slot>
+                <slot></slot>
             </div>
         </div>
     </div>
 </Flaggable>
 
 <style>
-    :root{
-        --draggable-size: 50px;
-    }
-	.draggable {
-        touch-action: none;
-        font-family: 'Dosis', sans-serif;
+	.Draggable {
         color: #fff0;
+        touch-action: none;
 		position: relative;
-		width: var(--draggable-size);
-		height: var(--draggable-size);
-		line-height: var(--draggable-size);
-        font-size: 40px;
 		transition: -webkit-text-stroke-color 0.2s ease;
 		cursor: move;
-		text-align: center;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
@@ -144,10 +135,10 @@
         -webkit-text-stroke-width: 1px;
         -webkit-text-stroke-color: #2220;
     }
-	.draggable.dragging {
+	.Draggable.dragging {
         -webkit-text-stroke-color: #222;
 	}
-	.draggable.onTop .mover {
+	.Draggable.onTop .mover {
         z-index: 10;
     }
 	.mover {
@@ -156,26 +147,25 @@
         pointer-events: none;
 		top: 0;
 		left: 0;
+        width: 100%;
+        height: 100%;
     }
     .content {
         touch-action: none;
         transition: transform 0.25s ease;
     }
     .mover .content {
-		width: var(--draggable-size);
-        height: var(--draggable-size);
-		line-height: var(--draggable-size);
 		color: #222;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
     }
-    .draggable.hovering .content {
+    .Draggable.hovering .content {
         transform: scale(1.2);
     }
-    .draggable.dragging .content {
+    .Draggable.dragging .content {
         transform: scale(1.3);
     }
-    .draggable.dragover .content {
+    .Draggable.dragover .content {
         color: #33dcfe;
         transform: scale(1.2);
     }

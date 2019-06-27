@@ -1,11 +1,13 @@
 <script>
     export let error;
     export let hint;
+    export let styles;
 </script>
 
 <div class="Flaggable"
     class:error={error}
-    class:hint={hint}>
+    class:hint={hint}
+    style={styles}>
     <slot></slot>
 </div>
 
@@ -14,8 +16,10 @@
         position: relative;
     }
     .Flaggable:before {
+        pointer-events: none;
         content: '';
         position: absolute;
+        z-index: -1;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);

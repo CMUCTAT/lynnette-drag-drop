@@ -1,18 +1,4 @@
-function triggerEvent(el, type){
-	if ('createEvent' in document) {
-		 // modern browsers, IE9+
-		 var e = document.createEvent('HTMLEvents');
-		 e.initEvent(type, false, true);
-		 el.dispatchEvent(e);
-	 } else {
-		 // IE 8
-		 var e = document.createEventObject();
-		 e.eventType = type;
-		 el.fireEvent('on'+e.eventType, e);
-	 }
- }
-
-export function draggable(node) {
+export function draggable(node, data) {
 	let x;
 	let y;
 
@@ -21,6 +7,7 @@ export function draggable(node) {
 	let touchIndex = 0;
 
 	function handleMousedown(event) {
+        event.stopPropagation();
 		if (event.button !== 0)
 			return;
 		x = event.clientX;
@@ -52,6 +39,7 @@ export function draggable(node) {
 	
 
 	function handleMouseup(event) {
+        event.stopPropagation();
 		x = event.clientX;
         y = event.clientY;
 		let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
@@ -59,6 +47,9 @@ export function draggable(node) {
 		if (dropped) {
 			node.dispatchEvent(new CustomEvent('dropsend', {
 				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y }
+			}));
+			window.drop[touchIndex].dispatchEvent(new CustomEvent('dropreceive', {
+				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] }
 			}));
 		} else {
 			node.dispatchEvent(new CustomEvent('dragend', {
@@ -73,6 +64,7 @@ export function draggable(node) {
 	}
 
 	function handleMouseEnter(event) {
+        event.stopPropagation();
 		x = event.clientX;
 		y = event.clientY;
 
@@ -93,6 +85,7 @@ export function draggable(node) {
 	}
 
 	function handleMouseExit(event) {
+        event.stopPropagation();
 		x = event.clientX;
 		y = event.clientY;
 
@@ -151,46 +144,74 @@ export function draggable(node) {
 			return;
 		if (element !== entered) {
 			if (entered) {
-				entered.parentNode.dispatchEvent(new CustomEvent('mouseleave', {detail: {index: touchIndex}}));
+				entered.dispatchEvent(new CustomEvent('mouseleave', {
+					detail: {index: touchIndex},
+					bubbles: true
+				}));
+				entered.dispatchEvent(new CustomEvent('mouseout', {
+					detail: {index: touchIndex},
+					bubbles: true
+				}));
 			}
 			entered = element;
-			entered.parentNode.dispatchEvent(new CustomEvent('mouseenter', {detail: {index: touchIndex}}));
+			entered.dispatchEvent(new CustomEvent('mouseenter', {
+				detail: {index: touchIndex},
+				bubbles: true
+			}));
+			entered.dispatchEvent(new CustomEvent('mouseover', {
+				detail: {index: touchIndex},
+				bubbles: true
+			}));
 		}
 	}
 
 	function handleTouchEnd(event) {
-			let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
+		let dropped = window.drop[touchIndex] && window.drop[touchIndex] !== node;
 
-			if (dropped) {
-				node.dispatchEvent(new CustomEvent('dropsend', {
-					detail: { x: x - offset.x, y: y - offset.y }
-				}));
-			} else {
-				node.dispatchEvent(new CustomEvent('dragend', {
-					detail: { x: x - offset.x, y: y - offset.y }
-				}));
-			}
-			if (entered) {
-				if (window.drag[touchIndex] && window.drop[touchIndex]) {
-					entered.parentNode.dispatchEvent(new CustomEvent('droprecieve', {
-						detail: { x, y, drag: node, drop: window.drop[touchIndex] }
-					}));
-					entered.parentNode.dispatchEvent(new CustomEvent('mouseleave', {detail: {index: touchIndex}}));
-				}
-			}
-			window.drag[touchIndex] = null;
-			window.drop[touchIndex] = null;
-
-			window.removeEventListener('touchmove', handleTouchMove);
+		if (dropped) {
+			node.dispatchEvent(new CustomEvent('dropsend', {
+				detail: { x: x - offset.x, y: y - offset.y }
+			}));
+		} else {
+			node.dispatchEvent(new CustomEvent('dragend', {
+				detail: { x: x - offset.x, y: y - offset.y }
+			}));
 		}
+		if (entered) {
+			if (window.drag[touchIndex] && window.drop[touchIndex]) {
+				entered.dispatchEvent(new CustomEvent('dropreceive', {
+					detail: { x, y, drag: node, drop: window.drop[touchIndex] },
+					bubbles: true
+				}));
+				entered.dispatchEvent(new CustomEvent('mouseleave', {
+					detail: {index: touchIndex},
+					bubbles: true
+				}));
+				entered.dispatchEvent(new CustomEvent('mouseout', {
+					detail: {index: touchIndex},
+					bubbles: true
+				}));
+			}
+		}
+		window.drag[touchIndex] = null;
+		window.drop[touchIndex] = null;
+
+		window.removeEventListener('touchmove', handleTouchMove);
+	}
+
+	function stopPropagation(event) {
+        event.stopPropagation();
+	}
 
 	node.addEventListener('touchstart', handleTouchDown, {passive: true});
 	node.addEventListener('touchend', handleTouchEnd, {passive: true});
 
 	node.addEventListener('mousedown', handleMousedown);
-	node.addEventListener('mouseup', handleDrop);
 	node.addEventListener('mouseenter', handleMouseEnter);
 	node.addEventListener('mouseleave', handleMouseExit);
+
+    node.addEventListener('mouseover', stopPropagation);
+	node.addEventListener('mouseout', stopPropagation);
 
 	return {
 		destroy() {

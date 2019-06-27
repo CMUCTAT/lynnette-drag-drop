@@ -2,7 +2,8 @@
     export let show;
 </script>
 
-<div class="context-menu" class:show={show}>
+<div class="ContextMenu"
+    class:show={show}>
     <div class="operator">+</div>
     <div class="operator">-</div>
     <div class="operator">×</div>
@@ -10,11 +11,11 @@
 </div>
 
 <style>
-    .context-menu.show {
+    .ContextMenu.show {
         opacity: 1;
         pointer-events: all;
     }
-    .context-menu {
+    .ContextMenu {
         -webkit-text-stroke-width: 0;
         position: absolute;
         width: 70px;
