@@ -13,19 +13,6 @@
     export let token;
     export let path;
 
-    function parseInput(v) {
-        let constant = v.match(/[0-9]+/);
-        let variable = v.match(/[A-Za-z]+/);
-        return {constant: constant !== null ? constant[0] : variable !== null ? 1 : null, variable: variable !== null ? variable[0] : null};
-    }
-
-    function updateToken(e) {
-        let v = parseInput(e.target.value)
-        let next = $history.current.updateToken(token, path, v.constant, v.variable)
-        if ($history.current !== next)
-            history.push(next);
-    }
-
     const audioFiles = {
         dragStart: {file: 'pop.wav', volume: 0.25},
         dropRecieve: {file: 'click.wav', volume: 0.3},
@@ -53,6 +40,7 @@
         audioSource.src = audioFiles.dragStart.file;
         audioSource.volume = audioFiles.dragStart.volume;
         audioSource.play();
+        dragData.set(token, path);
 	}
 
 	function handleDragMove(event) {
@@ -82,6 +70,7 @@
         coords.set({ x: 0, y: 0 });
         dragging = false;
         hovering = false;
+        dropData.reset();
     }
     function handleMouseEnter(event) {
         hovering = true;
@@ -92,6 +81,7 @@
     }
     function handleDragEnter(event) {
         dragover = true;
+        dropData.set(token, path, $dragData);
     }
     function handleDragExit(event) {
         dragover = false;
@@ -101,6 +91,19 @@
         audioSource.src = audioFiles.dropRecieve.file;
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
+        draftEquation.apply();
+    }
+    function parseInput(v) {
+        let constant = v.match(/[0-9]+/);
+        let variable = v.match(/[A-Za-z]+/);
+        return {constant: constant !== null ? constant[0] : variable !== null ? 1 : null, variable: variable !== null ? variable[0] : null};
+    }
+
+    function updateToken(e) {
+        let v = parseInput(e.target.value)
+        let next = $history.current.updateToken(token, path, v.constant, v.variable)
+        if ($history.current !== next)
+            history.push(next);
     }
 </script>
 
@@ -123,10 +126,11 @@
         on:mouseup={() => {dragover = false;}}>
         <div class="content">
             {#if !token.constant}
-                <input type=text value={value} on:change={updateToken}>
+                <input type=text size={1} value={value} on:change={updateToken}>
             {:else}
-                {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
-                {#if token.variable}<span class="variable">{token.variable}</span>{/if}
+                <span>{(!(token.variable && token.constant === 1) ? token.constant : '') + (token.variable || '')}</span>
+                <!-- {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
+                {#if token.variable}<span class="variable">{token.variable}</span>{/if} -->
             {/if}
         </div>
         <div class="mover"
@@ -135,10 +139,11 @@
             translate({$coords.x}px,{$coords.y}px)">
             <div class="content">
                 {#if !token.constant}
-                    <input type=text value={value} on:change={updateToken}>
+                    <!-- <input type=text value={value} on:change={updateToken}> -->
                 {:else}
-                    {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
-                    {#if token.variable}<span class="variable">{token.variable}</span>{/if}
+                    <span>{(!(token.variable && token.constant === 1) ? token.constant : '') + (token.variable || '')}</span>
+                    <!-- {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
+                    {#if token.variable}<span class="variable">{token.variable}</span>{/if} -->
                 {/if}
             </div>
         </div>
@@ -196,14 +201,14 @@
         --size: 40px;
     }
     .content {
-        width: var(--size);
+        min-width: var(--size);
         height: var(--size);
-        line-height: 35px;
+        /* line-height: 35px; */
         cursor: pointer;
         text-align: center;
         vertical-align: middle;
         border-radius: 2px;
-        font-size: 30px;
+        font-size: 28px;
     }
     .content span {
         pointer-events: none;

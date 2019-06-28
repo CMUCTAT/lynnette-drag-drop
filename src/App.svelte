@@ -1,6 +1,7 @@
 <script>
 	import Operator from './components/equation/Operator.svelte';
 	import Expression from './components/equation/Expression.svelte';
+	import History from './components/History.svelte';
 	import { history } from './stores/history.js';
 	import { add, subtract, multiply, divide } from './stores/operators.js';
 
@@ -10,6 +11,7 @@
 
 <div class="root">
 	<div class="history">
+		<History></History>
 	</div>
 	<div class="title">
 		<h1>Lynnette Drag & Drop Prototype</h1>
@@ -94,7 +96,7 @@
 		position: absolute;
 		top: 0;
 		left: 50%;
-		transform: translate(-50%, -60%);
+		transform: translate(-50%, -65%);
 		z-index: 1;
 		margin: 0;
 		padding: 0 10px;
@@ -130,19 +132,5 @@
 		left: 50%;
 		transform: translate(-50%);
 		top: -4px;
-	}
-	.stack {
-		overflow-y: auto;
-		height: 100%;
-	}
-	.equation-display {
-		user-select: none;
-	}
-	.equation-display .equals {
-		font-size: 1em;
-	}
-	.equation-display.current {
-		background: #388eb359;
-		border-radius: 4px;
 	}
 </style>

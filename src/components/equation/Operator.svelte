@@ -12,8 +12,8 @@
     export let styles;
     export let error;
     export let hint;
-
-    let isDivide = operator.equals(divide()) && path;  
+    
+    $: isDivide = operator.equals(divide()) && path !== '';  
 
 
     const audioFiles = {
@@ -43,6 +43,7 @@
         audioSource.src = audioFiles.dragStart.file;
         audioSource.volume = audioFiles.dragStart.volume;
         audioSource.play();
+        dragData.set(operator, path);
 	}
 
 	function handleDragMove(event) {
@@ -72,6 +73,8 @@
         coords.set({ x: 0, y: 0 });
         dragging = false;
         hovering = false;
+        draftEquation.reset();
+        dropData.reset();
     }
     function handleMouseEnter(event) {
         hovering = true;
@@ -187,7 +190,7 @@
     .content {
         width: var(--size);
         height: var(--size);
-        line-height: 40px;
+        line-height: 33px;
         font-size: 40px;
         text-align: center;
     }

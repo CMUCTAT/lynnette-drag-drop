@@ -25,7 +25,6 @@
     
     export let error;
     export let hint;
-    export let onDrop;
 
     let hovering = false;
     let dragover = false;
@@ -39,17 +38,20 @@
     }
     function handleDragEnter(event) {
         dragover = true;
+        dropData.set(expression, path, $dragData);
     }
     function handleDragExit(event) {
         dragover = false;
         hovering = false;
     }
     function handleDropReceive(event) {
+        event.stopPropagation();
         audioSource.src = audioFiles.dropRecieve.file;
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
-        if (onDrop)
-            onDrop();
+        console.log($dragData, $dropData);
+        
+        draftEquation.apply();
     }
 </script>
 
