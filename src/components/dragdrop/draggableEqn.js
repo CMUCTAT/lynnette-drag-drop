@@ -1,16 +1,13 @@
-export function draggableEqn(node, data) {
-	let x;
-	let y;
-	let px;
-	let py;
+export function draggableEqn(node, coords) {
+	let x = 0;
+	let y = 0;
 	let prevList = []
 	for (let i = 0; i < 10; i++) {
 		prevList.push({x: 0, y: 0});
 	}
 
 	let offset;
-	let rect = node.getBoundingClientRect();
-	console.log(rect);
+	let start;
 	
 	let entered = null;
 	let touchIndex = 0;
@@ -19,13 +16,20 @@ export function draggableEqn(node, data) {
         event.stopPropagation();
 		if (event.button !== 0)
 			return;
-		x = event.clientX;
-		y = event.clientY;
+		// x = event.clientX;
+		// y = event.clientY;
+		var style = window.getComputedStyle(node);
+		var matrix = new WebKitCSSMatrix(style.webkitTransform);
+		start = {x: matrix.m41, y: matrix.m42}
+		
 		prevList.push({x: event.movementX, y: event.movementY});
 		prevList.shift();
-		let r = node.getBoundingClientRect();
-		offset = {x: x - r.x, y: y - r.y}
-        
+		if (!offset) {
+			offset = { x: event.clientX, y: event.clientY }
+		} else {
+			offset = { x: event.clientX, y: event.clientY }
+		}
+
 
 		node.dispatchEvent(new CustomEvent('dragstart', {
 			detail: { x: 0, y: 0 }
@@ -38,12 +42,12 @@ export function draggableEqn(node, data) {
 	
 
 	function handleMousemove(event) {
-		x = event.clientX;
-		y = event.clientY;
+		x = event.clientX - offset.x + start.x;
+		y = event.clientY - offset.y + start.y;
 		prevList.push({x: event.movementX, y: event.movementY});
 		prevList.shift();
 		node.dispatchEvent(new CustomEvent('dragmove', {
-			detail: { x: x - rect.x - offset.x, y: y - rect.y - offset.y, dx: x - px, dy: y - py }
+			detail: { x: x , y: y }
 		}));
 	}
 
@@ -59,8 +63,8 @@ export function draggableEqn(node, data) {
 
 	function handleMouseup(event) {
         event.stopPropagation();
-		x = event.clientX;
-		y = event.clientY;
+		x = event.clientX - offset.x + start.x;
+		y = event.clientY - offset.y + start.y;
 		let a = avg();
 		
 		node.dispatchEvent(new CustomEvent('dragend', {
@@ -78,24 +82,12 @@ export function draggableEqn(node, data) {
 
 	function handleMouseEnter(event) {
         event.stopPropagation();
-		x = event.clientX;
-		y = event.clientY;
-		node.dispatchEvent(new CustomEvent('dragmouseenter', {
-			detail: { x: x, y: y, dx: x - px, dy: y - py }
-		}));
-		px = x;
-		py = y;
+		node.dispatchEvent(new CustomEvent('dragmouseenter'));
 	}
 
 	function handleMouseExit(event) {
         event.stopPropagation();
-		x = event.clientX;
-		y = event.clientY;
-		node.dispatchEvent(new CustomEvent('dragmouseexit', {
-			detail: { x: x - offset.x, y: y - offset.y, dx: x - px, dy: y - py }
-		}));
-		px = x;
-		py = y;
+		node.dispatchEvent(new CustomEvent('dragmouseexit'));
 	}
 
 	function handleTouchDown(event) {
@@ -104,8 +96,6 @@ export function draggableEqn(node, data) {
 		touchIndex = event.changedTouches[0].identifier;
 		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
 		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
-		px = x;
-		py = y;
         offset = {x: x, y: y}
         
 		node.dispatchEvent(new CustomEvent('dragstart', {
@@ -120,19 +110,15 @@ export function draggableEqn(node, data) {
 		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
 
 		node.dispatchEvent(new CustomEvent('dragmove', {
-			detail: { x: x - offset.x, y: y - offset.y, dx: x - px, dy: y - py }
+			detail: { x: x - offset.x, y: y - offset.y }
 		}));
-		px = x;
-		py = y;
 	}
 
 	function handleTouchEnd(event) {
 		
 		node.dispatchEvent(new CustomEvent('dragend', {
-			detail: { x: x - offset.x, y: y - offset.y, dx: x - px, dy: y - py }
+			detail: { x: x - offset.x, y: y - offset.y }
 		}));
-		px = x;
-		py = y;
 
 		window.removeEventListener('touchmove', handleTouchMove);
 	}

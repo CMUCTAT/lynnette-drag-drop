@@ -10,6 +10,7 @@
 	let dragover = false;
 	let coords = {x: 0, y: 0}
 	let vel = {x: 0, y: 0}
+	let split = false;
 
 	let last_time = window.performance.now();
 	let frame;
@@ -60,9 +61,22 @@
 	</div>
 	<div class="title">
 		<h1>Lynnette Drag & Drop Prototype</h1>
+		<button on:click={() => split = !split} style="display: inline-block; margin: 10px;">Split Operators</button>
 	</div>
 	<div class="content">
 		<div class="operators">
+			{#if split}
+			<div class="split-ops left">
+				{#each operators.slice(0,2) as operator, i}
+					<Operator operator={operator} path={''} />
+				{/each}
+			</div>
+			<div class="split-ops right">
+				{#each operators.slice(2) as operator, i}
+					<Operator operator={operator} path={''} />
+				{/each}
+			</div>
+			{:else}
 			<div class="operator-box">
 				<h2>Operators</h2>
 				<div class="operator-container">
@@ -71,6 +85,7 @@
 					{/each}
 				</div>
 			</div>
+			{/if}
 		</div>
 		<div class="equation-container"
 		style="transform: translate({coords.x}px,{coords.y}px)"
@@ -96,6 +111,16 @@
 </div>
 
 <style>
+	.split-ops {
+		position: fixed;
+		bottom: 20%;
+	}
+	.split-ops.left {
+		left: 10%;
+	}
+	.split-ops.right {
+		right: 10%;
+	}
 	.test {
 		margin: 30px;
 		padding: 20px;
@@ -129,6 +154,7 @@
 		grid-area: title;
 		/* background: #0ff; */
 		padding: 20px 30px;
+		display: flex;
 	}
 	.equation-container {
 		display: flex;
