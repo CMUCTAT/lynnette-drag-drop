@@ -129,7 +129,7 @@
         touch-action: none;
 		position: relative;
 		transition: -webkit-text-stroke-color 0.2s ease;
-		cursor: move;
+		cursor: pointer;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
@@ -155,6 +155,7 @@
     .content {
         touch-action: none;
         transition: transform 0.25s ease;
+        pointer-events: none;
     }
     .mover .content {
 		color: #444;

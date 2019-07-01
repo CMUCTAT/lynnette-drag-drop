@@ -57,6 +57,10 @@
 
 <div class="root">
 	<div class="history">
+		<div class="buttons">
+			<button on:click={() => history.step(-1)}>Undo</button>
+			<button on:click={() => history.step(1)}>Redo</button>
+		</div>
 		<History></History>
 	</div>
 	<div class="title">
@@ -87,25 +91,48 @@
 			</div>
 			{/if}
 		</div>
-		<div class="equation-container"
-		style="transform: translate({coords.x}px,{coords.y}px)"
-		use:draggableEqn
-		on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
-		on:dragend={e => {
-			vel.x = e.detail.dx;
-			vel.y = e.detail.dy;
-			let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-			if (d > 20) {
-				vel.x *= 20 / d;
-				vel.y *= 20 / d;
-			}
-		}}>
-			<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
-				<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
-				<div class="equals"><div>=</div></div>
-				<Expression expression={$history.current.right} path={"right"} parentDivide={false}/>
+
+		{#if split}
+			<div class="equation-container"
+				style="transform: translate({coords.x}px,{coords.y}px)"
+				use:draggableEqn={true}
+				on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
+				on:dragend={e => {
+					vel.x = e.detail.dx;
+					vel.y = e.detail.dy;
+					let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+					if (d > 20) {
+						vel.x *= 20 / d;
+						vel.y *= 20 / d;
+					}
+				}}>
+				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
+					<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
+					<div class="equals"><div>=</div></div>
+					<Expression expression={$history.current.right} path={"right"} parentDivide={false}/>
+				</div>
 			</div>
-		</div>
+		{:else}
+			<div class="equation-container"
+				style="transform: translate({coords.x}px,{coords.y}px)"
+				use:draggableEqn={false}
+				on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
+				on:dragend={e => {
+					vel.x = e.detail.dx;
+					vel.y = e.detail.dy;
+					let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+					if (d > 20) {
+						vel.x *= 20 / d;
+						vel.y *= 20 / d;
+					}
+				}}>
+				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
+					<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
+					<div class="equals"><div>=</div></div>
+					<Expression expression={$history.current.right} path={"right"} parentDivide={false}/>
+				</div>
+			</div>
+		{/if}
 	</div>
 	<div class="sidebar"></div>
 </div>

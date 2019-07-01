@@ -1,10 +1,7 @@
-export function draggableEqn(node, coords) {
+export function draggableEqn(node, draggable) {
 	let x = 0;
 	let y = 0;
 	let prevList = []
-	for (let i = 0; i < 10; i++) {
-		prevList.push({x: 0, y: 0});
-	}
 
 	let offset;
 	let start;
@@ -13,11 +10,18 @@ export function draggableEqn(node, coords) {
 	let touchIndex = 0;
 
 	function handleMousedown(event) {
+		if (!draggable)
+			return;
         event.stopPropagation();
 		if (event.button !== 0)
 			return;
 		// x = event.clientX;
 		// y = event.clientY;
+
+		prevList = [];
+		for (let i = 0; i < 5; i++) {
+			prevList.push({x: 0, y: 0});
+		}
 		var style = window.getComputedStyle(node);
 		var matrix = new WebKitCSSMatrix(style.webkitTransform);
 		start = {x: matrix.m41, y: matrix.m42}
@@ -67,11 +71,6 @@ export function draggableEqn(node, coords) {
 
 		window.removeEventListener('mousemove', handleMousemove);
 		window.removeEventListener('mouseup', handleMouseup);
-		prevList = [];
-		for (let i = 0; i < 10; i++) {
-			prevList.push({x: 0, y: 0});
-		}
-		
 	}
 
 	function handleMouseEnter(event) {

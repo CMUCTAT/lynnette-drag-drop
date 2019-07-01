@@ -30,13 +30,16 @@
     let dragover = false;
 
     function handleMouseEnter(event) {
+        event.stopPropagation();
         hovering = true;
     }
     function handleMouseExit(event) {
+        event.stopPropagation();
         hovering = false;
         dragover = false;
     }
     function handleDragEnter(event) {
+        event.stopPropagation();
         dragover = true;
         dropData.set(expression, path, $dragData);
     }
@@ -49,8 +52,6 @@
         audioSource.src = audioFiles.dropRecieve.file;
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
-        console.log($dragData, $dropData);
-        
         draftEquation.apply();
     }
 </script>
@@ -101,6 +102,7 @@
     }
     .Expression.dragover {
         border: #33dcfe 3px solid;
+        cursor: pointer;
     }
     .Expression.divide {
         flex-direction: column;

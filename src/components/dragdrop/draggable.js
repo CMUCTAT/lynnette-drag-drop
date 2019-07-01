@@ -46,10 +46,12 @@ export function draggable(node, data) {
 
 		if (dropped) {
 			node.dispatchEvent(new CustomEvent('dropsend', {
-				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y }
+				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y },
+				bubbles: true
 			}));
 			window.drop[touchIndex].dispatchEvent(new CustomEvent('dropreceive', {
-				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] }
+				detail: { x: event.clientX - offset.x, y: event.clientY - offset.y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] },
+				bubbles: true
 			}));
 		} else {
 			node.dispatchEvent(new CustomEvent('dragend', {
@@ -64,7 +66,6 @@ export function draggable(node, data) {
 	}
 
 	function handleMouseEnter(event) {
-        event.stopPropagation();
 		x = event.clientX;
 		y = event.clientY;
 
@@ -74,12 +75,14 @@ export function draggable(node, data) {
 			// console.log("drag enter");
 			window.drop[index] = node;
 			node.dispatchEvent(new CustomEvent('dragenter', {
-				detail: { x, y }
+				detail: { x, y },
+				bubbles: true
 			}));
 		} else {
 			// console.log("mouse enter");
 			node.dispatchEvent(new CustomEvent('dragmouseenter', {
-				detail: { x, y }
+				detail: { x, y },
+				bubbles: true
 			}));
 		}
 	}

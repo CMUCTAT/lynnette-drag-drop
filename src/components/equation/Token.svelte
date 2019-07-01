@@ -80,6 +80,7 @@
         dragover = false;
     }
     function handleDragEnter(event) {
+        event.stopPropagation();
         dragover = true;
         dropData.set(token, path, $dragData);
     }
@@ -88,6 +89,7 @@
         hovering = false;
     }
     function handleDropReceive(event) {
+        event.stopPropagation();
         audioSource.src = audioFiles.dropRecieve.file;
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
@@ -156,7 +158,7 @@
         touch-action: none;
 		position: relative;
 		transition: -webkit-text-stroke-color 0.2s ease;
-		cursor: move;
+		cursor: pointer;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
