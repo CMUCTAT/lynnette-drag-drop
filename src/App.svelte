@@ -2,12 +2,57 @@
 	import Operator from './components/equation/Operator.svelte';
 	import Expression from './components/equation/Expression.svelte';
 	import History from './components/History.svelte';
+	import {draggableEqn} from './components/dragdrop/draggableEqn'
 	import { history } from './stores/history.js';
 	import { add, subtract, multiply, divide } from './stores/operators.js';
 
 	let operators = [add(), subtract(), divide(), multiply()];
 	let dragover = false;
+	let coords = {x: 0, y: 0}
+	let vel = {x: 0, y: 0}
+
+	let last_time = window.performance.now();
+	let frame;
+
+	 function lerp(value1, value2, amount) {
+        amount = amount < 0 ? 0 : amount;
+        amount = amount > 1 ? 1 : amount;
+        return value1 + (value2 - value1) * amount;
+    }
+
+	(function update() {
+		frame = requestAnimationFrame(update);
+
+		const time = window.performance.now();
+		const delta = time - last_time;
+		// console.log(vel);
+		
+		if (vel.x + vel.y !== 0) {
+			coords.x += 0.15 * vel.x * delta;
+			coords.y += 0.15 * vel.y * delta;
+			vel.x = lerp(vel.x, 0, 0.01 * delta);
+			vel.y = lerp(vel.y, 0, 0.01 * delta);
+		}
+
+		last_time = time;
+	}());
 </script>
+
+<!-- <div class="test" 
+	style="transform: translate({coords.x}px,{coords.y}px)"
+	use:draggableEqn
+	on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
+	on:dragend={e => {
+		vel.x = e.detail.dx;
+		vel.y = e.detail.dy;
+		let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+		if (d > 20) {
+			vel.x *= 20 / d;
+			vel.y *= 20 / d;
+		}
+		}}>
+	hello
+</div> -->
 
 <div class="root">
 	<div class="history">
@@ -27,7 +72,19 @@
 				</div>
 			</div>
 		</div>
-		<div class="equation-container">
+		<div class="equation-container"
+		style="transform: translate({coords.x}px,{coords.y}px)"
+		use:draggableEqn
+		on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
+		on:dragend={e => {
+			vel.x = e.detail.dx;
+			vel.y = e.detail.dy;
+			let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+			if (d > 20) {
+				vel.x *= 20 / d;
+				vel.y *= 20 / d;
+			}
+			}}>
 			<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
 				<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
 				<div class="equals"><div>=</div></div>
@@ -39,6 +96,12 @@
 </div>
 
 <style>
+	.test {
+		margin: 30px;
+		padding: 20px;
+		background: #ddd;
+		display: inline-block;
+	}
 	.root {
 		display: grid;
 
@@ -74,6 +137,7 @@
 	.equation {
 		justify-content: center;
 		display: flex;
+		user-select: none;
 	}
 	.buttons {
 		display: flex;
