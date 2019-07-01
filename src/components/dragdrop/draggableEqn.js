@@ -21,19 +21,13 @@ export function draggableEqn(node, coords) {
 		var style = window.getComputedStyle(node);
 		var matrix = new WebKitCSSMatrix(style.webkitTransform);
 		start = {x: matrix.m41, y: matrix.m42}
+		offset = { x: event.clientX, y: event.clientY }
 		
 		prevList.push({x: event.movementX, y: event.movementY});
 		prevList.shift();
-		if (!offset) {
-			offset = { x: event.clientX, y: event.clientY }
-		} else {
-			offset = { x: event.clientX, y: event.clientY }
-		}
 
 
-		node.dispatchEvent(new CustomEvent('dragstart', {
-			detail: { x: 0, y: 0 }
-		}));
+		node.dispatchEvent(new CustomEvent('dragstart'));
 
 		window.addEventListener('mousemove', handleMousemove);
 		window.addEventListener('mouseup', handleMouseup);
@@ -90,34 +84,45 @@ export function draggableEqn(node, coords) {
 		node.dispatchEvent(new CustomEvent('dragmouseexit'));
 	}
 
+	let px, py;
 	function handleTouchDown(event) {
+        event.stopPropagation();
 		if (!(event instanceof TouchEvent))
 			return;
 		touchIndex = event.changedTouches[0].identifier;
-		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
-		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
-        offset = {x: x, y: y}
+		var style = window.getComputedStyle(node);
+		var matrix = new WebKitCSSMatrix(style.webkitTransform);
+		let curEvent = Object.values(event.touches).find(t => t.identifier === touchIndex);
+		start = {x: matrix.m41, y: matrix.m42}
+		px = start.x;
+		py = start.y;
+		offset = { x: curEvent.clientX, y: curEvent.clientY }
         
-		node.dispatchEvent(new CustomEvent('dragstart', {
-			detail: { x: 0, y: 0 }
-		}));
+		node.dispatchEvent(new CustomEvent('dragstart'));
 
 		window.addEventListener('touchmove', handleTouchMove, {passive: true});
 	}
 
 	function handleTouchMove(event) {
-		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
-		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
-
+		let curEvent = Object.values(event.touches).find(t => t.identifier === touchIndex);
+		x = curEvent.clientX - offset.x + start.x;
+		y = curEvent.clientY - offset.y + start.y;
+		prevList.push({x: x - px, y: y - py});
+		prevList.shift();
 		node.dispatchEvent(new CustomEvent('dragmove', {
-			detail: { x: x - offset.x, y: y - offset.y }
+			detail: { x: x , y: y }
 		}));
+		px = x;
+		py = y;
 	}
 
 	function handleTouchEnd(event) {
-		
+        event.stopPropagation();
+		x = event.clientX - offset.x + start.x;
+		y = event.clientY - offset.y + start.y;
+		let a = avg();
 		node.dispatchEvent(new CustomEvent('dragend', {
-			detail: { x: x - offset.x, y: y - offset.y }
+			detail: { x: x - offset.x, y: y - offset.y, dx: a.x, dy: a.y }
 		}));
 
 		window.removeEventListener('touchmove', handleTouchMove);

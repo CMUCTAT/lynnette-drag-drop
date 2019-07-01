@@ -114,11 +114,13 @@ export function draggable(node, data) {
 	}
 
 	function handleTouchDown(event) {
+        event.stopPropagation();
 		if (!(event instanceof TouchEvent))
 			return;
 		touchIndex = event.changedTouches[0].identifier;
-		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
-		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
+		let curEvent = Object.values(event.touches).find(t => t.identifier === touchIndex);
+		x = curEvent.clientX;
+		y = curEvent.clientY;
         offset = {x: x, y: y}
         
 
@@ -132,8 +134,9 @@ export function draggable(node, data) {
 	}
 
 	function handleTouchMove(event) {
-		x = Object.values(event.touches).find(t => t.identifier === touchIndex).clientX;
-		y = Object.values(event.touches).find(t => t.identifier === touchIndex).clientY;
+		let curEvent = Object.values(event.touches).find(t => t.identifier === touchIndex);
+		x = curEvent.clientX;
+		y = curEvent.clientY;
 
 		node.dispatchEvent(new CustomEvent('dragmove', {
 			detail: { x: x - offset.x, y: y - offset.y }

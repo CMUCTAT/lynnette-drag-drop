@@ -99,7 +99,7 @@
 				vel.x *= 20 / d;
 				vel.y *= 20 / d;
 			}
-			}}>
+		}}>
 			<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
 				<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
 				<div class="equals"><div>=</div></div>
@@ -164,6 +164,7 @@
 		justify-content: center;
 		display: flex;
 		user-select: none;
+		touch-action: none;
 	}
 	.buttons {
 		display: flex;
