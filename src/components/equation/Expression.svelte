@@ -56,7 +56,7 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint} styles={"display: flex;"}>
+<Flaggable error={error} hint={hint} styles="display: flex;">
     <div class="Expression"
         class:divide={isDivide}
         class:parentheses={expression.items.length > 1 && !expression.items[1].equals(divide()) && path.split(",").length > 1 && !parentDivide}
@@ -70,11 +70,11 @@
         on:dropreceive={handleDropReceive}>
         {#each expression.items as item, i}
             {#if item instanceof Operator}
-                <OperatorComponent operator={item} path={path + "," + i}/>
+                <OperatorComponent operator={item} path={path + "," + i} hint={item.hint} error={item.error} />
             {:else if item instanceof Expression}
-                <svelte:self expression={item} path={path + "," + i} parentDivide={isDivide}/>
+                <svelte:self expression={item} path={path + "," + i} parentDivide={isDivide} hint={item.hint} error={item.error} />
             {:else if item instanceof Token}
-                <TokenComponent token={item} path={path + "," + i}/>
+                <TokenComponent token={item} path={path + "," + i} hint={item.hint} error={item.error} />
             {/if}
         {/each}
     </div>

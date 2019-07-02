@@ -8,8 +8,6 @@
 
     export let operator;
     export let path;
-
-    export let styles;
     export let error;
     export let hint;
     

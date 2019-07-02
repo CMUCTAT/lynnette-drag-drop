@@ -9,6 +9,8 @@ export class Expression {
         this[immerable] = true
         this.items = items;
         this.id = generateID();
+        this.hint = false;
+        this.error = false;
     }
 
     stringify() {
@@ -23,6 +25,8 @@ export class Token {
         this.variable = variable;
         this.editable = editable;
         this.id = generateID();
+        this.hint = false;
+        this.error = false;
     }
 
     stringify() {
@@ -36,6 +40,8 @@ export class Operator {
         this.symbol = symbol;
         this.operation = operation;
         this.id = generateID();
+        this.hint = false;
+        this.error = false;
     }
     equals(other) {
         return other instanceof Operator && other.symbol === this.symbol && other.operation === this.operation
@@ -72,6 +78,5 @@ export class Equation {
             dest.constant = constant
             dest.variable = variable;
         });
-
     }
 }

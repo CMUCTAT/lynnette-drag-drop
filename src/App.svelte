@@ -39,22 +39,6 @@
 	}());
 </script>
 
-<!-- <div class="test" 
-	style="transform: translate({coords.x}px,{coords.y}px)"
-	use:draggableEqn
-	on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
-	on:dragend={e => {
-		vel.x = e.detail.dx;
-		vel.y = e.detail.dy;
-		let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-		if (d > 20) {
-			vel.x *= 20 / d;
-			vel.y *= 20 / d;
-		}
-		}}>
-	hello
-</div> -->
-
 <div class="root">
 	<div class="history">
 		<div class="buttons">
@@ -72,12 +56,12 @@
 			{#if split}
 			<div class="split-ops left">
 				{#each operators.slice(0,2) as operator, i}
-					<Operator operator={operator} path={''} />
+					<Operator operator={operator} path={''} hint={operator.hint} error={operator.error} />
 				{/each}
 			</div>
 			<div class="split-ops right">
 				{#each operators.slice(2) as operator, i}
-					<Operator operator={operator} path={''} />
+					<Operator operator={operator} path={''} hint={operator.hint} error={operator.error} />
 				{/each}
 			</div>
 			{:else}
@@ -85,7 +69,7 @@
 				<h2>Operators</h2>
 				<div class="operator-container">
 					{#each operators as operator, i}
-						<Operator operator={operator} path={''} />
+						<Operator operator={operator} path={''} hint={operator.hint} error={operator.error} />
 					{/each}
 				</div>
 			</div>
@@ -107,9 +91,9 @@
 					}
 				}}>
 				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
-					<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
+					<Expression expression={$history.current.left} path={"left"} parentDivide={false} error={$history.current.left.error} hint={$history.current.left.hint} />
 					<div class="equals"><div>=</div></div>
-					<Expression expression={$history.current.right} path={"right"} parentDivide={false}/>
+					<Expression expression={$history.current.right} path={"right"} parentDivide={false} error={$history.current.right.error} hint={$history.current.right.hint}/>
 				</div>
 			</div>
 		{:else}
@@ -127,32 +111,36 @@
 					}
 				}}>
 				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
-					<Expression expression={$history.current.left} path={"left"} parentDivide={false}/>
+					<Expression expression={$history.current.left} path={"left"} parentDivide={false} error={$history.current.left.error} hint={$history.current.left.hint}/>
 					<div class="equals"><div>=</div></div>
-					<Expression expression={$history.current.right} path={"right"} parentDivide={false}/>
+					<Expression expression={$history.current.right} path={"right"} parentDivide={false} error={$history.current.right.error} hint={$history.current.right.hint}/>
 				</div>
 			</div>
 		{/if}
 	</div>
-	<div class="sidebar"></div>
+	<div class="sidebar">
+		{#if split}
+			<div class="buttons">
+				<button on:click={() => history.step(-1)}>Undo</button>
+				<button on:click={() => history.step(1)}>Redo</button>
+			</div>
+			<History></History>
+		{/if}
+	</div>
 </div>
 
 <style>
 	.split-ops {
 		position: fixed;
 		bottom: 20%;
+		border: dashed 2px #333;
+		padding: 10px;
 	}
 	.split-ops.left {
 		left: 10%;
 	}
 	.split-ops.right {
 		right: 10%;
-	}
-	.test {
-		margin: 30px;
-		padding: 20px;
-		background: #ddd;
-		display: inline-block;
 	}
 	.root {
 		display: grid;
