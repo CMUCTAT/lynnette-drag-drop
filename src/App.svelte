@@ -77,7 +77,7 @@
 		</div>
 
 		{#if split}
-			<div class="equation-container"
+			<div class="equation-container draggable"
 				style="transform: translate({coords.x}px,{coords.y}px)"
 				use:draggableEqn={true}
 				on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
@@ -97,19 +97,7 @@
 				</div>
 			</div>
 		{:else}
-			<div class="equation-container"
-				style="transform: translate({coords.x}px,{coords.y}px)"
-				use:draggableEqn={false}
-				on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
-				on:dragend={e => {
-					vel.x = e.detail.dx;
-					vel.y = e.detail.dy;
-					let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-					if (d > 20) {
-						vel.x *= 20 / d;
-						vel.y *= 20 / d;
-					}
-				}}>
+			<div class="equation-container">
 				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
 					<Expression expression={$history.current.left} path={"left"} parentDivide={false} error={$history.current.left.error} hint={$history.current.left.hint}/>
 					<div class="equals"><div>=</div></div>
@@ -163,6 +151,7 @@
 	}
 	.sidebar {
 		grid-area: sidebar;
+		padding: 20px;
 		/* background: #00f; */
 	}
 	.title {
@@ -175,8 +164,13 @@
 		display: flex;
 		justify-content: center;
 	}
+	.equation-container.draggable {
+		border: #ddd dashed 2px;
+		display: inline-block;
+		padding: 40px;
+	}
 	.equation {
-		justify-content: center;
+		align-items: center;
 		display: flex;
 		user-select: none;
 		touch-action: none;

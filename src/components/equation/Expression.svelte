@@ -15,8 +15,8 @@
     $: isDivide = expression.items.length > 1 && expression.items[1].equals(divide());
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.25},
-        dropRecieve: {file: 'click.wav', volume: 0.3},
+        dragStart: {file: 'pop.wav', volume: 0.45},
+        dropRecieve: {file: 'click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -56,7 +56,7 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint} styles="display: flex;">
+<Flaggable error={error} hint={hint} styles="display: inline;">
     <div class="Expression"
         class:divide={isDivide}
         class:parentheses={expression.items.length > 1 && !expression.items[1].equals(divide()) && path.split(",").length > 1 && !parentDivide}
@@ -85,9 +85,7 @@
         padding: 15px;
         border: #4440 3px solid;
         transition: border 0.25s ease;
-        display: flex;
         border-radius: 4px;
-        display: flex;
         align-items: center;
         justify-content: center;
         min-width: 40px;

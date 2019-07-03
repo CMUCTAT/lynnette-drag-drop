@@ -23,7 +23,7 @@ function createDraftEquation() {
             // console.log(srcData, destData);
             if (srcData.item !== destData.item) {
                 if (srcData.item instanceof Token) {
-                    if (destData.item instanceof Token && destData.item.editable) {
+                    if (destData.item instanceof Token && !destData.item.constant) {
                         // console.log("TOKEN -> TOKEN")
                         return tokenToToken(srcData, destData, eqn);
                     } else if (destData.item instanceof Operator) { }

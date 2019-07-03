@@ -4,8 +4,8 @@
 	import { onMount } from 'svelte';
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.25},
-        dropRecieve: {file: 'click.wav', volume: 0.3},
+        dragStart: {file: 'pop.wav', volume: 0.45},
+        dropRecieve: {file: 'click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {

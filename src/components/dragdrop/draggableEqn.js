@@ -1,4 +1,4 @@
-export function draggableEqn(node, draggable) {
+export function draggableEqn(node) {
 	let x = 0;
 	let y = 0;
 	let prevList = []
@@ -10,8 +10,6 @@ export function draggableEqn(node, draggable) {
 	let touchIndex = 0;
 
 	function handleMousedown(event) {
-		if (!draggable)
-			return;
         event.stopPropagation();
 		if (event.button !== 0)
 			return;
