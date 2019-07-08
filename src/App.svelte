@@ -12,6 +12,20 @@
 	let vel = {x: 0, y: 0}
 	let split = false;
 
+	let collabID;
+
+	window.addEventListener("message", event => {
+		if (event.data.command === "eqn_moved") {
+			if (event.data.vel)
+				vel = event.data.vel;
+			if (event.data.coords)
+				coords = event.data.coords;
+		} else if (event.data.command === "tutorready" && !collabID) {
+			collabID = event.data.team_count;
+			console.log(collabID);
+		}
+	});
+
 	let last_time = window.performance.now();
 	let frame;
 
@@ -37,8 +51,22 @@
 
 		last_time = time;
 	}());
+
+	function onDragEqnEnd(e) {
+		vel.x = e.detail.dx;
+		vel.y = e.detail.dy;
+		let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+		if (d > 20) {
+			vel.x *= 20 / d;
+			vel.y *= 20 / d;
+		}
+		if (parent) {
+			parent.postMessage({ command: "eqn_moved", coords: coords, vel: vel }, window.location.origin);
+		}
+	}
 </script>
 
+<div class="hider" class:visible={split} class:right={collabID === 2}/>
 <div class="root">
 	<div class="history">
 		<div class="buttons">
@@ -81,15 +109,7 @@
 				style="transform: translate({coords.x}px,{coords.y}px)"
 				use:draggableEqn={true}
 				on:dragmove={e => { coords.x = e.detail.x; coords.y = e.detail.y; }}
-				on:dragend={e => {
-					vel.x = e.detail.dx;
-					vel.y = e.detail.dy;
-					let d = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-					if (d > 20) {
-						vel.x *= 20 / d;
-						vel.y *= 20 / d;
-					}
-				}}>
+				on:dragend={onDragEqnEnd}>
 				<div class="equation" on:dragover={e => { dragover = true; e.stopPropagation(); }}>
 					<Expression expression={$history.current.left} path={"left"} parentDivide={false} error={$history.current.left.error} hint={$history.current.left.hint} />
 					<div class="equals"><div>=</div></div>
@@ -118,6 +138,23 @@
 </div>
 
 <style>
+	.hider {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 50%;
+		background: #fff;
+		display: none;
+		z-index: 1000;
+	}
+	.hider.visible {
+		display: block;
+	}
+	.hider.right {
+		right: 0;
+		left: 50%;
+	}
 	.split-ops {
 		position: fixed;
 		bottom: 20%;
