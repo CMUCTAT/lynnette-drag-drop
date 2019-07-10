@@ -3,7 +3,6 @@
     import { draftEquation, dropData, dragData } from '../../stores/equation.js'
 	import OperatorComponent from './Operator.svelte';
     import TokenComponent from './Token.svelte';
-	import { divide } from '../../stores/operators.js';
     
     import { droppable } from '../dragdrop/droppable.js'
     import Flaggable from '../Flaggable.svelte'
@@ -12,7 +11,7 @@
     export let expression;
     export let path;
     export let parentDivide;
-    $: isDivide = expression.items.length > 1 && expression.items[1].equals(divide());
+    $: isDivide = expression.items.length > 1 && expression.items[1].equals('DIVIDE');
 
     const audioFiles = {
         dragStart: {file: 'pop.wav', volume: 0.45},
@@ -59,7 +58,7 @@
 <Flaggable error={error} hint={hint} styles="display: inline;">
     <div class="Expression"
         class:divide={isDivide}
-        class:parentheses={expression.items.length > 1 && !expression.items[1].equals(divide()) && path.split(",").length > 1 && !parentDivide}
+        class:parentheses={expression.items.length > 1 && !expression.items[1].equals('DIVIDE') && path.split(",").length > 1 && !parentDivide}
         class:hovering={hovering}
         class:dragover={dragover}
         use:droppable

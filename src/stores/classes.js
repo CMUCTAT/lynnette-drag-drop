@@ -44,7 +44,10 @@ export class Operator {
         this.error = false;
     }
     equals(other) {
-        return other instanceof Operator && other.symbol === this.symbol && other.operation === this.operation
+        if (typeof other === 'string' || other instanceof String) {
+            return this.operation === other;
+        }
+        return other instanceof Operator && other.operation === this.operation
     }
     stringify() {
         return this.symbol;
@@ -78,5 +81,91 @@ export class Equation {
             dest.constant = constant
             dest.variable = variable;
         });
+    }
+}
+
+export function parseGrammar(exp) {
+    // console.log(exp);
+    switch(exp.operator) {
+        case 'EQUAL':
+            return new Equation(parseGrammar(exp.left), parseGrammar(exp.right));
+        case 'CONST':
+            return new Token(exp.value, null);
+        case 'VAR':
+            return new Token(1, exp.variable);
+        case 'UMINUS':
+            return new Token(-exp.base.value, null);
+        case 'PLUS':
+            return new Expression(exp.terms.reduce((res, item, i, src) => {
+                    let token = parseGrammar(item);
+                    let operator = item.sign > 0 ? new Operator('+', 'PLUS') : new Operator('-', 'MINUS')
+                    return i > 0 ? res.concat(operator, token) : res.concat(token);
+                }, []));
+        case 'TIMES':
+            console.log("TIMES");
+            let divide = []
+            let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
+                let token = parseGrammar(item);
+                if (item.exp > 0) {
+                    if (divide.length > 0) {
+                        res.splice(res.length - 1, 1, new Expression([
+                            res[res.length - 1], 
+                            new Operator('÷', 'DIVIDE'),
+                            divide.length === 1 ? 
+                                divide[0] :
+                                combineConstVars(new Expression(
+                                    divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('×', 'TIMES'), item) : res.concat(item), [])
+                                ))
+                        ]));
+                        divide = [];
+                    }
+                    return i > 0 ? res.concat(new Operator('×', 'TIMES'), token) : res.concat(token);
+                } else {
+                    divide.push(token);
+                    if (i === src.length - 1) {
+                        return res.concat( 
+                            new Operator('÷', 'DIVIDE'),
+                            divide.length === 1 ? divide[0] : combineConstVars(new Expression(
+                                divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('×', 'TIMES'), item) : res.concat(item), [])
+                            )
+                        ));
+                    }
+                    return res;
+                }
+            }, []));
+            
+            // console.log(newExp);
+            
+            return combineConstVars(newExp);
+        default:
+            return null;
+    }
+}
+
+function combineConstVars(expression) {
+    let items = expression.items.reduce((res, item, i, src) => {
+        if (item instanceof Operator) {
+            return res.concat(item);
+        } else if (i > 1) {
+            let prev = res[res.length - 2];
+            let op = res[res.length - 1];
+            if(item instanceof Token && prev instanceof Token && item.variable && !prev.variable && op.equals('TIMES')) {
+                    res.splice(res.length - 2, 2, new Token(item.constant * prev.constant, item.variable || '' + prev.variable || ''));
+                    return res;
+            } else if (op.equals('DIVIDE')) {
+                res.splice(res.length - 2, 2, new Expression([prev, op, item]))
+                return res;
+            } else {
+                return res.concat(item);
+            }
+        } else {
+            return res.concat(item);
+        }
+    }, []);
+    if (items.length === 1) {
+        return items[0];
+    } else {
+        expression.items = items;
+        return expression;
     }
 }

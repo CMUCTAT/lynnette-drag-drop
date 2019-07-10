@@ -1,11 +1,9 @@
 <script>
-    import { divide } from '../../../stores/operators'
-	
 	export let operator;
 	export let path;
 </script>
 
-<div class={"OperatorDisplay"} class:divide={operator.equals(divide())}>{operator.symbol}</div>
+<div class={"OperatorDisplay"} class:divide={operator.equals('DIVIDE')}>{operator.symbol}</div>
 
 <style>
 	.OperatorDisplay {

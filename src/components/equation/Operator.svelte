@@ -1,6 +1,5 @@
 <script>
     import { draftEquation, dropData, dragData } from '../../stores/equation.js'
-	import { divide } from '../../stores/operators.js';
 	import { spring } from 'svelte/motion';
 	import { onMount } from 'svelte';
     import { draggable } from '../dragdrop/draggable.js';
@@ -11,7 +10,7 @@
     export let error;
     export let hint;
     
-    $: isDivide = operator.equals(divide()) && path !== '';  
+    $: isDivide = operator.equals('DIVIDE') && path !== '';  
 
 
     const audioFiles = {
@@ -123,7 +122,8 @@
 
 <style>
 	.Operator {
-        color: #fff0;
+        color: #4440;
+        /* color: #afed5700; */
         touch-action: none;
 		position: relative;
 		transition: -webkit-text-stroke-color 0.2s ease;
@@ -133,10 +133,12 @@
         -ms-user-select: none;
         user-select: none;
         -webkit-text-stroke-width: 1px;
-        -webkit-text-stroke-color: #2220;
+        -webkit-text-stroke-color: #4440;
+        /* -webkit-text-stroke-color: #afed5700; */
     }
 	.Operator.dragging {
-        -webkit-text-stroke-color: #222;
+        -webkit-text-stroke-color: #444;
+        /* -webkit-text-stroke-color: #afed57; */
 	}
 	.Operator.onTop .mover {
         z-index: 10;
@@ -157,6 +159,7 @@
     }
     .mover .content {
 		color: #444;
+		/* color: #afed57; */
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
     }

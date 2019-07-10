@@ -1,18 +1,18 @@
 <script>
     import TokenDisplay from './TokenDisplay.svelte';
     import OperatorDisplay from './OperatorDisplay.svelte';
-    import { divide } from '../../../stores/operators'
     import { Operator, Expression, Token } from '../../../stores/classes';
 
     export let expression;
     export let path;
     export let parentDivide;
     
-    $: isDivide = expression.items.length > 1 && expression.items[1].equals(divide());
+    
+    $: isDivide = expression.items.length > 1 && expression.items[1].equals('DIVIDE');
 </script>
 
 <div class="ExpressionDisplay"
-    class:parentheses={expression.items.length > 1 && !expression.items[1].equals(divide()) && path.split(",").length > 1 && !parentDivide}
+    class:parentheses={expression.items.length > 1 && !expression.items[1].equals('DIVIDE') && path.split(",").length > 1 && !parentDivide}
     class:divide={isDivide}>
     {#each expression.items as item, i}
         {#if item instanceof Operator}

@@ -1,14 +1,17 @@
 import produce from 'immer'
 
 import { writable, get } from 'svelte/store';
-import { Expression, Token, Operator, Equation } from './classes';
-import { add, subtract, multiply, divide } from './operators.js';
+import { Expression, Token, Operator, Equation, parseGrammar } from './classes';
 import { history } from './history.js';
 
-const initial = new Equation(
-    new Expression([new Token(1, null), divide(), new Token(2, 'x')]),
-    new Expression([new Token(3, null)])
-)
+// const initial = new Equation(
+//     new Expression([new Token(1, null), 'DIVIDE', new Token(2, 'x')]),
+//     new Expression([new Token(3, null)])
+// )
+let parse = new CTATAlgebraParser()
+let exp = parse.algParse("x + -2 = 5(x + 2)");
+const initial = parseGrammar(exp)
+
 history.push(initial);
 
 Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x]) ? xs[x] : null, o);
@@ -80,16 +83,18 @@ export const dropData = createDropData();
 
 
 function getPaths(path) {
-	let splitPath = path.replace(/,/g, ",items,").split(",");
+    let splitPath = path.replace(/,/g, ",items,").split(",");
 	let parentPath = splitPath.slice(0, splitPath.length - 2);
+    // console.log(splitPath);
+    // console.log(parentPath);
 	return [splitPath, parentPath];
 }
 
 function sameOps(operator, parentOp) {
-	if (parentOp.equals(add()) || parentOp.equals(subtract())) {
-		return operator.equals(add()) || operator.equals(subtract());
-	} else if (parentOp.equals(multiply())) {
-		return operator.equals(multiply());
+	if (parentOp.equals('PLUS') || parentOp.equals('MINUS')) {
+		return operator.equals('PLUS') || operator.equals('MINUS');
+	} else if (parentOp.equals('TIMES')) {
+		return operator.equals('TIMES');
 	}
 }
 
@@ -98,16 +103,24 @@ function operatorToToken(operatorData, tokenData, eqn) {
         let [operatorSplitPath, operatorParentPath] = getPaths(operatorData.path);
         let [tokenSplitPath, tokenParentPath] = getPaths(tokenData.path);
         let operatorParent = Object.path(draft, operatorParentPath);
-        let tokenParent = Object.path(draft, tokenParentPath);
         let operator = operatorData.item;
-        let token = tokenParent.items.find(o => o.id == tokenData.item.id);
+        let tokenParent;
+        let token;
+        if (tokenParentPath.length === 0) {
+            token = draft[tokenSplitPath[0]];
+            draft[tokenSplitPath[0]] = new Expression([token]);
+            tokenParent = draft[tokenSplitPath[0]];
+        } else {
+            tokenParent = Object.path(draft, tokenParentPath);
+            token = tokenParent.items.find(o => o.id == tokenData.item.id);
+        }
         if (tokenParent.items.length === 1) {
             tokenParent.items.push(new Operator(operator.symbol, operator.operation));
             tokenParent.items.push(new Token(null, null, true));
             return;
         }
         let index = tokenParent.items.indexOf(token);
-        if (operator.equals(divide())) {
+        if (operator.equals('DIVIDE')) {
             tokenParent.items.splice(index, 1, new Expression([token, new Operator(operator.symbol, operator.operation), new Token(null, null, true)]));
         } else if (sameOps(operator, tokenParent.items[1])) {
             tokenParent.items.splice(index + 1, 0, new Operator(operator.symbol, operator.operation));
@@ -131,7 +144,7 @@ function operatorToExpression(operatorData, expressionData, eqn) {
             expression.items.push(new Token(null, null, true));
             return;
         }
-        if (operator.equals(divide())) {
+        if (operator.equals('DIVIDE')) {
             let newExp = new Expression(expression.items);
             expression.items = [newExp, new Operator(operator.symbol, operator.operation), new Token(null, null, true)];
         } else if (sameOps(operator, expression.items[1])) {
@@ -139,7 +152,7 @@ function operatorToExpression(operatorData, expressionData, eqn) {
             expression.items.push(new Token(null, null, true));
         } else {
 
-            if (operator.equals(multiply())) {
+            if (operator.equals('TIMES')) {
                 let newExp = new Expression(expression.items);
                 expression.items = [new Token(null, null, true), new Operator(operator.symbol, operator.operation), newExp];
             } else {
