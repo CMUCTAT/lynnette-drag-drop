@@ -5,10 +5,10 @@ function generateID() {
 }
 
 export class Expression {
-    constructor(items) {
+    constructor(items, ref) {
         this[immerable] = true
         this.items = items;
-        this.id = generateID();
+        this.ref = ref;
         this.hint = false;
         this.error = false;
     }
@@ -19,12 +19,11 @@ export class Expression {
 }
 
 export class Token {
-    constructor(constant, variable, editable=false) {
+    constructor(constant, variable, ref) {
         this[immerable] = true
         this.constant = constant;
         this.variable = variable;
-        this.editable = editable;
-        this.id = generateID();
+        this.ref = ref;
         this.hint = false;
         this.error = false;
     }
@@ -35,11 +34,10 @@ export class Token {
 }
 
 export class Operator {
-    constructor(symbol, operation) {
+    constructor(operation) {
         this[immerable] = true
-        this.symbol = symbol;
+        this.symbol = {PLUS: '+', MINUS: '-', TIMES: '×', DIVIDE: '÷'}[operation];
         this.operation = operation;
-        this.id = generateID();
         this.hint = false;
         this.error = false;
     }
@@ -90,19 +88,21 @@ export function parseGrammar(exp) {
         case 'EQUAL':
             return new Equation(parseGrammar(exp.left), parseGrammar(exp.right));
         case 'CONST':
-            return new Token(exp.value, null);
+            return new Token(exp.value, null, exp);
         case 'VAR':
-            return new Token(1, exp.variable);
+            return new Token(1, exp.variable, exp);
         case 'UMINUS':
-            return new Token(-exp.base.value, null);
+            return new Token(-exp.base.value, null, exp);
+        case 'UNKNOWN':
+            return new Token(null, null, exp);
         case 'PLUS':
             return new Expression(exp.terms.reduce((res, item, i, src) => {
-                    let token = parseGrammar(item);
-                    let operator = item.sign > 0 ? new Operator('+', 'PLUS') : new Operator('-', 'MINUS')
-                    return i > 0 ? res.concat(operator, token) : res.concat(token);
-                }, []));
+                let token = parseGrammar(item);
+                let operator = item.sign > 0 ? new Operator('PLUS') : new Operator('MINUS')
+                return i > 0 ? res.concat(operator, token) : res.concat(token);
+            }, []), exp);
         case 'TIMES':
-            console.log("TIMES");
+            // console.log("TIMES");
             let divide = []
             let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
                 let token = parseGrammar(item);
@@ -110,32 +110,31 @@ export function parseGrammar(exp) {
                     if (divide.length > 0) {
                         res.splice(res.length - 1, 1, new Expression([
                             res[res.length - 1], 
-                            new Operator('÷', 'DIVIDE'),
+                            new Operator('DIVIDE'),
                             divide.length === 1 ? 
                                 divide[0] :
                                 combineConstVars(new Expression(
-                                    divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('×', 'TIMES'), item) : res.concat(item), [])
+                                    divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
+                                    exp
                                 ))
-                        ]));
+                        ], exp));
                         divide = [];
                     }
-                    return i > 0 ? res.concat(new Operator('×', 'TIMES'), token) : res.concat(token);
+                    return i > 0 ? res.concat(new Operator('TIMES'), token) : res.concat(token);
                 } else {
                     divide.push(token);
                     if (i === src.length - 1) {
                         return res.concat( 
-                            new Operator('÷', 'DIVIDE'),
+                            new Operator('DIVIDE'),
                             divide.length === 1 ? divide[0] : combineConstVars(new Expression(
-                                divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('×', 'TIMES'), item) : res.concat(item), [])
+                                divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
+                                exp
                             )
                         ));
                     }
                     return res;
                 }
-            }, []));
-            
-            // console.log(newExp);
-            
+            }, []), exp);
             return combineConstVars(newExp);
         default:
             return null;
@@ -143,6 +142,8 @@ export function parseGrammar(exp) {
 }
 
 function combineConstVars(expression) {
+    console.log(expression);
+    
     let items = expression.items.reduce((res, item, i, src) => {
         if (item instanceof Operator) {
             return res.concat(item);
@@ -150,9 +151,12 @@ function combineConstVars(expression) {
             let prev = res[res.length - 2];
             let op = res[res.length - 1];
             if(item instanceof Token && prev instanceof Token && item.variable && !prev.variable && op.equals('TIMES')) {
-                    res.splice(res.length - 2, 2, new Token(item.constant * prev.constant, item.variable || '' + prev.variable || ''));
+                    res.splice(res.length - 2, 2, new Token(
+                        item.constant * prev.constant,
+                        item.variable || '' + prev.variable || '',
+                        item));
                     return res;
-            } else if (op.equals('DIVIDE')) {
+            } else if (op.equals('DIVIDE')) { //TODO figure out a ref for this
                 res.splice(res.length - 2, 2, new Expression([prev, op, item]))
                 return res;
             } else {

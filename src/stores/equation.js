@@ -9,8 +9,9 @@ import { history } from './history.js';
 //     new Expression([new Token(3, null)])
 // )
 let parse = new CTATAlgebraParser()
-let exp = parse.algParse("x + -2 = 5(x + 2)");
-const initial = parseGrammar(exp)
+// let exp = parse.algParse("x + -2 = 5 * 7 / (6x)");
+let exp = parse.algParse("x+-2=5/?/3");
+const initial = exp;//parseGrammar(exp)
 
 history.push(initial);
 
@@ -28,17 +29,21 @@ function createDraftEquation() {
                 if (srcData.item instanceof Token) {
                     if (destData.item instanceof Token && !destData.item.constant) {
                         // console.log("TOKEN -> TOKEN")
+                        if (!destData.variable && !destData.constant) {
+                            // console.log(parse.algReplaceExpression(eqn, destData.item.ref, srcData.item.ref));
+                            return parse.algReplaceExpression(eqn, destData.item.ref, srcData.item.ref);
+                        }
                         return tokenToToken(srcData, destData, eqn);
                     } else if (destData.item instanceof Operator) { }
                     else if (destData.item instanceof Expression) { }
                 } else if (srcData.item instanceof Operator) {
                     if (destData.item instanceof Token) {
                         // console.log("OPERATOR -> TOKEN")
-                        return operatorToToken(srcData, destData, eqn);
+                        return parse.algReplaceExpression(eqn, destData.item.ref, parse.algCreateExpression(srcData.item.operation, destData.item.ref, '?'));
                     } else if (destData.item instanceof Operator) { }
                     else if (destData.item instanceof Expression) {
                         // console.log("OPERATOR -> EXPRESSION")
-                        return operatorToExpression(srcData, destData, eqn);
+                        return parse.algReplaceExpression(eqn, destData.item.ref, parse.algCreateExpression(srcData.item.operation, destData.item.ref, '?'));
                     }
                 }
             }

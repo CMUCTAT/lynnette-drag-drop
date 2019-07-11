@@ -19,15 +19,15 @@
 	<script>
 		
 		let p = new CTATAlgebraParser()
-		// let e = p.algParse("5x * 6 + 7 = 5x * 6 - 2");
-		let e = p.algParse("5x + 7 = 8");
+		let e = p.algParse("5x * 6 + 7 = 5x * 6 - 2");
+		// let e = p.algParse("5x + 7 = 8 + ?");
 		console.log(e.left.terms[0].factors[1]);
 		let f = p.algFindExpression(e, '5x');
 		console.log(f);
 		let s = f[0]
 		// console.log(p.algReplaceExpression(e, s, p.algCreateExpression('PLUS', s, '?')).toString());
-		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
-		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
+		console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
+		console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
 		
 	</script>
 </body>

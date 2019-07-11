@@ -85,6 +85,7 @@
         dropData.set(token, path, $dragData);
     }
     function handleDragExit(event) {
+        event.stopPropagation();
         dragover = false;
         hovering = false;
     }

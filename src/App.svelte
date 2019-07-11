@@ -4,9 +4,10 @@
 	import History from './components/History.svelte';
 	import { draggableEqn } from './components/dragdrop/draggableEqn'
 	import { history } from './stores/history.js';
-	import { Operator } from './stores/classes.js';
-
-	let operators = [new Operator('+', 'PLUS'), new Operator('-', 'MINUS'), new Operator('÷', 'DIVIDE'), new Operator('×', 'TIMES')];
+	import { Operator, parseGrammar } from './stores/classes.js';
+	console.log($history.current);
+	
+	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
 </script>
 
 <div class="root">
@@ -18,7 +19,7 @@
 		<!-- <History></History> -->
 	</div>
 	<div class="title">
-		<h1>Lynnette Drag & Drop Prototype</h1>
+		<h1>Lynnette Drag & Drop Prototype</h1>{$history.current}
 	</div>
 	<div class="content">
 		<div class="operators">
@@ -32,7 +33,7 @@
 			</div>
 		</div>
 		<div class="equation-container">
-			<Equation state={$history.current}/>
+			<Equation state={parseGrammar($history.current)}/>
 		</div>
 	</div>
 	<!-- <div class="sidebar">
