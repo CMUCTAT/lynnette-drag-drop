@@ -8,14 +8,19 @@ import { history } from './history.js';
 //     new Expression([new Token(1, null), 'DIVIDE', new Token(2, 'x')]),
 //     new Expression([new Token(3, null)])
 // )
-let parse = new CTATAlgebraParser()
-// let exp = parse.algParse("x + -2 = 5 * 7 / (6x)");
-let exp = parse.algParse("x+-2=5/?/3");
+const builder = new CTATTutoringServiceMessageBuilder ();
+const parse = new CTATAlgebraParser()
+let exp = parse.algParse("x + -2 = 5x * 7 / (6x)");
+// let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp;//parseGrammar(exp)
 
 history.push(initial);
 
+
 Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x]) ? xs[x] : null, o);
+
+let source;
+let dest;
 
 function createDraftEquation() {
 	const { subscribe, set, update } = writable(initial);
@@ -23,6 +28,8 @@ function createDraftEquation() {
 	return {
         subscribe,
         moveItem: (srcData, destData) => update(eqn => {
+            source = srcData;
+            dest = destData;
             eqn = get(history).current;
             // console.log(srcData, destData);
             if (srcData.item !== destData.item) {
@@ -39,7 +46,10 @@ function createDraftEquation() {
                 } else if (srcData.item instanceof Operator) {
                     if (destData.item instanceof Token) {
                         // console.log("OPERATOR -> TOKEN")
-                        return parse.algReplaceExpression(eqn, destData.item.ref, parse.algCreateExpression(srcData.item.operation, destData.item.ref, '?'));
+                        let next = parse.algReplaceExpression(eqn, destData.item.ref, parse.algCreateExpression(srcData.item.operation, destData.item.ref, '?'));
+                        console.log(destData.item.ref, next);
+                        
+                        return next;
                     } else if (destData.item instanceof Operator) { }
                     else if (destData.item instanceof Expression) {
                         // console.log("OPERATOR -> EXPRESSION")
@@ -49,15 +59,25 @@ function createDraftEquation() {
             }
             return eqn;
         }),
+        set: next => set(next),
         reset: () => set(get(history).current),
-        apply: () => update(eqn => {
-            if (get(history).current !== eqn)
+        apply: (student=true) => update(eqn => {
+            if (get(history).current !== eqn) {
                 history.push(eqn);
+                console.log(student);
+                
+                if (student) {
+                    var sai = new CTATSAI('equation', 'UpdateTextField', eqn.toString());
+                    CTATCommShell.commShell.processComponentAction(sai);
+                }
+            }
             return eqn;
         })
 	};
 }
 export const draftEquation = createDraftEquation();
+
+
 
 function createDragData() {
 	const { subscribe, set } = writable({});

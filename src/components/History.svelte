@@ -1,17 +1,38 @@
 <script>
-	import { history } from '../stores/history.js';
+	import { history } from '../stores/history';
 	import ExpressionDisplay from './equation/display/ExpressionDisplay.svelte';
-    let ref;
+	import OperatorDisplay from './equation/display/OperatorDisplay.svelte';
+	import TokenDisplay from './equation/display/TokenDisplay.svelte';
+    import { Operator, Expression, Token, parseGrammar } from '../stores/classes';
+	let ref;
+	
+	$: parsedHistory = $history.all.map(item => parseGrammar(item));
 </script>
 
 <div class="History">
     <div class="stack" bind:this={ref}>
-			{#each $history.all as item, i}
+			{#each parsedHistory as item, i}
 				<div class="equation-display" class:current={i===$history.index} on:click={() => history.goTo(i)}>
 					<div class="equation">
-						<ExpressionDisplay expression={item.left} parentDivide={false} path={"left"}/>
+						<div class="left">
+							{#if item.left instanceof Operator}
+								<OperatorDisplay operator={item.left} path={"left"} />
+							{:else if item.left instanceof Expression}
+								<ExpressionDisplay expression={item.left} path={"left"} parentDivide={false} />
+							{:else if item.left instanceof Token}
+								<TokenDisplay token={item.left} path={"left"} />
+							{/if}
+						</div>
 						<div class="equals"><div>=</div></div>
-						<ExpressionDisplay expression={item.right} parentDivide={false} path={"right"}/>
+						<div class="right">
+							{#if item.right instanceof Operator}
+								<OperatorDisplay operator={item.right} path={"right"} />
+							{:else if item.right instanceof Expression}
+								<ExpressionDisplay expression={item.right} path={"right"} parentDivide={false} />
+							{:else if item.right instanceof Token}
+								<TokenDisplay token={item.right} path={"right"} />
+							{/if}
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -19,6 +40,12 @@
 </div>
 
 <style>
+	.left {
+		display: flex;
+	}
+	.right {
+		display: flex;
+	}
 	.stack {
 		overflow-y: auto;
 		height: 100%;

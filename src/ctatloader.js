@@ -12,16 +12,17 @@
  Notes:
 
  */
-
 console.log ("Starting ctatloader ...");
+import { draftEquation } from './stores/equation.js';
+import { history } from './stores/history.js';
 if(frameElement && typeof(frameElement.getAttribute) == "function")
 {
-    let dpAttr = frameElement.getAttribute('data-params');
-    let dpObj = null;
-    if(dpAttr && (dpObj = JSON.parse(dpAttr)) && dpObj.hasOwnProperty('CTATTarget'))
-    {
+	let dpAttr = frameElement.getAttribute('data-params');
+	let dpObj = null;
+	if(dpAttr && (dpObj = JSON.parse(dpAttr)) && dpObj.hasOwnProperty('CTATTarget'))
+	{
 	var CTATTarget = dpObj['CTATTarget'];
-    }
+	}
 }
 
 // Set CTATTarget to Default if not already set.
@@ -152,9 +153,9 @@ function initOnload ()
 	//>-------------------------------------------------------------------------	
 	
 	/*
-	 * The target CTAT is synonymous with TutorShop. You can use this target outside of
-	 * TutorShop if you use the same directory structure for the css, js and brd files
-	 */
+	* The target CTAT is synonymous with TutorShop. You can use this target outside of
+	* TutorShop if you use the same directory structure for the css, js and brd files
+	*/
 	if (CTATTarget=="CTAT" || CTATTarget=="LTI" || CTATLMS.is.TutorShop())
 	{
 		console.log ("CTATTarget=='CTAT'");
@@ -168,11 +169,11 @@ function initOnload ()
 	//>-------------------------------------------------------------------------	
 	
 	/*
-	 * This target is available to you if you would like to either develop your own
-	 * Learner Management System or would like to test and run your tutor standalone.
-	 * NOTE! This version will NOT call initTutor since that is the responsibility
-	 * of the author in this case.
-	 */
+	* This target is available to you if you would like to either develop your own
+	* Learner Management System or would like to test and run your tutor standalone.
+	* NOTE! This version will NOT call initTutor since that is the responsibility
+	* of the author in this case.
+	*/
 	if (CTATTarget=="Default")
 	{
 		console.log ("CTATTarget=='Default'");
@@ -198,6 +199,7 @@ function initOnload ()
 /**
  *
  */
+const parse = new CTATAlgebraParser()
 if (window.jQuery) 
 {
 	$(function()
@@ -205,6 +207,20 @@ if (window.jQuery)
 		CTATScrim.scrim.waitScrimUp ();
 		console.log ("$(window).load("+CTATTarget+")");
 		initOnload ();
+		CTATCommShell.commShell.addGlobalEventListener({
+			processCommShellEvent: (evt, msg) => {
+				if("InterfaceAction" != evt || !msg || (typeof msg === 'string' || msg instanceof String)) {
+					return;
+				}
+				
+				var sai = msg.getSAI();
+				console.log("INTERFACE ACTION:", sai.getInput());
+				var input = sai.getInput();
+				// history.push(parse.algParse(input));
+				draftEquation.set(parse.algParse(input));
+				draftEquation.apply(false);
+			}
+		});
 	});
 }
 else

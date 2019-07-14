@@ -4,7 +4,6 @@
 	import OperatorComponent from './Operator.svelte';
     import TokenComponent from './Token.svelte';
     export let state;
-    console.log(state);
 </script>
 
 <div class="equation">

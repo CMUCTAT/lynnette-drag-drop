@@ -11,6 +11,7 @@ export class Expression {
         this.ref = ref;
         this.hint = false;
         this.error = false;
+        this.id = generateID();
     }
 
     stringify() {
@@ -26,6 +27,7 @@ export class Token {
         this.ref = ref;
         this.hint = false;
         this.error = false;
+        this.id = generateID();
     }
 
     stringify() {
@@ -40,6 +42,7 @@ export class Operator {
         this.operation = operation;
         this.hint = false;
         this.error = false;
+        this.id = generateID();
     }
     equals(other) {
         if (typeof other === 'string' || other instanceof String) {
@@ -142,8 +145,6 @@ export function parseGrammar(exp) {
 }
 
 function combineConstVars(expression) {
-    console.log(expression);
-    
     let items = expression.items.reduce((res, item, i, src) => {
         if (item instanceof Operator) {
             return res.concat(item);
@@ -154,10 +155,10 @@ function combineConstVars(expression) {
                     res.splice(res.length - 2, 2, new Token(
                         item.constant * prev.constant,
                         item.variable || '' + prev.variable || '',
-                        item));
+                        expression.ref));
                     return res;
             } else if (op.equals('DIVIDE')) { //TODO figure out a ref for this
-                res.splice(res.length - 2, 2, new Expression([prev, op, item]))
+                res.splice(res.length - 2, 2, new Expression([prev, op, item], expression.ref))
                 return res;
             } else {
                 return res.concat(item);

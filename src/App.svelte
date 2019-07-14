@@ -1,12 +1,11 @@
 <script>
 	import OperatorComponent from './components/equation/Operator.svelte';
-	import Equation from './components/equation/Equation.svelte';
+	import PreviewEquation from './components/equation/PreviewEquation.svelte';
 	import History from './components/History.svelte';
 	import { draggableEqn } from './components/dragdrop/draggableEqn'
+	import { draftEquation } from './stores/equation.js';
 	import { history } from './stores/history.js';
 	import { Operator, parseGrammar } from './stores/classes.js';
-	console.log($history.current);
-	
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
 </script>
 
@@ -16,10 +15,10 @@
 			<button on:click={() => history.step(-1)}>Undo</button>
 			<button on:click={() => history.step(1)}>Redo</button>
 		</div>
-		<!-- <History></History> -->
+		<History></History>
 	</div>
 	<div class="title">
-		<h1>Lynnette Drag & Drop Prototype</h1>{$history.current}
+		<h1>Lynnette Drag & Drop Prototype</h1>
 	</div>
 	<div class="content">
 		<div class="operators">
@@ -33,7 +32,7 @@
 			</div>
 		</div>
 		<div class="equation-container">
-			<Equation state={parseGrammar($history.current)}/>
+			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)}/>
 		</div>
 	</div>
 	<!-- <div class="sidebar">
@@ -59,11 +58,6 @@
 		padding: 40px 0;
 		grid-area: content;
 		/* background: #0f0; */
-	}
-	.sidebar {
-		grid-area: sidebar;
-		padding: 20px;
-		/* background: #00f; */
 	}
 	.title {
 		grid-area: title;
@@ -109,21 +103,5 @@
 
 	.equals > div {
 		height: 20px;
-	}
-	.draft {
-		position: relative;
-		opacity: 0.3;
-	}
-	.draft:before {
-		content: '';
-		width: 0; 
-		height: 0; 
-		border-left: 8px solid transparent;
-		border-right: 8px solid transparent;
-		border-top: 8px solid #444;
-		position: absolute;
-		left: 50%;
-		transform: translate(-50%);
-		top: -4px;
 	}
 </style>

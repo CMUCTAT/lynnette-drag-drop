@@ -116,6 +116,7 @@
         class:hovering={hovering && !dropAnim}
         class:dragover={dragover}
         class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
+        class:editable={!token.variable && !token.constant}
         use:draggable={{type: "token", accepts: ["operator", "token"]}}
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
@@ -212,6 +213,7 @@
         vertical-align: middle;
         border-radius: 2px;
         font-size: 28px;
+        padding: 3px;
     }
     .content span {
         pointer-events: none;
@@ -222,12 +224,19 @@
         margin: 0;
         text-align: center; 
         color: #444;
-        border: #444 solid 3px;
+        /* border: #444 solid 3px; */
+        border: none;
         padding: 0;
     }
     .mover .content {
         color: #444;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
+        border: 3px solid #444;
+        border-radius: 3px;
+        padding: 0px;
+    }
+    .editable .mover .content {
+        border: 3px dashed #444;
     }
 </style>
