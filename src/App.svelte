@@ -5,7 +5,8 @@
 	import { draggableEqn } from './components/dragdrop/draggableEqn'
 	import { draftEquation } from './stores/equation.js';
 	import { history } from './stores/history.js';
-	import { Operator, parseGrammar } from './stores/classes.js';
+	import { Operator } from './stores/classes';
+	import { parseGrammar } from './stores/equation'
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
 </script>
 

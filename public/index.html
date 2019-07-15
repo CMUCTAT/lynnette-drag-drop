@@ -20,7 +20,7 @@
 	<script>
 		
 		let p = new CTATAlgebraParser()
-		let e = p.algParse("5x * 6 + 7 = 5x * 6 - 2");
+		let e = p.algParse("5x + 2 - 2 = 12 - 2");
 		// let e = p.algParse("5x + 7 = 8 + ?");
 		console.log(e.left.terms[0].factors[1]);
 		let f = p.algFindExpression(e, '5x');

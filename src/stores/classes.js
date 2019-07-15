@@ -5,10 +5,10 @@ function generateID() {
 }
 
 export class Expression {
-    constructor(items, ref) {
+    constructor(items, path) {
         this[immerable] = true
         this.items = items;
-        this.ref = ref;
+        this.path = path;
         this.hint = false;
         this.error = false;
         this.id = generateID();
@@ -20,11 +20,11 @@ export class Expression {
 }
 
 export class Token {
-    constructor(constant, variable, ref) {
+    constructor(constant, variable, path) {
         this[immerable] = true
         this.constant = constant;
         this.variable = variable;
-        this.ref = ref;
+        this.path = path;
         this.hint = false;
         this.error = false;
         this.id = generateID();
@@ -32,6 +32,10 @@ export class Token {
 
     stringify() {
         return this.constant + (this.variable ? this.variable : '');
+    }
+
+    value() {
+        return (!(this.variable && this.constant === 1) ? this.constant : '') + (this.variable || '')
     }
 }
 
@@ -82,95 +86,5 @@ export class Equation {
             dest.constant = constant
             dest.variable = variable;
         });
-    }
-}
-
-export function parseGrammar(exp) {
-    // console.log(exp);
-    switch(exp.operator) {
-        case 'EQUAL':
-            return new Equation(parseGrammar(exp.left), parseGrammar(exp.right));
-        case 'CONST':
-            return new Token(exp.value, null, exp);
-        case 'VAR':
-            return new Token(1, exp.variable, exp);
-        case 'UMINUS':
-            return new Token(-exp.base.value, null, exp);
-        case 'UNKNOWN':
-            return new Token(null, null, exp);
-        case 'PLUS':
-            return new Expression(exp.terms.reduce((res, item, i, src) => {
-                let token = parseGrammar(item);
-                let operator = item.sign > 0 ? new Operator('PLUS') : new Operator('MINUS')
-                return i > 0 ? res.concat(operator, token) : res.concat(token);
-            }, []), exp);
-        case 'TIMES':
-            // console.log("TIMES");
-            let divide = []
-            let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
-                let token = parseGrammar(item);
-                if (item.exp > 0) {
-                    if (divide.length > 0) {
-                        res.splice(res.length - 1, 1, new Expression([
-                            res[res.length - 1], 
-                            new Operator('DIVIDE'),
-                            divide.length === 1 ? 
-                                divide[0] :
-                                combineConstVars(new Expression(
-                                    divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
-                                    exp
-                                ))
-                        ], exp));
-                        divide = [];
-                    }
-                    return i > 0 ? res.concat(new Operator('TIMES'), token) : res.concat(token);
-                } else {
-                    divide.push(token);
-                    if (i === src.length - 1) {
-                        return res.concat( 
-                            new Operator('DIVIDE'),
-                            divide.length === 1 ? divide[0] : combineConstVars(new Expression(
-                                divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
-                                exp
-                            )
-                        ));
-                    }
-                    return res;
-                }
-            }, []), exp);
-            return combineConstVars(newExp);
-        default:
-            return null;
-    }
-}
-
-function combineConstVars(expression) {
-    let items = expression.items.reduce((res, item, i, src) => {
-        if (item instanceof Operator) {
-            return res.concat(item);
-        } else if (i > 1) {
-            let prev = res[res.length - 2];
-            let op = res[res.length - 1];
-            if(item instanceof Token && prev instanceof Token && item.variable && !prev.variable && op.equals('TIMES')) {
-                    res.splice(res.length - 2, 2, new Token(
-                        item.constant * prev.constant,
-                        item.variable || '' + prev.variable || '',
-                        expression.ref));
-                    return res;
-            } else if (op.equals('DIVIDE')) { //TODO figure out a ref for this
-                res.splice(res.length - 2, 2, new Expression([prev, op, item], expression.ref))
-                return res;
-            } else {
-                return res.concat(item);
-            }
-        } else {
-            return res.concat(item);
-        }
-    }, []);
-    if (items.length === 1) {
-        return items[0];
-    } else {
-        expression.items = items;
-        return expression;
     }
 }

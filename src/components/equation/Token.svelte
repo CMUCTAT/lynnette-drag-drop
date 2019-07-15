@@ -4,7 +4,6 @@
     import { draggable } from '../dragdrop/draggable.js';
     import Flaggable from '../Flaggable.svelte'
     import { draftEquation, dropData, dragData } from '../../stores/equation.js'
-    import { history } from '../../stores/history.js'
     $: value = (token.constant && !(token.variable && token.constant === 1) ? token.constant: '') + (token.variable ? token.variable : '')
 
     export let error;
@@ -103,10 +102,8 @@
     }
 
     function updateToken(e) {
-        let v = parseInput(e.target.value)
-        let next = $history.current.updateToken(token, path, v.constant, v.variable)
-        if ($history.current !== next)
-            history.push(next);
+        draftEquation.updateToken(token, e.target.value)
+        draftEquation.apply();
     }
 </script>
 
@@ -132,9 +129,7 @@
             {#if !token.constant}
                 <input type=text size={1} value={value} on:change={updateToken}>
             {:else}
-                <span>{(!(token.variable && token.constant === 1) ? token.constant : '') + (token.variable || '')}</span>
-                <!-- {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
-                {#if token.variable}<span class="variable">{token.variable}</span>{/if} -->
+                {token.value()}
             {/if}
         </div>
         <div class="mover"
@@ -142,12 +137,8 @@
             style="transform:
             translate({$coords.x}px,{$coords.y}px)">
             <div class="content">
-                {#if !token.constant}
-                    <!-- <input type=text value={value} on:change={updateToken}> -->
-                {:else}
-                    <span>{(!(token.variable && token.constant === 1) ? token.constant : '') + (token.variable || '')}</span>
-                    <!-- {#if !(token.variable && token.constant === 1)}<span class="constant">{token.constant}</span>{/if}
-                    {#if token.variable}<span class="variable">{token.variable}</span>{/if} -->
+                {#if token.constant}
+                    {token.value()}
                 {/if}
             </div>
         </div>
@@ -186,6 +177,7 @@
     .content {
         touch-action: none;
         transition: transform 0.25s ease;
+        box-sizing: border-box;
     }
     .Token.hovering .content {
         transform: scale(1.2);
@@ -207,16 +199,11 @@
     .content {
         min-width: var(--size);
         height: var(--size);
-        /* line-height: 35px; */
         cursor: pointer;
         text-align: center;
         vertical-align: middle;
         border-radius: 2px;
         font-size: 28px;
-        padding: 3px;
-    }
-    .content span {
-        pointer-events: none;
     }
     .content input {
         width: 100%;
@@ -224,8 +211,6 @@
         margin: 0;
         text-align: center; 
         color: #444;
-        /* border: #444 solid 3px; */
-        padding: 3px;
         border: none;
         padding: 0;
     }
@@ -233,8 +218,6 @@
         color: #444;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
-        /* border: 3px solid #444; */
-        padding: 3px;
         border-radius: 3px;
         padding: 0px;
     }

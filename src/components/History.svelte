@@ -3,7 +3,8 @@
 	import ExpressionDisplay from './equation/display/ExpressionDisplay.svelte';
 	import OperatorDisplay from './equation/display/OperatorDisplay.svelte';
 	import TokenDisplay from './equation/display/TokenDisplay.svelte';
-    import { Operator, Expression, Token, parseGrammar } from '../stores/classes';
+	import { Operator, Expression, Token } from '../stores/classes';
+	import { parseGrammar } from '../stores/equation'
 	let ref;
 	
 	$: parsedHistory = $history.all.map(item => parseGrammar(item));
@@ -64,6 +65,7 @@
 	.equation {
 		justify-content: center;
 		display: flex;
+		align-items: center;
 	}
 	.equals {
 		display: flex;

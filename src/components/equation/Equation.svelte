@@ -16,7 +16,7 @@
             <TokenComponent token={state.left} path={"left"} hint={state.left.hint} error={state.left.error} />
         {/if}
     </div>
-    <div class="equals"><div>=</div></div>
+    <div class="equals">=</div>
     <div class="right">
         {#if state.right instanceof Operator}
             <OperatorComponent operator={state.right} path={"right"} hint={state.right.hint} error={state.right.error} />
@@ -30,11 +30,10 @@
 
 <style>
 	.equals {
-		display: flex;
-		align-items: center;
 		font-size: 1.5em;
-		line-height: 15px;
 		margin: 5px;
+        height: 30px;
+        line-height: 25px;
 	}
 	.equation {
 		align-items: center;
