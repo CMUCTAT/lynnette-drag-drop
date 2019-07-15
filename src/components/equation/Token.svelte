@@ -225,6 +225,7 @@
         text-align: center; 
         color: #444;
         /* border: #444 solid 3px; */
+        padding: 3px;
         border: none;
         padding: 0;
     }
@@ -232,7 +233,8 @@
         color: #444;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
-        border: 3px solid #444;
+        /* border: 3px solid #444; */
+        padding: 3px;
         border-radius: 3px;
         padding: 0px;
     }
