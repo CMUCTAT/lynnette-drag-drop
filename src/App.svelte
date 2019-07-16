@@ -6,7 +6,8 @@
 	import { draftEquation } from './stores/equation.js';
 	import { history } from './stores/history.js';
 	import { Operator } from './stores/classes';
-	import { parseGrammar } from './stores/equation'
+	import { parseGrammar } from './stores/equation';
+	import { messageManager } from './stores/MessageManager';
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
 </script>
 
@@ -18,9 +19,9 @@
 		</div>
 		<History></History>
 	</div>
-	<div class="title">
+	<!-- <div class="title">
 		<h1>Lynnette Drag & Drop Prototype</h1>
-	</div>
+	</div> -->
 	<div class="content">
 		<div class="operators">
 			<div class="operator-box">
@@ -36,6 +37,10 @@
 			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)}/>
 		</div>
 	</div>
+	<div class="message">
+		{$messageManager.error}
+		{$messageManager.hint}
+	</div>
 	<!-- <div class="sidebar">
 	</div> -->
 </div>
@@ -46,10 +51,13 @@
 
 		grid-template-areas: 
 			"history content content"
-			"title title title";
+			"title message message";
 		grid-template-columns: 200px auto 200px;
-		grid-template-rows: calc(100vh - 120px) 120px;
+		grid-template-rows: 70% 30%;
 		height: 100vh;
+	}
+	.message {
+		grid-area: message;
 	}
 	.history {
 		grid-area: history;

@@ -209,16 +209,30 @@ if (window.jQuery)
 		initOnload ();
 		CTATCommShell.commShell.addGlobalEventListener({
 			processCommShellEvent: (evt, msg) => {
-				if("InterfaceAction" != evt || !msg || (typeof msg === 'string' || msg instanceof String)) {
-					return;
+				console.log(evt, msg);
+				switch(evt) {
+					case "InterfaceAction":
+						if (msg && !(typeof msg === 'string' || msg instanceof String)) {
+							var sai = msg.getSAI();
+							console.log("INTERFACE ACTION:", sai.getInput());
+							var input = sai.getInput();
+							// history.push(parse.algParse(input));
+							draftEquation.set(parse.algParse(input));
+							draftEquation.apply(false);
+						}
+						break;
+					case "CorrectAction":
+						console.log("CorrectAction", msg);
+						console.log(msg.getSuccessMessage());
+						break;
+					case "InCorrectAction":
+						console.log("InCorrectAction", msg);
+						console.log(msg.getHighlightMsg());
+						console.log(msg.getBuggyMsg());
+						break;
+					default:
+						break;
 				}
-				
-				var sai = msg.getSAI();
-				console.log("INTERFACE ACTION:", sai.getInput());
-				var input = sai.getInput();
-				// history.push(parse.algParse(input));
-				draftEquation.set(parse.algParse(input));
-				draftEquation.apply(false);
 			}
 		});
 	});

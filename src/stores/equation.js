@@ -1,5 +1,3 @@
-import produce from 'immer'
-
 import { writable, get } from 'svelte/store';
 import { Expression, Token, Operator, Equation } from './classes';
 import { history } from './history.js';
@@ -11,6 +9,7 @@ import { history } from './history.js';
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser()
 let exp = parse.algParse("3x + 6 = 9");
+// let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp;//parseGrammar(exp)
 
@@ -43,13 +42,29 @@ function createDraftEquation() {
                             let next = parse.algReplaceExpression(eqn, dest, src);
                             return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : next;
                         } else if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
-                            let parent = Object.path(eqn, srcData.item.path.slice(-3, -2));
+                            let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
                             let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1))
-                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : next;
+                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : parse.algParse(parse.algStringify(next));
                         }
-                    } else if (destData.item instanceof Expression) { }
+                    } else if (destData.item instanceof Expression) {
+                        // console.log("Token -> Expression");
+                        // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2)));
+                        // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)));
+                        // console.log(srcData.item.path.slice(-1));
+                        // console.log(destData.item.path.slice(-1));
+                        
+                        if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
+                            let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
+                            let n0 = srcData.item.path.slice(-1);
+                            let n1 = destData.item.path.slice(-1);
+                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute'], false, n0, n1))
+                            console.log(next);
+                            console.log(parse.algParse(next.toString()));
+                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : parse.algParse(parse.algStringify(next));
+                        }
+                    }
                 } else if (srcData.item instanceof Operator) {
                     if (destData.item instanceof Token || destData.item instanceof Expression) {
                         let operation = srcData.item.operation
@@ -157,39 +172,30 @@ export function parseGrammar(exp, path) {
             let divide = []
             let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
                 let token = parseGrammar(item, path.concat(['factors', i]));
-                if (item.exp > 0) {
-                    if (divide.length > 0) {
-                        res.splice(res.length - 1, 1, new Expression([
-                            res[res.length - 1], 
-                            new Operator('DIVIDE'),
-                            divide.length === 1 ? 
-                                divide[0] :
-                                combineConstVars(new Expression(
-                                    divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
-                                    path
-                                ), path)
-                        ], path));
-                        divide = [];
-                    }
-                    return i > 0 ? res.concat(new Operator('TIMES'), token) : res.concat(token);
-                } else {
+                if (item.exp < 0) {
                     divide.push(token);
-                    if (i === src.length - 1) {
-                        return res.concat( 
-                            new Operator('DIVIDE'),
-                            divide.length === 1 ? divide[0] : combineConstVars(new Expression(
-                                divide.reduce((res, item, i) => i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item), []),
-                                path
-                            ), path)
-                        );
-                    }
                     return res;
+                } else {
+                    return i > 0 ? res.concat(new Operator('TIMES'), token) : res.concat(token);
                 }
             }, []), path);
-            return combineConstVars(newExp, path);
+            if (divide.length > 0) {
+                newExp = new Expression([
+                    flatten(combineConstVars(newExp)),
+                    new Operator('DIVIDE'),
+                    flatten(combineConstVars(new Expression(divide.reduce((res, item, i) => {
+                        return i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item);
+                    }, []))))
+                ])
+            }
+            return flatten(combineConstVars(newExp, path));
         default:
             return null;
     }
+}
+
+function flatten(expression) {
+    return expression.items.length === 1 ? expression.items[0] : expression;
 }
 
 function combineConstVars(expression, path) {
@@ -215,10 +221,6 @@ function combineConstVars(expression, path) {
             return res.concat(item);
         }
     }, []);
-    if (items.length === 1) {
-        return items[0];
-    } else {
-        expression.items = items;
-        return expression;
-    }
+    expression.items = items;
+    return expression;
 }

@@ -15,20 +15,20 @@
 </head>
 
 <body>
-	<div class="CTATTextField" id="start-state" style="display: none;">x + -2 = 5x * 7 / (6x)</div>
+	<div class="CTATTextField" id="start-state" style="display: none;">3x + 6 = 9</div>
 	<script src='bundle.js'></script>
 	<script>
 		
-		let p = new CTATAlgebraParser()
-		let e = p.algParse("5x + 2 - 2 = 12 - 2");
-		// let e = p.algParse("5x + 7 = 8 + ?");
-		console.log(e.left.terms[0].factors[1]);
-		let f = p.algFindExpression(e, '5x');
-		console.log(f);
-		let s = f[0]
-		// console.log(p.algReplaceExpression(e, s, p.algCreateExpression('PLUS', s, '?')).toString());
-		console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
-		console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
+		// let p = new CTATAlgebraParser()
+		// let e = p.algParse("3x + 6 = 9");
+		// // let e = p.algParse("5x + 7 = 8 + ?");
+		// console.log(e.left.terms[0].factors[1]);
+		// let f = p.algFindExpression(e, '5x');
+		// console.log(f);
+		// let s = f[0]
+		// // console.log(p.algReplaceExpression(e, s, p.algCreateExpression('PLUS', s, '?')).toString());
+		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
+		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
 		
 	</script>
 </body>
