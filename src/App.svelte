@@ -7,7 +7,7 @@
 	import { history } from './stores/history.js';
 	import { Operator } from './stores/classes';
 	import { parseGrammar } from './stores/equation';
-	import { messageManager } from './stores/MessageManager';
+	import { messageManager } from './stores/messageManager';
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
 </script>
 
