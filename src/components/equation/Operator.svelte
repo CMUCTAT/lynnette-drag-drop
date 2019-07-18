@@ -169,17 +169,10 @@
     .Operator.dragging .content {
         transform: scale(1.3);
     }
-    .Operator.dragover .content {
-        color: #33dcfe;
-        transform: scale(1.2);
-    }
     .Operator.divide.hovering .content {
         transform: none;
     }
     .Operator.divide.dragging .content {
-        transform: none;
-    }
-    .Operator.divide.dragover .content {
         transform: none;
     }
     .fade .content {
@@ -193,7 +186,7 @@
         width: var(--size);
         height: var(--size);
         line-height: 33px;
-        font-size: 40px;
+        font-size: 28px;
         text-align: center;
     }
     .Operator.divide {
@@ -228,9 +221,5 @@
     }
     .Operator.divide.dragging .content:after {
         transform: scale(1.1);
-    }
-    .Operator.divide.dragover .content:after {
-        background: #33dcfe;
-        transform: scale(1.2);
     }
 </style>

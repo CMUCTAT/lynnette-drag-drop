@@ -5,7 +5,7 @@
     export let draft;
     let showDraft;
 
-    function handleMouseEnter(e) {
+    function handleMove(e) {
         if (Object.keys(window.drag).some(key => window.drag[key])) {
             showDraft = true;
         }
@@ -19,7 +19,7 @@
 </script>
 
 <div class="root"
-    on:mouseenter={handleMouseEnter}
+    on:mousemove={handleMove}
     on:mouseleave={handleMouseLeave}
     on:mouseup={handleMouseUp}>
     <Equation state={state}/>
@@ -40,6 +40,7 @@
         left: 50%;
         transform: translateX(-50%);
         opacity: 0.3;
+        pointer-events: none;
     }
     .preview:before {
 		content: '';

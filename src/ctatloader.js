@@ -12,68 +12,60 @@
  Notes:
 
  */
-console.log ("Starting ctatloader ...");
+console.log("Starting ctatloader ...");
 import { draftEquation } from './stores/equation.js';
-import { history } from './stores/history.js';
-if(frameElement && typeof(frameElement.getAttribute) == "function")
-{
+import { messageManager } from './stores/messageManager.js';
+if (frameElement && typeof (frameElement.getAttribute) == "function") {
 	let dpAttr = frameElement.getAttribute('data-params');
 	let dpObj = null;
-	if(dpAttr && (dpObj = JSON.parse(dpAttr)) && dpObj.hasOwnProperty('CTATTarget'))
-	{
-	var CTATTarget = dpObj['CTATTarget'];
+	if (dpAttr && (dpObj = JSON.parse(dpAttr)) && dpObj.hasOwnProperty('CTATTarget')) {
+		var CTATTarget = dpObj['CTATTarget'];
 	}
 }
 
 // Set CTATTarget to Default if not already set.
-if(typeof(CTATTarget) == "undefined" || !CTATTarget)
-{
-	console.log ("CTATTarget not defined, setting it to 'Default' ...");
-	var CTATTarget="Default";
+if (typeof (CTATTarget) == "undefined" || !CTATTarget) {
+	console.log("CTATTarget not defined, setting it to 'Default' ...");
+	var CTATTarget = "Default";
 }
-else
-{
-	console.log ("CTATTarget already defined at top of ctatloader, set to: " + CTATTarget);
+else {
+	console.log("CTATTarget already defined at top of ctatloader, set to: " + CTATTarget);
 }
 
-console.log ("Double checking target: " + CTATTarget);
+console.log("Double checking target: " + CTATTarget);
 
 function startCTAT() {
-	initTutor ();
+	initTutor();
 
 	// Once all the CTAT code has been loaded allow developers to activate custom code
 
-	if (window.hasOwnProperty('ctatOnload'))
-	{
-		window ['ctatOnload']();
+	if (window.hasOwnProperty('ctatOnload')) {
+		window['ctatOnload']();
 	}
-	else
-	{
-		console.log ("Warning: window.ctatOnload is not available");
+	else {
+		console.log("Warning: window.ctatOnload is not available");
 	}
 }
 /**
  *
  */
-function initOnload ()
-{
-	console.log ("initOnload ()");
-	
+function initOnload() {
+	console.log("initOnload ()");
+
 	//>-------------------------------------------------------------------------
 
-	if (CTATLMS.is.Authoring() || CTATTarget === "AUTHORING")
-	{
-		console.log ('(CTATTarget=="AUTHORING")');
+	if (CTATLMS.is.Authoring() || CTATTarget === "AUTHORING") {
+		console.log('(CTATTarget=="AUTHORING")');
 
 		var session = '' || CTATConfiguration.get('session_id');
 		var port = '' || CTATConfiguration.get('remoteSocketPort');
 		if (window.location.search) {
 			var p = /[?&;]port=(\d+)/i.exec(window.location.search);
-			if (p && p.length>=2) {
+			if (p && p.length >= 2) {
 				port = decodeURIComponent(p[1].replace(/\+/g, ' '));
 			}
 			var s = /[?&;]session=([^&]*)/i.exec(window.location.search);
-			if (s && s.length>=2) {
+			if (s && s.length >= 2) {
 				session = decodeURIComponent(s[1].replace(/\+/g, ' '));
 			}
 		}
@@ -87,55 +79,51 @@ function initOnload ()
 		startCTAT();
 		return;
 	}
-	
+
 	//>-------------------------------------------------------------------------	
 
-	if (CTATLMS.is.OLI())
-	{
+	if (CTATLMS.is.OLI()) {
 		// Do nothing as OLI will call initTutor and ctatOnload.
 		// Should probably move to a similar mechanism as XBlock
-		console.log ("CTATTarget=='OLI'");
+		console.log("CTATTarget=='OLI'");
 		return;
 	}
 
 	//>-------------------------------------------------------------------------	
-	
-	if (CTATLMS.is.SCORM())
-	{
-		console.log ("CTATTarget=='SCORM'");
-	
+
+	if (CTATLMS.is.SCORM()) {
+		console.log("CTATTarget=='SCORM'");
+
 		CTATLMS.init.SCORM();
 		// Initialize our own code ...
 		startCTAT();
 		return;
 	}
-	
+
 	//>-------------------------------------------------------------------------	
-	
-	if (CTATLMS.is.Assistments())
-	{
-		console.log ("CTATTarget=='ASSISTMENTS'");
-	
+
+	if (CTATLMS.is.Assistments()) {
+		console.log("CTATTarget=='ASSISTMENTS'");
+
 		iframeLoaded(); // Assistments specific call
-	
+
 		// Initialize our own code ...
 		startCTAT();
 		return;
-	}	
+	}
 
 	//>-------------------------------------------------------------------------	
-	
-	if (CTATLMS.is.XBlock()) 
-	{
-		console.log ("CTATTarget=='XBlock'");
+
+	if (CTATLMS.is.XBlock()) {
+		console.log("CTATTarget=='XBlock'");
 
 		CTATLMS.init.XBlock();
 		// listen for configuration block
-		window.addEventListener("message", function(event) {
+		window.addEventListener("message", function (event) {
 			console.log('recieved message', event.origin, document.referrer, event.data);
 			if (!document.referrer && event.origin !== (new URl(document.referrer)).origin) {
 				console.log("Message not from valid source:", event.origin,
-						"Expected:", document.referrer); // TODO: remove expected
+					"Expected:", document.referrer); // TODO: remove expected
 				return;
 			}
 			if (!CTATTutor.tutorInitialized && 'question_file' in event.data) { // looks like we have configuration
@@ -149,17 +137,16 @@ function initOnload ()
 		});
 		return;
 	}
-	
+
 	//>-------------------------------------------------------------------------	
-	
+
 	/*
 	* The target CTAT is synonymous with TutorShop. You can use this target outside of
 	* TutorShop if you use the same directory structure for the css, js and brd files
 	*/
-	if (CTATTarget=="CTAT" || CTATTarget=="LTI" || CTATLMS.is.TutorShop())
-	{
-		console.log ("CTATTarget=='CTAT'");
-	
+	if (CTATTarget == "CTAT" || CTATTarget == "LTI" || CTATLMS.is.TutorShop()) {
+		console.log("CTATTarget=='CTAT'");
+
 		CTATLMS.init.TutorShop();
 		startCTAT();
 
@@ -167,32 +154,29 @@ function initOnload ()
 	}
 
 	//>-------------------------------------------------------------------------	
-	
+
 	/*
 	* This target is available to you if you would like to either develop your own
 	* Learner Management System or would like to test and run your tutor standalone.
 	* NOTE! This version will NOT call initTutor since that is the responsibility
 	* of the author in this case.
 	*/
-	if (CTATTarget=="Default")
-	{
-		console.log ("CTATTarget=='Default'");
-		
+	if (CTATTarget == "Default") {
+		console.log("CTATTarget=='Default'");
+
 		// Once all the CTAT code has been loaded allow developers to activate custom code
 
-		if (window.hasOwnProperty('ctatOnload'))
-		{
-			window ['ctatOnload']();
+		if (window.hasOwnProperty('ctatOnload')) {
+			window['ctatOnload']();
 		}
-		else
-		{
-			console.log ("Warning: window.ctatOnload is not available, running initTutor()");
+		else {
+			console.log("Warning: window.ctatOnload is not available, running initTutor()");
 			initTutor();
 		}
 
 		return;
 	}
-	
+
 	//>-------------------------------------------------------------------------	
 }
 
@@ -200,17 +184,15 @@ function initOnload ()
  *
  */
 const parse = new CTATAlgebraParser()
-if (window.jQuery) 
-{
-	$(function()
-	{
-		CTATScrim.scrim.waitScrimUp ();
-		console.log ("$(window).load("+CTATTarget+")");
-		initOnload ();
+if (window.jQuery) {
+	$(function () {
+		CTATScrim.scrim.waitScrimUp();
+		console.log("$(window).load(" + CTATTarget + ")");
+		initOnload();
 		CTATCommShell.commShell.addGlobalEventListener({
 			processCommShellEvent: (evt, msg) => {
 				console.log(evt, msg);
-				switch(evt) {
+				switch (evt) {
 					case "InterfaceAction":
 						if (msg && !(typeof msg === 'string' || msg instanceof String)) {
 							var sai = msg.getSAI();
@@ -223,11 +205,13 @@ if (window.jQuery)
 						break;
 					case "CorrectAction":
 						console.log("CorrectAction", msg);
-						console.log(msg.getSuccessMessage());
 						break;
 					case "InCorrectAction":
 						console.log("InCorrectAction", msg);
-						console.log(msg.getHighlightMsg());
+						break;
+					case "BuggyMessage":
+						console.log("BuggyMessage", msg);
+						messageManager.setError(msg.getBuggyMsg())
 						console.log(msg.getBuggyMsg());
 						break;
 					default:
@@ -237,7 +221,6 @@ if (window.jQuery)
 		});
 	});
 }
-else
-{
-	console.log ("Error: JQuery not available, can not execute $(window).on('load',...)");
+else {
+	console.log("Error: JQuery not available, can not execute $(window).on('load',...)");
 }	

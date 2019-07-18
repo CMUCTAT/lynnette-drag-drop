@@ -29,7 +29,8 @@ function createDraftEquation() {
         moveItem: (srcData, destData) => update(eqn => {
             source = srcData;
             dest = destData;
-            eqn = get(history).current;
+            eqn = parse.algParse(get(history).current);
+            
             // console.log(srcData, destData);
             if (srcData.item !== destData.item) {
                 if (srcData.item instanceof Token) {
@@ -39,14 +40,15 @@ function createDraftEquation() {
                             let dest = Object.path(eqn, destData.item.path)
                             src.sign = dest.sign;
                             src.exp = dest.exp;
-                            let next = parse.algReplaceExpression(eqn, dest, src);
-                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : next;
+                            let next = parse.algStringify(parse.algReplaceExpression(eqn, dest, src));
+                            return next;
                         } else if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
-                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1))
-                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : parse.algParse(parse.algStringify(next));
+                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1)))
+                            console.log();
+                            return next;
                         }
                     } else if (destData.item instanceof Expression) {
                         // console.log("Token -> Expression");
@@ -54,34 +56,34 @@ function createDraftEquation() {
                         // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)));
                         // console.log(srcData.item.path.slice(-1));
                         // console.log(destData.item.path.slice(-1));
-                        
                         if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
-                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute'], false, n0, n1))
-                            console.log(next);
-                            console.log(parse.algParse(next.toString()));
-                            return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : parse.algParse(parse.algStringify(next));
+                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute'], false, n0, n1)))
+                            return next;
                         }
                     }
                 } else if (srcData.item instanceof Operator) {
                     if (destData.item instanceof Token || destData.item instanceof Expression) {
                         let operation = srcData.item.operation
                         let dest = Object.path(eqn, destData.item.path)
-                        let next = parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?'));
-                        return parse.algStringify(next) === parse.algStringify(eqn) ? eqn : next;
+                        let next = parse.algStringify(parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?')));
+                        return next;
                     }
                 }
             }
-            return eqn;
+            return parse.algStringify(eqn);
         }),
         updateToken: (token, value) => update(eqn => {
+            eqn = parse.algParse(get(history).current);
+            let e = parse.algParse(eqn)
             let newToken = parse.algParse(value);
-            let oldToken = Object.path(eqn, token.path)
+            let oldToken = Object.path(e, token.path)
+            parse.algFindExpression(e, oldToken);
             newToken.sign = oldToken.sign;
             newToken.exp = oldToken.exp;
-            return parse.algReplaceExpression(eqn, oldToken, newToken);
+            return parse.algStringify(parse.algReplaceExpression(e, oldToken, newToken));
         }),
         set: next => set(next),
         reset: () => set(get(history).current),
@@ -89,7 +91,7 @@ function createDraftEquation() {
             if (get(history).current !== eqn) {
                 history.push(eqn);
                 if (student) {
-                    var sai = new CTATSAI('equation', 'UpdateTextField', eqn.toString());
+                    var sai = new CTATSAI('equation', 'UpdateTextField', parse.algStringify(eqn));
                     if (CTATCommShell.commShell)
                         CTATCommShell.commShell.processComponentAction(sai);
                 }
@@ -129,30 +131,15 @@ function createDropData() {
 }
 export const dropData = createDropData();
 
-
-function getPaths(path) {
-    let splitPath = path.replace(/,/g, ",items,").split(",");
-	let parentPath = splitPath.slice(0, splitPath.length - 2);
-    // console.log(splitPath);
-    // console.log(parentPath);
-	return [splitPath, parentPath];
-}
-
-function sameOps(operator, parentOp) {
-	if (parentOp.equals('PLUS') || parentOp.equals('MINUS')) {
-		return operator.equals('PLUS') || operator.equals('MINUS');
-	} else if (parentOp.equals('TIMES')) {
-		return operator.equals('TIMES');
-	}
+export function parseGrammar(exp) {
+    return parseGrammarTree(parse.algParse(exp), [])
 }
 
 
-export function parseGrammar(exp, path) {
-    if (!path)
-        path = [];
+function parseGrammarTree(exp, path) {
     switch(exp.operator) {
         case 'EQUAL':
-            return new Equation(parseGrammar(exp.left, path.concat(['left'])), parseGrammar(exp.right, path.concat(['right'])));
+            return new Equation(parseGrammarTree(exp.left, path.concat(['left'])), parseGrammarTree(exp.right, path.concat(['right'])));
         case 'CONST':
             return new Token(exp.value, null, path);
         case 'VAR':
@@ -163,7 +150,7 @@ export function parseGrammar(exp, path) {
             return new Token(null, null, path);
         case 'PLUS':
             return new Expression(exp.terms.reduce((res, item, i, src) => {
-                let token = parseGrammar(item, path.concat(['terms', i]));
+                let token = parseGrammarTree(item, path.concat(['terms', i]));
                 let operator = item.sign > 0 ? new Operator('PLUS') : new Operator('MINUS')
                 return i > 0 ? res.concat(operator, token) : res.concat(token);
             }, []), path);
@@ -171,7 +158,7 @@ export function parseGrammar(exp, path) {
             // console.log("TIMES");
             let divide = []
             let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
-                let token = parseGrammar(item, path.concat(['factors', i]));
+                let token = parseGrammarTree(item, path.concat(['factors', i]));
                 if (item.exp < 0) {
                     divide.push(token);
                     return res;

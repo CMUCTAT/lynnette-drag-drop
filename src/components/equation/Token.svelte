@@ -4,7 +4,7 @@
     import { draggable } from '../dragdrop/draggable.js';
     import Flaggable from '../Flaggable.svelte'
     import { draftEquation, dropData, dragData } from '../../stores/equation.js'
-    $: value = (token.constant && !(token.variable && token.constant === 1) ? token.constant: '') + (token.variable ? token.variable : '')
+    $: value = (token.constant !== null && !(token.variable !== null && token.constant === 1) ? token.constant: '') + (token.variable ? token.variable : '')
 
     export let error;
     export let hint;
@@ -102,7 +102,7 @@
     }
 
     function updateToken(e) {
-        draftEquation.updateToken(token, e.target.value)
+        draftEquation.updateToken(token, e.target.value);
         draftEquation.apply();
     }
 </script>
@@ -113,7 +113,7 @@
         class:hovering={hovering && !dropAnim}
         class:dragover={dragover}
         class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
-        class:editable={!token.variable && !token.constant}
+        class:editable={token.variable  === null && token.constant === null}
         use:draggable={{type: "token", accepts: ["operator", "token"]}}
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
@@ -126,7 +126,7 @@
         on:dropreceive={handleDropReceive}
         on:mouseup={() => {dragover = false;}}>
         <div class="content">
-            {#if !token.constant}
+            {#if token.constant === null}
                 <input type=text size={1} value={value} on:change={updateToken}>
             {:else}
                 {token.value()}
@@ -137,7 +137,7 @@
             style="transform:
             translate({$coords.x}px,{$coords.y}px)">
             <div class="content">
-                {#if token.constant}
+                {#if token.constant !== null}
                     {token.value()}
                 {/if}
             </div>

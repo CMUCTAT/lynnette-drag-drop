@@ -38,8 +38,12 @@
 		</div>
 	</div>
 	<div class="message">
-		{$messageManager.error}
-		{$messageManager.hint}
+		{#if $messageManager.error}
+			<div class="error">{$messageManager.error}</div>
+		{/if}
+		{#if $messageManager.hint}
+			<div class="hint">{$messageManager.hint}</div>
+		{/if}
 	</div>
 	<!-- <div class="sidebar">
 	</div> -->
@@ -67,12 +71,6 @@
 		padding: 40px 0;
 		grid-area: content;
 		/* background: #0f0; */
-	}
-	.title {
-		grid-area: title;
-		/* background: #0ff; */
-		padding: 20px 30px;
-		display: flex;
 	}
 	.equation-container {
 		display: flex;
@@ -112,5 +110,10 @@
 
 	.equals > div {
 		height: 20px;
+	}
+	.message {
+		background: #eee;
+		border-radius: 4px;
+		padding: 15px;
 	}
 </style>

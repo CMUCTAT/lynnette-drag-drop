@@ -1,7 +1,8 @@
 /* @import url('https://fonts.googleapis.com/css?family=Roboto:900&display=swap');*/
-@import url('https://fonts.googleapis.com/css?family=Dosis:800&display=swap');
+/* @import url('https://fonts.googleapis.com/css?family=Dosis:800&display=swap'); */
 /* @import url('https://fonts.googleapis.com/css?family=Work+Sans:600&display=swap'); */
 /* @import url('https://fonts.googleapis.com/css?family=Kalam:700&display=swap'); */
+@import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
 
 html, body {
 	position: relative;
@@ -17,7 +18,7 @@ body {
 	/* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; */
 	/* font-family: 'Roboto', sans-serif; */
 	/* font-family: 'Kalam', sans-serif; */
-	font-family: 'Dosis', sans-serif;
+	/* font-family: 'Dosis', sans-serif; */font-family: 'Roboto Slab', serif;
 }
 
 a {
