@@ -18,8 +18,11 @@ history.push(initial);
 
 Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x]) ? xs[x] : null, o);
 
-let source;
-let dest;
+let dragOperation = {
+    side: null,
+    from: null,
+    to: null
+}
 
 function createDraftEquation() {
 	const { subscribe, set, update } = writable(initial);
@@ -30,11 +33,12 @@ function createDraftEquation() {
             source = srcData;
             dest = destData;
             eqn = parse.algParse(get(history).current);
-            
-            // console.log(srcData, destData);
+            dragOperation.side = destData.item.path[0];
             if (srcData.item !== destData.item) {
                 if (srcData.item instanceof Token) {
+                    dragOperation.from = "Token";
                     if (destData.item instanceof Token) {
+                        dragOperation.to = "Token";
                         if (!destData.item.variable && !destData.item.constant) {
                             let src = parse.algParse(srcData.item.value())
                             let dest = Object.path(eqn, destData.item.path)
@@ -51,6 +55,7 @@ function createDraftEquation() {
                             return next;
                         }
                     } else if (destData.item instanceof Expression) {
+                        dragOperation.to = "Expression";
                         // console.log("Token -> Expression");
                         // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2)));
                         // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)));
@@ -65,7 +70,9 @@ function createDraftEquation() {
                         }
                     }
                 } else if (srcData.item instanceof Operator) {
+                    dragOperation.from = "Operator";
                     if (destData.item instanceof Token || destData.item instanceof Expression) {
+                        dragOperation.to = destData.item instanceof Token ? "Token" : "Expression";
                         let operation = srcData.item.operation
                         let dest = Object.path(eqn, destData.item.path)
                         let next = parse.algStringify(parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?')));
