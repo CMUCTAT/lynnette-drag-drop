@@ -30,8 +30,6 @@ function createDraftEquation() {
 	return {
         subscribe,
         moveItem: (srcData, destData) => update(eqn => {
-            source = srcData;
-            dest = destData;
             eqn = parse.algParse(get(history).current);
             dragOperation.side = destData.item.path[0];
             if (srcData.item !== destData.item) {
@@ -95,13 +93,13 @@ function createDraftEquation() {
         set: next => set(next),
         reset: () => set(get(history).current),
         apply: (student=true) => update(eqn => {
+            if (student) {
+                var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
+                if (CTATCommShell.commShell)
+                    CTATCommShell.commShell.processComponentAction(sai);
+            }
             if (get(history).current !== eqn) {
                 history.push(eqn);
-                if (student) {
-                    var sai = new CTATSAI('equation', 'UpdateTextField', parse.algStringify(eqn));
-                    if (CTATCommShell.commShell)
-                        CTATCommShell.commShell.processComponentAction(sai);
-                }
             }
             return eqn;
         })
