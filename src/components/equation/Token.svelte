@@ -103,7 +103,7 @@
 
     function updateToken(e) {
         draftEquation.updateToken(token, e.target.value);
-        draftEquation.apply();
+        // draftEquation.apply();
     }
 </script>
 

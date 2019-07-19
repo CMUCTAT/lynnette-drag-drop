@@ -26,7 +26,17 @@ let dragOperation = {
 
 function createDraftEquation() {
 	const { subscribe, set, update } = writable(initial);
-
+    const apply = (student=true) => update(eqn => {
+        if (student) {
+            var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
+            if (CTATCommShell.commShell)
+                CTATCommShell.commShell.processComponentAction(sai);
+        }
+        if (get(history).current !== eqn) {
+            history.push(eqn);
+        }
+        return eqn;
+    });
 	return {
         subscribe,
         moveItem: (srcData, destData) => update(eqn => {
@@ -45,25 +55,24 @@ function createDraftEquation() {
                             let next = parse.algStringify(parse.algReplaceExpression(eqn, dest, src));
                             return next;
                         } else if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
+                            console.log(1);
+                            
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
                             let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1)))
-                            console.log();
+                            parent = Object.path(parse.algParse(next), srcData.item.path.slice(0, -2));
+                            next = parse.algStringify(parse.algReplaceExpression(next, parent, parse.algApplyRules(parent, ['removeIdentity'])))
                             return next;
                         }
                     } else if (destData.item instanceof Expression) {
+                        console.log(2);
                         dragOperation.to = "Expression";
-                        // console.log("Token -> Expression");
-                        // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2)));
-                        // console.log(Object.path(eqn, srcData.item.path.slice(0, -2)));
-                        // console.log(srcData.item.path.slice(-1));
-                        // console.log(destData.item.path.slice(-1));
                         if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
-                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute'], false, n0, n1)))
+                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1)))
                             return next;
                         }
                     }
@@ -80,29 +89,27 @@ function createDraftEquation() {
             }
             return parse.algStringify(eqn);
         }),
-        updateToken: (token, value) => update(eqn => {
-            eqn = parse.algParse(get(history).current);
-            let e = parse.algParse(eqn)
-            let newToken = parse.algParse(value);
-            let oldToken = Object.path(e, token.path)
-            parse.algFindExpression(e, oldToken);
-            newToken.sign = oldToken.sign;
-            newToken.exp = oldToken.exp;
-            return parse.algStringify(parse.algReplaceExpression(e, oldToken, newToken));
-        }),
+        updateToken: (token, value) => {
+            update(eqn => {
+                eqn = parse.algParse(get(history).current);
+                let e = parse.algParse(eqn)
+                let newToken = parse.algParse(value);
+                let oldToken = Object.path(e, token.path)
+                parse.algFindExpression(e, oldToken);
+                newToken.sign = oldToken.sign;
+                newToken.exp = oldToken.exp;
+                dragOperation.side = token.path[0];
+                dragOperation.from = "Update";
+                dragOperation.to = "Token";
+    
+                let next = parse.algStringify(parse.algReplaceExpression(e, oldToken, newToken))
+                return next;
+            });
+            apply();
+        },
         set: next => set(next),
         reset: () => set(get(history).current),
-        apply: (student=true) => update(eqn => {
-            if (student) {
-                var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
-                if (CTATCommShell.commShell)
-                    CTATCommShell.commShell.processComponentAction(sai);
-            }
-            if (get(history).current !== eqn) {
-                history.push(eqn);
-            }
-            return eqn;
-        })
+        apply
 	};
 }
 export const draftEquation = createDraftEquation();
