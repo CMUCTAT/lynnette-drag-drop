@@ -68,6 +68,6 @@
         border: #222 3px solid;
     }
     .Droppable.dragover {
-        border: #33dcfe 3px solid;
+        border: #ffe364 3px solid;
     }
 </style>

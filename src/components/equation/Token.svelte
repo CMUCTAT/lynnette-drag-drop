@@ -189,8 +189,8 @@
         opacity: 0.3;
     }
     .Token.dragover .content {
-        /* color: #33dcfe; */
-        background: #33dcfe;
+        /* color: #ffe364; */
+        background: #ffe364;
         transform: scale(1.2);
     }
     .fade .content {

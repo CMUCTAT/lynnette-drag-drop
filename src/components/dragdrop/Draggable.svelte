@@ -166,7 +166,7 @@
         transform: scale(1.3);
     }
     .Draggable.dragover .content {
-        color: #33dcfe;
+        color: #ffe364;
         transform: scale(1.2);
     }
     .fade .content {

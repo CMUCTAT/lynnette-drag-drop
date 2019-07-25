@@ -99,7 +99,7 @@
         border: #fff 3px solid;
     }
     .Expression.dragover {
-        border: #33dcfe 3px solid;
+        border: #ffe364 3px solid;
         cursor: pointer;
     }
     .Expression.divide {

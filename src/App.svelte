@@ -30,9 +30,17 @@
 		</div> -->
 
 <div class="root">
-	<div class="sidebar">
+	<div class="testing">
 		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
 		<button on:click={() => {success = !success;}}>Toggle Success</button>
+	</div>
+	<div class="sidebar">
+		<div class="history">
+			<div class="history-title">History</div>
+			<div class="history-items">
+				<History></History>
+			</div> 
+		</div>
 		<div class="alien">
 			<Alien state={success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
 			{#if $messageManager.error || $messageManager.hint}
@@ -72,6 +80,12 @@
 </div>
 
 <style>
+	.testing {
+		position: fixed;
+		bottom: 30px;
+		left: 50%;
+		transform: translateX(-50%);
+	}
 	.root {
 		position: relative;
 		height: 100vh;
@@ -106,7 +120,14 @@
 		top: 0;
 		bottom: 0;
 		padding: 20px;
-		background: center / cover no-repeat url("./images/lynnette-side-bar.png")
+		background: center / cover no-repeat url("./images/lynnette-side-bar.png");
+		display: flex;
+		flex-direction: column;
+	}
+	.history {
+		width: 60%;
+		color: #333;
+		flex: 1;
 	}
 	.buttons {
 		position: absolute;
@@ -117,8 +138,8 @@
 		padding: 20px;
 	}
 	.alien {
-		position: absolute;
-		bottom: 10%;
+		/* margin-bottom: 5%; */
+		position: relative;
 	}
 	.history-items {
 		border-top: 2px #333 solid;
