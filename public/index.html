@@ -20,8 +20,11 @@
 	<script>
 		
 		let p = new CTATAlgebraParser()
-		let e = p.algParse("3x + 6= 9/3");
-		console.log(p.algStringify(p.algReplaceExpression(e, e.right, p.algApplyRules(e.right, ['combineSimilar']))));
+		let e = p.algParse("3x+6=9-6")
+		console.log(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1));
+		console.log(p.algApplyRules(e.right, ['combineSimilar']));
+		console.log(p.algApplyRules(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1)));
+		
 		
 		
 		// // let e = p.algParse("5x + 7 = 8 + ?");

@@ -208,6 +208,9 @@ if (window.jQuery) {
 						break;
 					case "InCorrectAction":
 						console.log("InCorrectAction", msg);
+						var sai = msg.getSAI();
+						console.log("INTERFACE ACTION:", sai.getSelection());
+						messageManager.setSide(sai.getSelection())
 						break;
 					case "BuggyMessage":
 						console.log("BuggyMessage", msg);

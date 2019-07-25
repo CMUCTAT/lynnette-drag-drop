@@ -107,7 +107,7 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint}>
+<Flaggable error={error} hint={hint} size={150}>
     <div class="Token"
         class:dragging={dragging}
         class:hovering={hovering && !dropAnim}
@@ -185,8 +185,12 @@
     .Token.dragging .content {
         transform: scale(1.3);
     }
+    .Token.dragging .mover .content {
+        opacity: 0.3;
+    }
     .Token.dragover .content {
-        color: #33dcfe;
+        /* color: #33dcfe; */
+        background: #33dcfe;
         transform: scale(1.2);
     }
     .fade .content {
@@ -194,11 +198,11 @@
         opacity: 0;
     }
     :root {
-        --size: 40px;
+        --size: 50px;
     }
     .content {
         min-width: var(--size);
-        height: var(--size);
+        padding: 5px;
         cursor: pointer;
         text-align: center;
         vertical-align: middle;
@@ -210,18 +214,22 @@
         height: 100%;
         margin: 0;
         text-align: center; 
-        color: #444;
+        color: #333;
         border: none;
         padding: 0;
     }
     .mover .content {
-        color: #444;
+        color: #fff;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
         border-radius: 3px;
-        padding: 0px;
+        padding: 5px;
+        background: #333;
+    }
+    .editable input {
+        border: 3px dashed #333;
     }
     .editable .mover .content {
-        border: 3px dashed #444;
+        display: none;
     }
 </style>

@@ -94,7 +94,7 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint} styles={isDivide ? "width: 100%;" : ""}>
+<Flaggable error={error} hint={hint} size={110}>
     <div class="Operator"
         class:divide={isDivide}
         class:dragging={dragging}
@@ -122,7 +122,7 @@
 
 <style>
 	.Operator {
-        color: #4440;
+        color: #3330;
         /* color: #afed5700; */
         touch-action: none;
 		position: relative;
@@ -133,11 +133,11 @@
         -ms-user-select: none;
         user-select: none;
         -webkit-text-stroke-width: 1px;
-        -webkit-text-stroke-color: #4440;
+        -webkit-text-stroke-color: #3330;
         /* -webkit-text-stroke-color: #afed5700; */
     }
 	.Operator.dragging {
-        -webkit-text-stroke-color: #444;
+        -webkit-text-stroke-color: #333;
         /* -webkit-text-stroke-color: #afed57; */
 	}
 	.Operator.onTop .mover {
@@ -158,7 +158,7 @@
         pointer-events: none;
     }
     .mover .content {
-		color: #444;
+		color: #333;
 		/* color: #afed57; */
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
@@ -183,11 +183,13 @@
         --size: 50px;
     }
     .content {
-        width: var(--size);
-        height: var(--size);
+        /* width: var(--size);
+        height: var(--size); */
+        min-width: var(--size);
         line-height: 33px;
         font-size: 28px;
         text-align: center;
+        /* padding: 5px; */
     }
     .Operator.divide {
         width: 100%;
@@ -207,14 +209,14 @@
         left: 3px;
         right: 3px;
         pointer-events: none;
-        border: #4440 solid 1px;
+        border: #3330 solid 1px;
 		transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
     }
     .mover > .content:after {
-        background: #444;
+        background: #333;
     }
     .Operator.divide.dragging .content:after {
-        border-color: #444;
+        border-color: #333;
     }
     .Operator.divide.hovering .content:after {
         transform: scale(1.2);

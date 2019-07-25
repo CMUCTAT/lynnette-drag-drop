@@ -7,7 +7,6 @@
 
 <style>
 	.OperatorDisplay {
-        cursor: pointer;
         text-align: center;
         vertical-align: middle;
 		margin: 2px;

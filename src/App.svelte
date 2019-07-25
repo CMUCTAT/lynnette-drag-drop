@@ -9,15 +9,24 @@
 	import { parseGrammar } from './stores/equation';
 	import { messageManager } from './stores/messageManager';
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
+
+	function undo() {
+		history.step(-1);
+		messageManager.reset();
+	}
+	
 </script>
 
 <div class="root">
 	<div class="history">
 		<div class="buttons">
-			<button on:click={() => history.step(-1)}>Undo</button>
-			<button on:click={() => history.step(1)}>Redo</button>
+			<button on:click={undo} class="undo" class:active={$messageManager.error}>Undo</button>
+			<!-- <button on:click={() => history.step(1)}>Redo</button> -->
 		</div>
-		<History></History>
+		<div class="history-title">History</div>
+		<div class="history-items">
+			<History></History>
+		</div>
 	</div>
 	<!-- <div class="title">
 		<h1>Lynnette Drag & Drop Prototype</h1>
@@ -33,16 +42,17 @@
 				</div>
 			</div>
 		</div>
-		<div class="equation-container">
-			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)}/>
+		<div class="equation-container" class:disable={$messageManager.error}>
+			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>
 		</div>
 	</div>
 	<div class="message">
+		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
 		{#if $messageManager.error}
-			<div class="error">{$messageManager.error}</div>
+			<div class="error">{$messageManager.error.message}</div>
 		{/if}
 		{#if $messageManager.hint}
-			<div class="hint">{$messageManager.hint}</div>
+			<div class="hint">{$messageManager.hint.message}</div>
 		{/if}
 	</div>
 	<!-- <div class="sidebar">
@@ -67,6 +77,12 @@
 		grid-area: history;
 		padding: 20px;
 	}
+	.history-items {
+		border-top: 2px #333 solid;
+	}
+	.history-title {
+		text-align: center;
+	}
 	.content {
 		padding: 40px 0;
 		grid-area: content;
@@ -76,10 +92,8 @@
 		display: flex;
 		justify-content: center;
 	}
-	.buttons {
-		display: flex;
-		justify-content: center;
-		padding: 5px;
+	.equation-container.disable {
+		pointer-events: none;
 	}
 	.operators {
 		display: flex;
@@ -115,5 +129,65 @@
 		background: #eee;
 		border-radius: 4px;
 		padding: 15px;
+	}
+	.undo {
+		font-size: 30px;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.3s ease, box-shadow 0.3s cubic-bezier(.27,.27,.08,.96);
+		position: relative;
+		cursor: pointer;
+		/* border: 10px #eed836 solid; */
+	}
+	.undo:after {
+		content: '';
+		width: 0; 
+		height: 0; 
+		border-top: 10px solid transparent;
+		border-bottom: 10px solid transparent;
+		border-left: 10px solid #333;
+		position: absolute;
+		left: -25px;
+		top: calc(50% - 10px);
+		-webkit-animation: indicator-left 1.5s infinite;
+		-moz-animation:    indicator-left 1.5s infinite;
+		-o-animation:      indicator-left 1.5s infinite;
+		animation:         indicator-left 1.5s infinite; 
+	}
+	.undo:before {
+		content: '';
+		width: 0; 
+		height: 0; 
+		border-top: 10px solid transparent;
+		border-bottom: 10px solid transparent;
+		border-right: 10px solid #333;
+		position: absolute;
+		right: -25px;
+		top: calc(50% - 10px);
+		-webkit-animation: indicator-right 1.5s infinite;
+		-moz-animation:    indicator-right 1.5s infinite;
+		-o-animation:      indicator-right 1.5s infinite;
+		animation:         indicator-right 1.5s infinite; 
+	}
+	.undo.active {
+		/* box-shadow: #ff3341 0 0 0px 10px; */
+		opacity: 1;
+		pointer-events: all;
+	}
+	.buttons {
+		display: flex;
+		justify-content: center;
+		padding: 5px;
+	}
+
+	@keyframes indicator-left {
+		0%   { left: -25px; }
+		50%   { left: -40px; }
+		100% { left: -25px; }
+	}
+	@keyframes indicator-right {
+		0%   { right: -25px; }
+		50%   { right: -40px; }
+		100% { right: -25px; }
 	}
 </style>

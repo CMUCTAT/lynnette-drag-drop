@@ -11,6 +11,10 @@
     export let expression;
     export let path;
     export let parentDivide;
+    export let error;
+    export let hint;
+    
+
     $: isDivide = expression.items.length > 1 && expression.items[1].equals('DIVIDE');
 
     const audioFiles = {
@@ -21,9 +25,6 @@
     onMount(() => {
 		audioSource = new Audio('pop.wav');
     });
-    
-    export let error;
-    export let hint;
 
     let hovering = false;
     let dragover = false;
@@ -55,13 +56,13 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint} styles="display: inline;">
+<Flaggable error={error} hint={hint} size={110}>
     <div class="Expression"
         class:divide={isDivide}
         class:parentheses={expression.items.length > 1 && !expression.items[1].equals('DIVIDE') && path.split(",").length > 1 && !parentDivide}
         class:hovering={hovering}
         class:dragover={dragover}
-        use:droppable
+        use:droppable={{type: "expression", accepts:["token", "operator"]}}
         on:dragmouseenter={handleMouseEnter}
         on:dragmouseexit={handleMouseExit}
         on:dragenter={handleDragEnter}
@@ -82,7 +83,7 @@
 <style>
     .Expression {
         padding: 15px;
-        border: #4440 3px solid;
+        border: #3330 3px solid;
         transition: border 0.25s ease;
         border-radius: 4px;
         align-items: center;
@@ -95,7 +96,7 @@
         position: relative;
     }
     .Expression.hovering {
-        border: #444 3px solid;
+        border: #333 3px solid;
     }
     .Expression.dragover {
         border: #33dcfe 3px solid;
@@ -111,7 +112,7 @@
         top: 0;
         bottom: 0;
         width: 8px;
-        border-left: solid 3px #444;
+        border-left: solid 3px #333;
         border-radius: 50%;
     }
     .Expression.parentheses:before {
@@ -121,7 +122,7 @@
         top: 0;
         bottom: 0;
         width: 8px;
-        border-right: solid 3px #444;
+        border-right: solid 3px #333;
         border-radius: 50%;
     }
 </style>

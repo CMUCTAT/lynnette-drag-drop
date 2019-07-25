@@ -1,13 +1,18 @@
 <script>
     export let error;
     export let hint;
-    export let styles;
+    export let size;
 </script>
 
 <div class="Flaggable"
     class:error={error}
-    class:hint={hint}
-    style={styles}>
+    class:hint={hint}>
+    <div class="highlight"
+        style={`
+            border-radius: ${hint || error ? size : 60}%;
+            width: ${hint || error ? size : 60}%;
+            height: ${hint || error ? size : 60}%;
+        `}></div>
     <slot></slot>
 </div>
 
@@ -15,7 +20,15 @@
     .Flaggable {
         position: relative;
     }
-    .Flaggable:before {
+    /* .Flaggable:before {
+    } */
+    .hint .highlight {
+        background: #fff04e;
+    }
+    .error .highlight {
+        background: #ff3341;
+    }
+    .highlight {
         pointer-events: none;
         content: '';
         position: absolute;
@@ -25,18 +38,7 @@
         transform: translate(-50%, -50%);
         width: 60%;
         height: 60%;
-        border-radius: 110%;
         background: #fff0;
         transition: background 0.3s ease, width 0.3s ease, height 0.3s ease;
-    }
-    .hint:before {
-        width: 110%;
-        height: 110%;
-        background: #fff04e;
-    }
-    .error:before {
-        width: 110%;
-        height: 110%;
-        background: #ff3341;
     }
 </style>

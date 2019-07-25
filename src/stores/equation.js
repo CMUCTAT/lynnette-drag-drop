@@ -8,7 +8,7 @@ import { history } from './history.js';
 // )
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser()
-let exp = parse.algParse("3x + 6 = 9");
+let exp = parse.algStringify(parse.algParse("3x + 6 = 9"));
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp;//parseGrammar(exp)
@@ -32,6 +32,8 @@ function createDraftEquation() {
             if (CTATCommShell.commShell)
                 CTATCommShell.commShell.processComponentAction(sai);
         }
+        console.log(get(history).current, eqn);
+        
         if (get(history).current !== eqn) {
             history.push(eqn);
         }
@@ -55,25 +57,23 @@ function createDraftEquation() {
                             let next = parse.algStringify(parse.algReplaceExpression(eqn, dest, src));
                             return next;
                         } else if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
-                            console.log(1);
-                            
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
                             let n0 = srcData.item.path.slice(-1);
                             let n1 = destData.item.path.slice(-1);
-                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1)))
-                            parent = Object.path(parse.algParse(next), srcData.item.path.slice(0, -2));
+                            let next = parse.algParse(parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, n0, n1))))
+                            parent = Object.path(next, srcData.item.path.slice(0, -2));
+                            
                             next = parse.algStringify(parse.algReplaceExpression(next, parent, parse.algApplyRules(parent, ['removeIdentity'])))
                             return next;
                         }
                     } else if (destData.item instanceof Expression) {
-                        console.log(2);
                         dragOperation.to = "Expression";
                         if (Object.path(eqn, srcData.item.path.slice(0, -2)) === Object.path(eqn, destData.item.path.slice(0, -2))) {
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                            let n0 = srcData.item.path.slice(-1);
-                            let n1 = destData.item.path.slice(-1);
-                            let next = parse.algStringify(parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1)))
-                            return next;
+                            let n0 = srcData.item.path.slice(-1)[0];
+                            let n1 = destData.item.path.slice(-1)[0];
+                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, ...[n0, n1].concat().sort()));
+                            return parse.algStringify(next);
                         }
                     }
                 } else if (srcData.item instanceof Operator) {

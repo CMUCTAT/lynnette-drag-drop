@@ -1,5 +1,6 @@
-export function droppable(node) {
-    let hovered = 0;
+export function droppable(node, params) {
+	let hovered = 0;
+	let {type: type, accepts: accepts} = params;
     
 	function handleMouseEnter(event) {
         hovered++;
@@ -11,8 +12,8 @@ export function droppable(node) {
 
 		let index = event.detail && event.detail.index ? event.detail.index : 0;
 		
-		if (window.drag[index] && window.drag[index] !== node) {
-			window.drop[index] = node;
+		if (window.drag[index] && window.drag[index].node !== node) {
+			window.drop[index] = {node: node, type: type};
 			node.dispatchEvent(new CustomEvent('dragenter', {
 				detail: { x, y },
 				bubbles: true

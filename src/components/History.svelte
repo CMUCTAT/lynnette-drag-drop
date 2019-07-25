@@ -13,7 +13,7 @@
 <div class="History">
     <div class="stack" bind:this={ref}>
 			{#each parsedHistory as item, i}
-				<div class="equation-display" class:current={i===$history.index} on:click={() => history.goTo(i)}>
+				<div class="equation-display" class:current={i===$history.index}>
 					<div class="equation">
 						<div class="left">
 							{#if item.left instanceof Operator}

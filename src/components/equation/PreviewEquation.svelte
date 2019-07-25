@@ -3,6 +3,8 @@
 
     export let state;
     export let draft;
+    export let error;
+    
     let showDraft;
 
     function handleMove(e) {
@@ -22,7 +24,7 @@
     on:mousemove={handleMove}
     on:mouseleave={handleMouseLeave}
     on:mouseup={handleMouseUp}>
-    <Equation state={state}/>
+    <Equation state={state} error={error}/>
     {#if showDraft }
         <div class="preview">
             <Equation state={draft}/>
@@ -48,7 +50,7 @@
 		height: 0; 
 		border-left: 8px solid transparent;
 		border-right: 8px solid transparent;
-		border-top: 8px solid #444;
+		border-top: 8px solid #333;
 		position: absolute;
 		left: 50%;
 		transform: translate(-50%);
