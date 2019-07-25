@@ -32,7 +32,7 @@
 <div class="root">
 	<div class="sidebar">
 		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
-		<button on:click={() => {success = !success;}}>Test Success</button>
+		<button on:click={() => {success = !success;}}>Toggle Success</button>
 		<div class="alien">
 			<Alien state={success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
 			{#if $messageManager.error || $messageManager.hint}
