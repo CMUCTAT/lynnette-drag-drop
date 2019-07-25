@@ -2,11 +2,13 @@
     export let error;
     export let hint;
     export let size;
+    export let divide;
 </script>
 
 <div class="Flaggable"
     class:error={error}
-    class:hint={hint}>
+    class:hint={hint}
+    style={divide ? "width: 100%" : ""}>
     <div class="highlight"
         style={`
             border-radius: ${hint || error ? size : 60}%;

@@ -94,7 +94,7 @@
     }
 </script>
 
-<Flaggable error={error} hint={hint} size={110}>
+<Flaggable error={error} hint={hint} size={110} divide={isDivide}>
     <div class="Operator"
         class:divide={isDivide}
         class:dragging={dragging}
