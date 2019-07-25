@@ -50,7 +50,7 @@
 		height: 0; 
 		border-left: 8px solid transparent;
 		border-right: 8px solid transparent;
-		border-top: 8px solid #333;
+		border-top: 8px solid #fff;
 		position: absolute;
 		left: 50%;
 		transform: translate(-50%);

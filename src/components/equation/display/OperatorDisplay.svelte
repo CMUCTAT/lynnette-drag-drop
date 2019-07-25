@@ -15,6 +15,6 @@
 		overflow: hidden;
 		height: 0;
 		width: 100%;
-		border-bottom: 2px solid #333;
+		border-bottom: 2px solid #fff;
 	}
 </style>

@@ -18,8 +18,8 @@
     $: isDivide = expression.items.length > 1 && expression.items[1].equals('DIVIDE');
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.45},
-        dropRecieve: {file: 'click.wav', volume: 0.4},
+        dragStart: {file: './audio/pop.wav', volume: 0.45},
+        dropRecieve: {file: './audio/click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -83,7 +83,7 @@
 <style>
     .Expression {
         padding: 15px;
-        border: #3330 3px solid;
+        border: #fff0 3px solid;
         transition: border 0.25s ease;
         border-radius: 4px;
         align-items: center;
@@ -96,7 +96,7 @@
         position: relative;
     }
     .Expression.hovering {
-        border: #333 3px solid;
+        border: #fff 3px solid;
     }
     .Expression.dragover {
         border: #33dcfe 3px solid;
@@ -112,7 +112,7 @@
         top: 0;
         bottom: 0;
         width: 8px;
-        border-left: solid 3px #333;
+        border-left: solid 3px #fff;
         border-radius: 50%;
     }
     .Expression.parentheses:before {
@@ -122,7 +122,7 @@
         top: 0;
         bottom: 0;
         width: 8px;
-        border-right: solid 3px #333;
+        border-right: solid 3px #fff;
         border-radius: 50%;
     }
 </style>

@@ -14,8 +14,8 @@
 
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.45},
-        dropRecieve: {file: 'click.wav', volume: 0.4},
+        dragStart: {file: './audio/pop.wav', volume: 0.45},
+        dropRecieve: {file: './audio/click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -137,7 +137,7 @@
         /* -webkit-text-stroke-color: #afed5700; */
     }
 	.Operator.dragging {
-        -webkit-text-stroke-color: #333;
+        -webkit-text-stroke-color: #fff;
         /* -webkit-text-stroke-color: #afed57; */
 	}
 	.Operator.onTop .mover {
@@ -158,7 +158,7 @@
         pointer-events: none;
     }
     .mover .content {
-		color: #333;
+		color: #fff;
 		/* color: #afed57; */
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
@@ -213,10 +213,10 @@
 		transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
     }
     .mover > .content:after {
-        background: #333;
+        background: #fff;
     }
     .Operator.divide.dragging .content:after {
-        border-color: #333;
+        border-color: #fff;
     }
     .Operator.divide.hovering .content:after {
         transform: scale(1.2);

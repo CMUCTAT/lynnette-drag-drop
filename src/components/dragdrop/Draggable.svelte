@@ -10,8 +10,8 @@
 
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.45},
-        dropRecieve: {file: 'click.wav', volume: 0.4},
+        dragStart: {file: './audio/pop.wav', volume: 0.45},
+        dropRecieve: {file: './audio/click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -133,10 +133,10 @@
         -ms-user-select: none;
         user-select: none;
         -webkit-text-stroke-width: 1px;
-        -webkit-text-stroke-color: #2220;
+        -webkit-text-stroke-color: #fff0;
     }
 	.Draggable.dragging {
-        -webkit-text-stroke-color: #222;
+        -webkit-text-stroke-color: #fff;
 	}
 	.Draggable.onTop .mover {
         z-index: 10;

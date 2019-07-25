@@ -13,8 +13,8 @@
     export let path;
 
     const audioFiles = {
-        dragStart: {file: 'pop.wav', volume: 0.45},
-        dropRecieve: {file: 'click.wav', volume: 0.4},
+        dragStart: {file: './audio/pop.wav', volume: 0.45},
+        dropRecieve: {file: './audio/click.wav', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -157,10 +157,10 @@
         -ms-user-select: none;
         user-select: none;
         -webkit-text-stroke-width: 1px;
-        -webkit-text-stroke-color: #2220;
+        -webkit-text-stroke-color: #fff0;
     }
 	.Token.dragging {
-        -webkit-text-stroke-color: #222;
+        -webkit-text-stroke-color: #fff;
 	}
 	.Token.onTop .mover {
         z-index: 10;
@@ -214,20 +214,21 @@
         height: 100%;
         margin: 0;
         text-align: center; 
-        color: #333;
+        color: #fff;
         border: none;
         padding: 0;
+        background: none;
     }
     .mover .content {
-        color: #fff;
+        color: #333;
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
         border-radius: 3px;
         padding: 5px;
-        background: #333;
+        background: #fff;
     }
     .editable input {
-        border: 3px dashed #333;
+        border: 3px dashed #fff;
     }
     .editable .mover .content {
         display: none;

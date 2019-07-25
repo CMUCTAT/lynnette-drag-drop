@@ -8,7 +8,7 @@ import { history } from './history.js';
 // )
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser()
-let exp = parse.algStringify(parse.algParse("3x + 6 = 9"));
+let exp = parse.algStringify(parse.algParse("3x + 6 = 9 - ?"));
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp;//parseGrammar(exp)
