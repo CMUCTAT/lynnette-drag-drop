@@ -3,11 +3,10 @@
 	import ExpressionComponent from './Expression.svelte';
 	import OperatorComponent from './Operator.svelte';
     import TokenComponent from './Token.svelte';
+	import { beforeUpdate } from 'svelte'
 
-    
     export let state;
     export let error;
-    
 </script>
 
 <div class="equation">
@@ -42,8 +41,12 @@
 	.equation {
 		align-items: center;
 		display: flex;
-		user-select: none;
-		touch-action: none;
+        touch-action: none;
+        user-select: none; /* supported by Chrome and Opera */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
     }
     .padding {
         padding: 23px;

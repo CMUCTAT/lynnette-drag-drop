@@ -1,5 +1,5 @@
 <div class="TokenDisplay">
-    <span class="content">{token.constant == null ? "□" : token.constant + (token.variable ? token.variable : '')}</span>
+    <span class="content">{token.constant == null ? "□" : token.value()}</span>
 </div>
 
 <script>

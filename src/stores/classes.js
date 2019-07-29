@@ -20,11 +20,12 @@ export class Expression {
 }
 
 export class Token {
-    constructor(constant, variable, path) {
+    constructor(constant, variable, path, ...indices) {
         this[immerable] = true
         this.constant = constant;
         this.variable = variable;
         this.path = path;
+        this.indices = indices;
         this.hint = false;
         this.error = false;
         this.id = generateID();

@@ -18,7 +18,7 @@
     }
     var audioSource;
     onMount(() => {
-		audioSource = new Audio('pop.wav');
+		audioSource = new Audio('./audio/pop.wav');
 	});
 
     let dragging = false;
@@ -33,13 +33,17 @@
 		damping: 0.3
 	});
 
-	function handleDragStart() {
-		coords.stiffness = coords.damping = 1;
-        dragging = true;
+	function handleDragStart(e) {
         audioSource.src = audioFiles.dragStart.file;
         audioSource.volume = audioFiles.dragStart.volume;
         audioSource.play();
-        dragData.set(token, path);
+        if (token.constant !== null) {
+            coords.stiffness = coords.damping = 1;
+            dragging = true;
+            dragData.set(token, path);
+        } else {
+            e.stopPropagation();
+        }
 	}
 
 	function handleDragMove(event) {
@@ -134,8 +138,7 @@
         </div>
         <div class="mover"
             class:fade={dropAnim}
-            style="transform:
-            translate({$coords.x}px,{$coords.y}px)">
+            style="transform:translate({$coords.x}px,{$coords.y}px)">
             <div class="content">
                 {#if token.constant !== null}
                     {token.value()}

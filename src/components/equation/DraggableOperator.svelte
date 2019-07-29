@@ -1,12 +1,16 @@
 <script>
+    import { draftEquation, dropData, dragData } from '../../stores/equation.js'
 	import { spring } from 'svelte/motion';
 	import { onMount } from 'svelte';
-    import { draggable } from './draggable.js';
+    import { draggable } from '../dragdrop/draggable.js';
     import Flaggable from '../Flaggable.svelte'
 
-    export let styles;
+    export let operator;
+    export let path;
     export let error;
     export let hint;
+    
+    $: isDivide = operator.equals('DIVIDE') && path !== '';  
 
 
     const audioFiles = {
@@ -36,6 +40,7 @@
         audioSource.src = audioFiles.dragStart.file;
         audioSource.volume = audioFiles.dragStart.volume;
         audioSource.play();
+        dragData.set(operator, path);
 	}
 
 	function handleDragMove(event) {
@@ -65,6 +70,8 @@
         coords.set({ x: 0, y: 0 });
         dragging = false;
         hovering = false;
+        draftEquation.reset();
+        dropData.reset();
     }
     function handleMouseEnter(event) {
         hovering = true;
@@ -85,18 +92,15 @@
         audioSource.volume = audioFiles.dropRecieve.volume;
         audioSource.play();
     }
-    function dropValid(dropTarget) {
-
-    }
 </script>
 
-<Flaggable error={error} hint={hint} styles={styles}>
-    <div class="Draggable"
+<Flaggable error={error} hint={hint} size={110} divide={isDivide}>
+    <div class="Operator"
+        class:divide={isDivide}
         class:dragging={dragging}
         class:hovering={hovering && !dropAnim}
-        class:dragover={dragover}
         class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
-        use:draggable={dropValid || (() => true)}
+        use:draggable={{type: "operator", accepts: []}}
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
         on:dragend={handleDragEnd}
@@ -105,25 +109,21 @@
         on:dragenter={handleDragEnter}
         on:dragexit={handleDragExit}
         on:dropsend={handleDropSend}
-        on:dropreceive={handleDropReceive}
         on:mouseup={() => {dragover = false;}}>
-        <div class="content">
-            <slot></slot>
-        </div>
+        <div class="content">{isDivide ? '' : operator.symbol}</div>
         <div class="mover"
             class:fade={dropAnim}
             style="transform:
             translate({$coords.x}px,{$coords.y}px)">
-            <div class="content">
-                <slot></slot>
-            </div>
+            <div class="content">{isDivide ? '' : operator.symbol}</div>
         </div>
     </div>
 </Flaggable>
 
 <style>
-	.Draggable {
-        color: #fff0;
+	.Operator {
+        color: #3330;
+        /* color: #afed5700; */
         touch-action: none;
 		position: relative;
 		transition: -webkit-text-stroke-color 0.2s ease;
@@ -133,12 +133,14 @@
         -ms-user-select: none;
         user-select: none;
         -webkit-text-stroke-width: 1px;
-        -webkit-text-stroke-color: #fff0;
+        -webkit-text-stroke-color: #3330;
+        /* -webkit-text-stroke-color: #afed5700; */
     }
-	.Draggable.dragging {
+	.Operator.dragging {
         -webkit-text-stroke-color: #fff;
+        /* -webkit-text-stroke-color: #afed57; */
 	}
-	.Draggable.onTop .mover {
+	.Operator.onTop .mover {
         z-index: 10;
     }
 	.mover {
@@ -153,24 +155,73 @@
     .content {
         touch-action: none;
         transition: transform 0.25s ease;
+        pointer-events: none;
     }
     .mover .content {
-		color: #222;
+		color: #fff;
+		/* color: #afed57; */
 		transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
         -webkit-text-stroke-width: 0;
     }
-    .Draggable.hovering .content {
+    .Operator.hovering .content {
         transform: scale(1.2);
     }
-    .Draggable.dragging .content {
+    .Operator.dragging .content {
         transform: scale(1.3);
     }
-    .Draggable.dragover .content {
-        color: #ffe364;
-        transform: scale(1.2);
+    .Operator.divide.hovering .content {
+        transform: none;
+    }
+    .Operator.divide.dragging .content {
+        transform: none;
     }
     .fade .content {
         transform: scale(0);
         opacity: 0;
+    }
+    :root {
+        --size: 50px;
+    }
+    .content {
+        /* width: var(--size);
+        height: var(--size); */
+        min-width: var(--size);
+        line-height: 33px;
+        font-size: 28px;
+        text-align: center;
+        /* padding: 5px; */
+    }
+    .Operator.divide {
+        width: 100%;
+    }
+    .Operator.divide .content {
+        width: 100%;
+        height: 24px;
+        position: relative;
+    }
+    .Operator.divide .content:after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        top: 10px;
+        bottom: 10px;
+        border-radius: 4px;
+        left: 3px;
+        right: 3px;
+        pointer-events: none;
+        border: #3330 solid 1px;
+		transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    }
+    .mover > .content:after {
+        background: #fff;
+    }
+    .Operator.divide.dragging .content:after {
+        border-color: #fff;
+    }
+    .Operator.divide.hovering .content:after {
+        transform: scale(1.2);
+    }
+    .Operator.divide.dragging .content:after {
+        transform: scale(1.1);
     }
 </style>

@@ -23,7 +23,7 @@
     }
     var audioSource;
     onMount(() => {
-		audioSource = new Audio('pop.wav');
+		audioSource = new Audio('./audio/pop.wav');
     });
 
     let hovering = false;

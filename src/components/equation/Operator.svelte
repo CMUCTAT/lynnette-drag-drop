@@ -19,7 +19,7 @@
     }
     var audioSource;
     onMount(() => {
-		audioSource = new Audio('pop.wav');
+		audioSource = new Audio('./audio/pop.wav');
 	});
 
     let dragging = false;
@@ -97,10 +97,7 @@
 <Flaggable error={error} hint={hint} size={110} divide={isDivide}>
     <div class="Operator"
         class:divide={isDivide}
-        class:dragging={dragging}
-        class:hovering={hovering && !dropAnim}
-        class:onTop={dragging || (Math.abs($coords.x) + Math.abs($coords.y) > 0.1)}
-        use:draggable={{type: "operator", accepts: []}}
+        class:hovering={hovering}
         on:dragstart={handleDragStart}
         on:dragmove={handleDragMove}
         on:dragend={handleDragEnd}

@@ -1,5 +1,6 @@
 <script>
 	import OperatorComponent from './components/equation/Operator.svelte';
+	import DraggableOperator from './components/equation/DraggableOperator.svelte';
 	import PreviewEquation from './components/equation/PreviewEquation.svelte';
 	import History from './components/History.svelte';
 	import Alien from './components/Alien.svelte';
@@ -33,6 +34,7 @@
 	<div class="testing">
 		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
 		<button on:click={() => {success = !success;}}>Toggle Success</button>
+		<button on:click={undo}>Undo</button>
 	</div>
 	<div class="sidebar">
 		<div class="history">
@@ -68,7 +70,7 @@
 				<h2>Operators</h2>
 				<div class="operator-container">
 					{#each operators as operator, i}
-						<OperatorComponent operator={operator} path={''} hint={operator.hint} error={operator.error} />
+						<DraggableOperator operator={operator} path={''} hint={operator.hint} error={operator.error} />
 					{/each}
 				</div>
 			</div>
