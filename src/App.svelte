@@ -125,6 +125,7 @@
 		background: center / cover no-repeat url("./images/lynnette-side-bar.png");
 		display: flex;
 		flex-direction: column;
+		height: 100vh;
 	}
 	.history {
 		width: 60%;

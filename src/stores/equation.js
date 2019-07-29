@@ -8,8 +8,8 @@ import { history } from './history.js';
 // )
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser()
-// let exp = parse.algParse("3x + 6 = 9");
-let exp = parse.algParse("3x / ? = 3");
+let exp = parse.algParse("3x + 6 = 9");
+// let exp = parse.algParse("3x / ? = 11 - 32 + 6");
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp
@@ -53,7 +53,6 @@ function createDraftEquation() {
                         let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
                         let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
                         if (!destData.item.variable && !destData.item.constant) {
-                            
                             let src = parse.algParse(srcData.item.value())
                             let dest = Object.path(eqn, destData.item.path)
                             src.sign = dest.sign;
@@ -76,8 +75,8 @@ function createDraftEquation() {
                         
                         if (srcParent === destParent && srcParent.operator !== 'EQUAL') {
                             let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                            let n0 = srcData.item.path.slice(-1)[0];
-                            let n1 = destData.item.path.slice(-1)[0];
+                            let n0 = srcData.item.parseInt(path.slice(-1)[0]);
+                            let n1 = destData.item.parseInt(path.slice(-1)[0]);
                             
                             let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1));
                             return next;
@@ -158,31 +157,29 @@ export function parseGrammar(exp) {
 }
 
 
-function parseGrammarTree(exp) {
-    console.log(exp);
-    
+function parseGrammarTree(exp, ignoreSign) {
     let path = exp.path.join(',').split(',');
     switch(exp.operator) {
         case 'EQUAL':
             let operands = parse.algGetOperands(exp)
             return new Equation(parseGrammarTree(operands[0]), parseGrammarTree(operands[1]));
         case 'CONST':
-            return new Token(exp.value, null, path, path.slice(-1)[0]);
+            return new Token((ignoreSign ? 1 : exp.sign) * exp.value, null, path, parseInt(path.slice(-1)[0]));
         case 'VAR':
-            return new Token(1, exp.variable, path, );
+            return new Token(1, exp.variable, path, parseInt(path.slice(-1)[0]));
         case 'UMINUS':
-            return new Token(-exp.base.value, null, path, path.slice(-1)[0]);
+            return new Token(-exp.base.value, null, path, parseInt(path.slice(-1)[0]));
         case 'UNKNOWN':
-            return new Token(null, null, path, path.slice(-1)[0]);
+            return new Token(null, null, path, parseInt(path.slice(-1)[0]));
         case 'PLUS':
-            return new Expression(exp.terms.reduce((res, item, i, src) => {
-                let token = parseGrammarTree(item);
+            return new Expression(exp.terms.reduce((res, item, i) => {
+                let token = parseGrammarTree(item, i > 0);
                 let operator = item.sign > 0 ? new Operator('PLUS') : new Operator('MINUS')
                 return i > 0 ? res.concat(operator, token) : res.concat(token);
             }, []), path);
         case 'TIMES':
             let divide = []
-            let newExp = new Expression(exp.factors.reduce((res, item, i, src) => {
+            let newExp = new Expression(exp.factors.reduce((res, item, i) => {
                 let token = parseGrammarTree(item);
                 if (item.exp < 0) {
                     divide.push(token);
@@ -213,7 +210,7 @@ function flatten(expression) {
 }
 
 function combineConstVars(expression, path) {
-    let items = expression.items.reduce((res, item, i, src) => {
+    let items = expression.items.reduce((res, item, i) => {
         if (item instanceof Operator) {
             return res.concat(item);
         } else if (i > 1) {
@@ -224,7 +221,7 @@ function combineConstVars(expression, path) {
                 res.splice(res.length - 2, 2, new Token(
                     item.constant * prev.constant,
                     item.variable || '' + prev.variable || '',
-                    item.path, item.path.slice(-1)[0], prev.path.slice(-1)[0]));
+                    item.path, parseInt(item.path.slice(-1)[0]), parseInt(prev.path.slice(-1)[0])));
                 return res;
             } else if (op.equals('DIVIDE')) { //TODO figure out a ref for this
                 res.splice(res.length - 2, 2, new Expression([prev, op, item], path))

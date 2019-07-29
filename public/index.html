@@ -20,10 +20,12 @@
 	<script>
 		
 		// let p = new CTATAlgebraParser()
-		// let e = p.algParse("3x+6=9-6")
-		// console.log(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1));
-		// console.log(p.algApplyRules(e.right, ['combineSimilar']));
-		// console.log(p.algApplyRules(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1)));
+		// let e = p.algParse("3x / ? = 3 - 4 + 6")
+		// console.log(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1).toString());
+		// console.log(e.right.toString());
+		// console.log(p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, ...[1, 0]).toString());
+		// console.log(p.algReplaceExpression(e, e.right, p.algApplyRulesSelectively(e.right, ['combineSimilar'], false, 0, 1)).toString());
+		// console.log(p.algApplyRules(e.right, ['combineSimilar']).toString());
 		
 		
 		
