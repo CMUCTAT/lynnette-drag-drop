@@ -189,6 +189,12 @@ if (window.jQuery) {
 		CTATScrim.scrim.waitScrimUp();
 		console.log("$(window).load(" + CTATTarget + ")");
 		initOnload();
+		CTATCommShell.commShell.assignDoneProcessor((input, finish) => {
+			messageManager.setSuccess("My dude");
+			setTimeout(() => {
+				finish();
+			}, 5000);
+		})
 		CTATCommShell.commShell.addGlobalEventListener({
 			processCommShellEvent: (evt, msg) => {
 				console.log(evt, msg);

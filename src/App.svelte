@@ -1,10 +1,9 @@
 <script>
 	import OperatorComponent from './components/equation/Operator.svelte';
-	import DraggableOperator from './components/equation/DraggableOperator.svelte';
 	import PreviewEquation from './components/equation/PreviewEquation.svelte';
+	import OperatorBox from './components/OperatorBox.svelte';
 	import History from './components/History.svelte';
 	import Alien from './components/Alien.svelte';
-	import { draggableEqn } from './components/dragdrop/draggableEqn'
 	import { draftEquation } from './stores/equation.js';
 	import { history } from './stores/history.js';
 	import { Operator } from './stores/classes';
@@ -17,23 +16,15 @@
 		messageManager.reset();
 	}
 
-	let success = false;
-	
+	function done() {
+		CTATCommShell.commShell.processDone("Test")
+	}
 </script>
-
-
-		<!-- <div class="buttons">
-			<button on:click={undo} class="undo" class:active={$messageManager.error}>Undo</button>
-		</div>
-		<div class="history-title">History</div>
-		<div class="history-items">
-			<History></History>
-		</div> -->
 
 <div class="root">
 	<div class="testing">
 		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
-		<button on:click={() => {success = !success;}}>Toggle Success</button>
+		<button on:click={() => {window.success = !window.success;}}>Toggle Success</button>
 		<button on:click={undo}>Undo</button>
 	</div>
 	<div class="sidebar">
@@ -44,7 +35,7 @@
 			</div> 
 		</div>
 		<div class="alien">
-			<Alien state={success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
+			<Alien state={$messageManager.success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
 			{#if $messageManager.error || $messageManager.hint}
 				<div class="message">
 					{#if $messageManager.error}
@@ -60,20 +51,13 @@
 	<div class="buttons">
 		<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
 		<div class="bottom">
-			<button class="button button-done">Done</button>
+			<button class="button button-done" on:click={done}>Done</button>
 			<button class="button button-hint">Hint</button>
 		</div>
 	</div>
 	<div class="content">
 		<div class="operators">
-			<div class="operator-box">
-				<h2>Operators</h2>
-				<div class="operator-container">
-					{#each operators as operator, i}
-						<DraggableOperator operator={operator} path={''} hint={operator.hint} error={operator.error} />
-					{/each}
-				</div>
-			</div>
+			<OperatorBox operators={operators}/>
 		</div>
 		<div class="equation-container" class:disable={$messageManager.error}>
 			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>
@@ -126,6 +110,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100vh;
+		box-sizing: border-box;
 	}
 	.history {
 		width: 60%;
@@ -168,27 +153,6 @@
 		justify-content: center;
 		padding: 5px;
 		color: #fff;
-	}
-	.operator-box {
-		border: dashed 2px #fff;
-		display: inline-block;
-		position: relative;
-		padding: 15px;
-		display: flex;
-		border-radius: 8px;
-	}
-	.operators h2 {
-		position: absolute;
-		top: 0;
-		left: 50%;
-		transform: translate(-50%, -65%);
-		z-index: 1;
-		margin: 0;
-		padding: 0 10px;
-		background: #091a2b;
-	}
-	.operator-container {
-		display: flex;
 	}
 
 	.equals > div {
