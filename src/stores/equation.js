@@ -40,9 +40,7 @@ function createDraftEquation() {
         return eqn;
     });
     const moveItem = (srcData, destData, eqn) => {
-        console.log(eqn.toString());
         eqn = get(history).current;
-        console.log(eqn.toString());
         dragOperation.side = destData.item.path[0];
 
         if (srcData.item !== destData.item) {
@@ -109,8 +107,9 @@ function createDraftEquation() {
                 let parsed = parseGrammar(eqn);
                 let item0 = Object.path(parsed, clippedPath.concat(['items', op0]));
                 let item1 = Object.path(parsed, clippedPath.concat(['items', op1]));
-                changed = get(history).current !== eqn;
-                return moveItem({ item: item0 }, { item: item1 });
+                let next = moveItem({ item: item0 }, { item: item1 });
+                changed = get(history).current !== next;
+                return next;
             });
             apply();
             return changed;
