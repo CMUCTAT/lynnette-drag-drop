@@ -190,7 +190,7 @@ if (window.jQuery) {
 		console.log("$(window).load(" + CTATTarget + ")");
 		initOnload();
 		CTATCommShell.commShell.assignDoneProcessor((input, finish) => {
-			messageManager.setSuccess("My dude");
+			messageManager.setSuccess("Yay!");
 			setTimeout(() => {
 				finish();
 			}, 5000);

@@ -39,62 +39,82 @@ function createDraftEquation() {
         }
         return eqn;
     });
-	return {
-        subscribe,
-        moveItem: (srcData, destData) => update(eqn => {
-            eqn = get(history).current;
-            dragOperation.side = destData.item.path[0];
-            
-            if (srcData.item !== destData.item) {
-                if (srcData.item instanceof Token) {
-                    dragOperation.from = "Token";
-                    if (destData.item instanceof Token) {
-                        dragOperation.to = "Token";
-                        let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                        let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                        if (!destData.item.variable && !destData.item.constant) {
-                            let src = parse.algParse(srcData.item.value())
-                            let dest = Object.path(eqn, destData.item.path)
-                            src.sign = dest.sign;
-                            src.exp = dest.exp;
-                            let next = parse.algReplaceExpression(eqn, dest, src);
-                            return next;
-                        } else if (srcParent === destParent) {
-                            let parent = srcParent;
-                            let indices = srcData.item.indices.concat(destData.item.indices);
-                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, ...indices))
-                            parent = Object.path(next, srcData.item.path.slice(0, -2));
-                            next = parse.algReplaceExpression(next, parent, parse.algApplyRules(parent, ['removeIdentity']))
-                            return next;
-                        }
-                    } else if (destData.item instanceof Expression) {
-                        dragOperation.to = "Expression";
-                        let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                        let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                        console.log(srcParent.operator);
-                        
-                        if (srcParent === destParent && srcParent.operator !== 'EQUAL') {
-                            let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                            let n0 = srcData.item.parseInt(path.slice(-1)[0]);
-                            let n1 = destData.item.parseInt(path.slice(-1)[0]);
-                            
-                            let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1));
-                            return next;
-                        }
-                    }
-                } else if (srcData.item instanceof Operator) {
-                    dragOperation.from = "Operator";
-                    if (destData.item instanceof Token || destData.item instanceof Expression) {
-                        dragOperation.to = destData.item instanceof Token ? "Token" : "Expression";
-                        let operation = srcData.item.operation;
+    const moveItem = (srcData, destData, eqn) => {
+        console.log(eqn.toString());
+        eqn = get(history).current;
+        console.log(eqn.toString());
+        dragOperation.side = destData.item.path[0];
+
+        if (srcData.item !== destData.item) {
+            if (srcData.item instanceof Token) {
+                dragOperation.from = "Token";
+                if (destData.item instanceof Token) {
+                    dragOperation.to = "Token";
+                    let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
+                    let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
+                    
+                    if (!destData.item.variable && !destData.item.constant) {
+                        let src = parse.algParse(srcData.item.value())
                         let dest = Object.path(eqn, destData.item.path)
-                        let next = parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?'));
+                        src.sign = dest.sign;
+                        src.exp = dest.exp;
+                        let next = parse.algReplaceExpression(eqn, dest, src);
+                        return next;
+                    } else if (srcParent === destParent) {
+                        let parent = srcParent;
+                        let indices = srcData.item.indices.concat(destData.item.indices);
+                        let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, ...indices))
+                        parent = Object.path(next, srcData.item.path.slice(0, -2));
+                        next = parse.algReplaceExpression(next, parent, parse.algApplyRules(parent, ['removeIdentity']))                        
+                        return next;
+                    }
+                } else if (destData.item instanceof Expression) {
+                    dragOperation.to = "Expression";
+                    let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
+                    let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
+                    if (srcParent === destParent && srcParent.operator !== 'EQUAL') {
+                        let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
+                        let n0 = parseInt(srcData.item.path.slice(-1)[0]);
+                        let n1 = parseInt(destData.item.path.slice(-1)[0]);
+
+                        let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1));
                         return next;
                     }
                 }
+            } else if (srcData.item instanceof Operator) {
+                dragOperation.from = "Operator";
+                if (destData.item instanceof Token || destData.item instanceof Expression) {
+                    dragOperation.to = destData.item instanceof Token ? "Token" : "Expression";
+                    let operation = srcData.item.operation;
+                    eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this; 
+                    // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
+                    let dest = Object.path(eqn, destData.item.path)
+                    let next = parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?'));
+                    return next;
+                }
             }
-            return eqn;
-        }),
+        }
+        return eqn;
+    }
+	return {
+        subscribe,
+        moveItem: (srcData, destData) => update(eqn => moveItem(srcData, destData, eqn)),
+        resolveOperator: path => {
+            let changed;
+            update(eqn => {
+                let splitPath = path.split(',');
+                let clippedPath = splitPath.slice(0, -1);
+                let op0 = parseInt(splitPath.slice(-1)[0]) + 1;
+                let op1 = op0 - 2;
+                let parsed = parseGrammar(eqn);
+                let item0 = Object.path(parsed, clippedPath.concat(['items', op0]));
+                let item1 = Object.path(parsed, clippedPath.concat(['items', op1]));
+                changed = get(history).current !== eqn;
+                return moveItem({ item: item0 }, { item: item1 });
+            });
+            apply();
+            return changed;
+        },
         updateToken: (token, value) => {
             update(eqn => {
                 eqn = parse.algParse(get(history).current);

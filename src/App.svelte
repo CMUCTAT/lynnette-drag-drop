@@ -23,8 +23,8 @@
 
 <div class="root">
 	<div class="testing">
-		<button on:click={() => {messageManager.setError("Error"); messageManager.setSide('right')}}>Test Error</button>
-		<button on:click={() => {window.success = !window.success;}}>Toggle Success</button>
+		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
+		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
 		<button on:click={undo}>Undo</button>
 	</div>
 	<div class="sidebar">
@@ -36,13 +36,16 @@
 		</div>
 		<div class="alien">
 			<Alien state={$messageManager.success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
-			{#if $messageManager.error || $messageManager.hint}
+			{#if $messageManager.error || $messageManager.hint || $messageManager.success}
 				<div class="message">
 					{#if $messageManager.error}
 						<div class="error">{$messageManager.error.message}</div>
 					{/if}
 					{#if $messageManager.hint}
 						<div class="hint">{$messageManager.hint.message}</div>
+					{/if}
+					{#if $messageManager.success}
+						<div class="success">{$messageManager.success.message}</div>
 					{/if}
 				</div>
 			{/if}
@@ -52,7 +55,7 @@
 		<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
 		<div class="bottom">
 			<button class="button button-done" on:click={done}>Done</button>
-			<button class="button button-hint">Hint</button>
+			<!-- <button class="button button-hint">Hint</button> -->
 		</div>
 	</div>
 	<div class="content">
@@ -66,6 +69,10 @@
 </div>
 
 <style>
+	:root {
+		/* --drag-highlight-color: #ffe364; */
+		--drag-highlight-color: #b964ff;
+	}
 	.testing {
 		position: fixed;
 		bottom: 30px;
@@ -107,9 +114,8 @@
 		bottom: 0;
 		padding: 20px;
 		background: center / cover no-repeat url("./images/lynnette-side-bar.png");
-		display: flex;
-		flex-direction: column;
-		height: 100vh;
+		display: grid;
+		grid-template-rows: 1fr auto;
 		box-sizing: border-box;
 	}
 	.history {

@@ -46,7 +46,7 @@
         top: 0;
         bottom: 0;
         width: 4px;
-        border-left: solid 2px #fff;
+        border-left: solid 2px #333;
         border-radius: 50%;
     }
     .ExpressionDisplay.parentheses:before {
@@ -56,7 +56,7 @@
         top: 0;
         bottom: 0;
         width: 4px;
-        border-right: solid 2px #fff;
+        border-right: solid 2px #333;
         border-radius: 50%;
     }
 </style>

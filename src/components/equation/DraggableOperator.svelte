@@ -176,8 +176,8 @@
         transform: none;
     }
     .fade .content {
-        transform: scale(0);
-        opacity: 0;
+        transform: scale(0) !important;
+        opacity: 0 !important;
     }
     :root {
         --size: 50px;

@@ -7,6 +7,7 @@
     import { droppable } from '../dragdrop/droppable.js'
     import Flaggable from '../Flaggable.svelte'
     import { onMount } from 'svelte';
+	import { history } from '../../stores/history.js';
     
     export let expression;
     export let path;
@@ -20,6 +21,7 @@
     const audioFiles = {
         dragStart: {file: './audio/pop.wav', volume: 0.45},
         dropRecieve: {file: './audio/click.wav', volume: 0.4},
+        dropError: {file: './audio/error.mp3', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -49,8 +51,9 @@
     }
     function handleDropReceive(event) {
         event.stopPropagation();
-        audioSource.src = audioFiles.dropRecieve.file;
-        audioSource.volume = audioFiles.dropRecieve.volume;
+        let success = $history.current !== $draftEquation;
+        audioSource.src = success ? audioFiles.dropRecieve.file : audioFiles.dropError.file;
+        audioSource.volume = success ? audioFiles.dropRecieve.volume : audioFiles.dropError.volume;
         audioSource.play();
         draftEquation.apply();
     }
@@ -99,7 +102,7 @@
         border: #fff 3px solid;
     }
     .Expression.dragover {
-        border: #ffe364 3px solid;
+        border: var(--drag-highlight-color) 3px solid;
         cursor: pointer;
     }
     .Expression.divide {

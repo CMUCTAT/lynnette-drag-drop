@@ -22,7 +22,6 @@ function createMessageManager() {
             return Object.assign({}, state, {success: {message: message}})
         }),
         setSide: side => update(state => {
-
             return Object.assign({}, state, {side: side});
         }),
         reset: () => set(initial),

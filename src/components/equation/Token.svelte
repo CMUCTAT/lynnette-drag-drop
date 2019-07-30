@@ -3,7 +3,8 @@
 	import { onMount } from 'svelte';
     import { draggable } from '../dragdrop/draggable.js';
     import Flaggable from '../Flaggable.svelte'
-    import { draftEquation, dropData, dragData } from '../../stores/equation.js'
+    import { draftEquation, dropData, dragData } from '../../stores/equation.js';
+	import { history } from '../../stores/history.js';
     $: value = (token.constant !== null && !(token.variable !== null && token.constant === 1) ? token.constant: '') + (token.variable ? token.variable : '')
 
     export let error;
@@ -15,6 +16,7 @@
     const audioFiles = {
         dragStart: {file: './audio/pop.wav', volume: 0.45},
         dropRecieve: {file: './audio/click.wav', volume: 0.4},
+        dropError: {file: './audio/error.mp3', volume: 0.4},
     }
     var audioSource;
     onMount(() => {
@@ -54,6 +56,10 @@
     }
     
     function handleDropSend(event) {
+        if ($history.current === $draftEquation) {
+            handleDragEnd(event);
+            return;
+        }
         dropAnim = true;
         hovering = false;
         setTimeout(() => {
@@ -75,30 +81,37 @@
         hovering = false;
         dropData.reset();
     }
+
     function handleMouseEnter(event) {
         hovering = true;
     }
+
     function handleMouseExit(event) {
         hovering = false;
         dragover = false;
     }
+
     function handleDragEnter(event) {
         event.stopPropagation();
         dragover = true;
         dropData.set(token, path, $dragData);
     }
+
     function handleDragExit(event) {
         event.stopPropagation();
         dragover = false;
         hovering = false;
     }
+
     function handleDropReceive(event) {
-        event.stopPropagation();
-        audioSource.src = audioFiles.dropRecieve.file;
-        audioSource.volume = audioFiles.dropRecieve.volume;
+        event.stopPropagation();        
+        let success = $history.current !== $draftEquation;
+        audioSource.src = success ? audioFiles.dropRecieve.file : audioFiles.dropError.file;
+        audioSource.volume = success ? audioFiles.dropRecieve.volume : audioFiles.dropError.volume;
         audioSource.play();
         draftEquation.apply();
     }
+
     function parseInput(v) {
         let constant = v.match(/[0-9]+/);
         let variable = v.match(/[A-Za-z]+/);
@@ -107,7 +120,6 @@
 
     function updateToken(e) {
         draftEquation.updateToken(token, e.target.value);
-        // draftEquation.apply();
     }
 </script>
 
@@ -192,13 +204,9 @@
         opacity: 0.3;
     }
     .Token.dragover .content {
-        /* color: #ffe364; */
-        background: #ffe364;
+        /* color: var(--drag-highlight-color); */
+        background: var(--drag-highlight-color);
         transform: scale(1.2);
-    }
-    .fade .content {
-        transform: scale(0);
-        opacity: 0;
     }
     :root {
         --size: 50px;
@@ -235,5 +243,9 @@
     }
     .editable .mover .content {
         display: none;
+    }
+    .fade .content {
+        transform: scale(0) !important;
+        opacity: 0 !important;
     }
 </style>
