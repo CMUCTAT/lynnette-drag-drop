@@ -7,7 +7,8 @@ import { history } from './history.js';
 //     new Expression([new Token(3, null)])
 // )
 const builder = new CTATTutoringServiceMessageBuilder ();
-const parse = new CTATAlgebraParser()
+const parse = new CTATAlgebraParser();
+window.parse = parse;
 let exp = parse.algParse("3x + 6 = 9");
 // let exp = parse.algParse("3x / ? = 11 - 32 + 6");
 // let exp = parse.algParse("2/3 * 5/4 = 9");

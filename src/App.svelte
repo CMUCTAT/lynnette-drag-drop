@@ -10,6 +10,8 @@
 	import { parseGrammar } from './stores/equation';
 	import { messageManager } from './stores/messageManager';
 	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
+	window.test = false;
+	$ : test = window.test;
 
 	function undo() {
 		history.step(-1);
@@ -19,6 +21,12 @@
 	function done() {
 		CTATCommShell.commShell.processDone("Test")
 	}
+
+	let newEqn = '';
+	function setEqn() {
+		history.reset();
+		history.push(window.parse.algParse(newEqn));
+	}
 </script>
 
 <div class="root">
@@ -26,6 +34,8 @@
 		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
 		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
 		<button on:click={undo}>Undo</button>
+		<input type="text" bind:value={newEqn}>
+		<button on:click={setEqn}>Set Eqn</button>
 	</div>
 	<div class="sidebar">
 		<div class="history">
@@ -52,9 +62,10 @@
 		</div>
 	</div>
 	<div class="buttons">
-		<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
+		<!-- <button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button> -->
+		<button on:click={undo} class="button undo" class:active={true}>Undo</button>
 		<div class="bottom">
-			<button class="button button-done" on:click={done}>Done</button>
+			<!-- <button class="button button-done" on:click={done}>Done</button> -->
 			<!-- <button class="button button-hint">Hint</button> -->
 		</div>
 	</div>
@@ -229,13 +240,20 @@
 		box-sizing: border-box;
 		border-radius: 50%;
 		z-index: 0;
-		-webkit-animation: ripple 1.5s infinite;
+		/* -webkit-animation: ripple 1.5s infinite;
 		-moz-animation:    ripple 1.5s infinite;
 		-o-animation:      ripple 1.5s infinite;
-		animation:         ripple 1.5s infinite; 
+		animation:         ripple 1.5s infinite;  */
 	}
 	.undo.active {
 		opacity: 1;
 		pointer-events: all;
+	}
+	.testing {
+		opacity: 0;
+		transition: 0.5s opacity ease;
+	}
+	.testing:hover {
+		opacity: 1;
 	}
 </style>
