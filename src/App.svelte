@@ -249,11 +249,11 @@
 		opacity: 1;
 		pointer-events: all;
 	}
-	.testing {
+	/* .testing {
 		opacity: 0;
 		transition: 0.5s opacity ease;
 	}
 	.testing:hover {
 		opacity: 1;
-	}
+	} */
 </style>
