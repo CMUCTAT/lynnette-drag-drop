@@ -22,8 +22,8 @@
 		CTATCommShell.commShell.processDone("Test")
 	}
 
-	let newEqn = '';
-	function setEqn() {
+	let val = '';
+	window.setEqn = newEqn => {
 		history.reset();
 		history.push(window.parse.algParse(newEqn));
 	}
@@ -34,14 +34,14 @@
 		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
 		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
 		<button on:click={undo}>Undo</button>
-		<input type="text" bind:value={newEqn}>
-		<button on:click={setEqn}>Set Eqn</button>
+		<input type="text" bind:value={val}>
+		<button on:click={() => window.setEqn(val)}>Set Eqn</button>
 	</div>
 	<div class="sidebar">
 		<div class="history">
 			<div class="history-title">History</div>
 			<div class="history-items">
-				<History></History>
+				{#if $history.current}<History></History>{/if}
 			</div> 
 		</div>
 		<div class="alien">
@@ -62,10 +62,10 @@
 		</div>
 	</div>
 	<div class="buttons">
-		<!-- <button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button> -->
-		<button on:click={undo} class="button undo" class:active={true}>Undo</button>
+		<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
+		<!-- <button on:click={undo} class="button undo" class:active={true}>Undo</button> -->
 		<div class="bottom">
-			<!-- <button class="button button-done" on:click={done}>Done</button> -->
+			<button class="button button-done" on:click={done}>Done</button>
 			<!-- <button class="button button-hint">Hint</button> -->
 		</div>
 	</div>
@@ -74,7 +74,7 @@
 			<OperatorBox operators={operators}/>
 		</div>
 		<div class="equation-container" class:disable={$messageManager.error}>
-			<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>
+			{#if $history.current}<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>{/if}
 		</div>
 	</div>
 </div>
@@ -240,10 +240,10 @@
 		box-sizing: border-box;
 		border-radius: 50%;
 		z-index: 0;
-		/* -webkit-animation: ripple 1.5s infinite;
+		-webkit-animation: ripple 1.5s infinite;
 		-moz-animation:    ripple 1.5s infinite;
 		-o-animation:      ripple 1.5s infinite;
-		animation:         ripple 1.5s infinite;  */
+		animation:         ripple 1.5s infinite; 
 	}
 	.undo.active {
 		opacity: 1;

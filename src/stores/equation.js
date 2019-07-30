@@ -15,7 +15,7 @@ let exp = parse.algParse("3x + 6 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 const initial = exp
 
-history.push(initial);
+// history.push(initial);
 
 
 Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x]) ? xs[x] : null, o);
