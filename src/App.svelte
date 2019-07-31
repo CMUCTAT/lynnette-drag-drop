@@ -27,48 +27,11 @@
 		history.reset();
 		history.push(window.parse.algParse(newEqn));
 	}
+	let testing = false;
 </script>
 
 <div class="root">
-	<div class="testing">
-		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
-		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
-		<button on:click={undo}>Undo</button>
-		<input type="text" bind:value={val}>
-		<button on:click={() => window.setEqn(val)}>Set Eqn</button>
-	</div>
-	<div class="sidebar">
-		<div class="history">
-			<div class="history-title">History</div>
-			<div class="history-items">
-				{#if $history.current}<History></History>{/if}
-			</div> 
-		</div>
-		<div class="alien">
-			<Alien state={$messageManager.success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
-			{#if $messageManager.error || $messageManager.hint || $messageManager.success}
-				<div class="message">
-					{#if $messageManager.error}
-						<div class="error">{$messageManager.error.message}</div>
-					{/if}
-					{#if $messageManager.hint}
-						<div class="hint">{$messageManager.hint.message}</div>
-					{/if}
-					{#if $messageManager.success}
-						<div class="success">{$messageManager.success.message}</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	</div>
-	<div class="buttons">
-		<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
-		<!-- <button on:click={undo} class="button undo" class:active={true}>Undo</button> -->
-		<div class="bottom">
-			<button class="button button-done" on:click={done}>Done</button>
-			<!-- <button class="button button-hint">Hint</button> -->
-		</div>
-	</div>
+	<div class="sidebar"></div>
 	<div class="content">
 		<div class="operators">
 			<OperatorBox operators={operators}/>
@@ -77,6 +40,46 @@
 			{#if $history.current}<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>{/if}
 		</div>
 	</div>
+	<div class="alien-overlay">
+		<div class="history">
+			<div class="history-title">History</div>
+			<div class="history-items">
+				{#if $history.current}<History></History>{/if}
+			</div> 
+		</div>
+		<div class="alien">
+			<Alien state={$messageManager.success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
+		</div>
+		{#if $messageManager.error || $messageManager.hint || $messageManager.success}
+			<div class="message">
+				{#if $messageManager.error}
+					<div class="error">{$messageManager.error.message}</div>
+				{/if}
+				{#if $messageManager.hint}
+					<div class="hint">{$messageManager.hint.message}</div>
+				{/if}
+				{#if $messageManager.success}
+					<div class="success">{$messageManager.success.message}</div>
+				{/if}
+			</div>
+		{/if}
+		<div class="buttons">
+			<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
+			<!-- <button on:click={undo} class="button undo" class:active={true}>Undo</button> -->
+			<div class="bottom">
+				<button class="button button-done" on:click={done}>Done</button>
+				<!-- <button class="button button-hint">Hint</button> -->
+			</div>
+		</div>
+	</div>
+	{#if testing}<div class="testing">
+		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
+		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
+		<button on:click={undo}>Undo</button>
+		<input type="text" bind:value={val}>
+		<button on:click={() => window.setEqn(val)}>Set Eqn</button>
+	</div>{/if}
+	<input type="checkbox" bind:checked={testing} style={"position: fixed; bottom: 0px; right: 0px; z-index: 100; margin: 0; opacity:0;"}>
 </div>
 
 <style>
@@ -96,9 +99,12 @@
 		background: center / cover no-repeat url("./images/lynnette-sapce-bg.png")
 	}
 	.message {
-		position: absolute;
-		left: 80%;
-		top: 40px;
+  		justify-self: start;
+  		align-self: start;
+		position: relative;
+		top: 30px;
+		left: -30px;
+		grid-area: message;
 		min-height: 60px;
 		background: #fff;
 		color: #333;
@@ -118,33 +124,48 @@
 		border-color: transparent #fff transparent transparent;
 	}
 	.sidebar {
-		position: absolute;
-		z-index: 2;
 		width: 250px;
+		position: fixed;
 		top: 0;
+		left: 0;
 		bottom: 0;
-		padding: 20px;
 		background: center / cover no-repeat url("./images/lynnette-side-bar.png");
+	}
+	.alien-overlay {
+		pointer-events: none;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		display: grid;
-		grid-template-rows: 1fr auto;
-		box-sizing: border-box;
+		grid-template-areas: "history . buttons" "alien message buttons";
+		grid-template-columns: 200px 1fr;
+		grid-template-rows: 1fr 200px;
 	}
 	.history {
-		width: 60%;
+		grid-area: history;
 		color: #333;
-		flex: 1;
+		padding: 10px 55px 0px 10px;
 	}
 	.buttons {
-		position: absolute;
+		pointer-events: none;
+		grid-area: buttons;
+		/* position: absolute;
 		z-index: 2;
 		right: 0;
 		top: 0;
 		bottom: 0;
-		padding: 20px;
+		padding: 20px; */
+	}
+	.alien-overlay div > * {
+		pointer-events: all;
 	}
 	.alien {
-		/* margin-bottom: 5%; */
+		grid-area: alien;
+		justify-self: end;
 		position: relative;
+		display: inline-block;
 	}
 	.history-items {
 		border-top: 2px #333 solid;

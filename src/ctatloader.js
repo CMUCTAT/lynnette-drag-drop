@@ -102,15 +102,15 @@ function initOnload() {
 
 	//>-------------------------------------------------------------------------	
 
-	if (CTATLMS.is.Assistments()) {
-		console.log("CTATTarget=='ASSISTMENTS'");
+	// if (CTATLMS.is.Assistments()) {
+	// 	console.log("CTATTarget=='ASSISTMENTS'");
 
-		iframeLoaded(); // Assistments specific call
+	// 	iframeLoaded(); // Assistments specific call
 
-		// Initialize our own code ...
-		startCTAT();
-		return;
-	}
+	// 	// Initialize our own code ...
+	// 	startCTAT();
+	// 	return;
+	// }
 
 	//>-------------------------------------------------------------------------	
 
@@ -199,6 +199,24 @@ if (window.jQuery) {
 			processCommShellEvent: (evt, msg) => {
 				console.log(evt, msg);
 				switch (evt) {
+					case "StateGraph":
+						if (msg && !(typeof msg === 'string' || msg instanceof String)) {
+							console.log("StartProblem", msg);
+							console.log("SAI", msg.toHHMMSS());
+							console.log(msg.getSAI().getInput());
+							console.log(msg.getSelection());
+						}
+						
+						break;
+					case "StartProblem":
+						if (msg && !(typeof msg === 'string' || msg instanceof String)) {
+							console.log("StartProblem", msg);
+							console.log("SAI", msg.getSAI());
+							console.log(msg.getSAI().getInput());
+							console.log(msg.getSelection());
+						}
+						
+						break;
 					case "InterfaceAction":
 						if (msg && !(typeof msg === 'string' || msg instanceof String)) {
 							var sai = msg.getSAI();
