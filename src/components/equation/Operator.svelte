@@ -24,11 +24,11 @@
     });
     
     function handleDoubleClick(event) {
-        let success = draftEquation.resolveOperator(path);
-        audioSource.src = success ? audioFiles.resolveSuccess.file : audioFiles.resolveError.file;
-        audioSource.volume = success ? audioFiles.resolveSuccess.volume : audioFiles.resolveError.volume;
-        audioSource.play();
-        draftEquation.apply();
+        // let success = draftEquation.resolveOperator(path);
+        // audioSource.src = success ? audioFiles.resolveSuccess.file : audioFiles.resolveError.file;
+        // audioSource.volume = success ? audioFiles.resolveSuccess.volume : audioFiles.resolveError.volume;
+        // audioSource.play();
+        // draftEquation.apply();
     }
 
     let fadeAnimTime = 300;
@@ -50,10 +50,10 @@
         -ms-user-select: none;
         user-select: none;
     }
-    .Operator:hover .content {
+    /* .Operator:hover .content {
         color: var(--drag-highlight-color);
-        /* transform: scale(1.2); */
-    }
+        /* transform: scale(1.2);
+    } */
     .content {
         touch-action: none;
         transition: transform 0.25s ease;
@@ -87,7 +87,7 @@
         background: #fff;
 		transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
     }
-    .Operator:hover .content:after {
+    /* .Operator:hover .content:after {
         background: var(--drag-highlight-color);
-    }
+    } */
 </style>
