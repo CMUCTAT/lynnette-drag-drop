@@ -242,6 +242,12 @@ if (window.jQuery) {
 						messageManager.setError(msg.getBuggyMsg())
 						console.log(msg.getBuggyMsg());
 						break;
+					case "ShowHintsMessage":
+						console.log("HintsMessage", msg);
+						var hm = msg.getProperty("HintsMessage");
+						messageManager.setHint(hm);
+
+						break;
 					default:
 						break;
 				}

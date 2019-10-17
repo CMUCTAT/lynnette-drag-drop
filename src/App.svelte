@@ -18,6 +18,11 @@
 		messageManager.reset();
 	}
 
+	function hint() {
+		console.log("hint");
+		CTATCommShell.commShell.processComponentAction(new CTATSAI("hint", "ButtonPressed", "hint request"))
+	}
+
 	function done() {
 		CTATCommShell.commShell.processDone("Test")
 	}
@@ -68,7 +73,7 @@
 			<!-- <button on:click={undo} class="button undo" class:active={true}>Undo</button> -->
 			<div class="bottom">
 				<button class="button button-done" on:click={done}>Done</button>
-				<!-- <button class="button button-hint">Hint</button> -->
+				<button class="button button-hint" on:click={hint}>Hint</button>
 			</div>
 		</div>
 	</div>
