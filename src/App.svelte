@@ -24,7 +24,7 @@
 	}
 
 	function done() {
-		CTATCommShell.commShell.processDone("Test")
+		CTATCommShell.commShell.processDone(-1)
 	}
 
 	let val = '';
