@@ -30,8 +30,9 @@ function createDraftEquation() {
 	const { subscribe, set, update } = writable(initial);
     const apply = (student=true) => update(eqn => {
         if (student) {
+            console.log("eqn:", eqn, "history.current", get(history).current);
             var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
-            if (CTATCommShell.commShell)
+            if ((CTATCommShell.commShell) && (get(history).current !== eqn))
                 CTATCommShell.commShell.processComponentAction(sai);
         }
         
