@@ -234,8 +234,8 @@ if (window.jQuery) {
 						console.log("InCorrectAction", msg);
 						var sai = msg.getSAI();
 						console.log("INTERFACE ACTION:", sai.getSelection());
-						messageManager.setSide(sai.getSelection())
-						messageManager.setError("Default Error")
+						messageManager.setSide(sai.getSelection());
+						messageManager.setError("");
 						break;
 					case "BuggyMessage":
 						console.log("BuggyMessage", msg);
