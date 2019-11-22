@@ -228,25 +228,36 @@ if (window.jQuery) {
 						}
 						break;
 					case "CorrectAction":
+						messageManager.reset();
 						console.log("CorrectAction", msg);
 						break;
 					case "InCorrectAction":
 						console.log("InCorrectAction", msg);
 						var sai = msg.getSAI();
 						console.log("INTERFACE ACTION:", sai.getSelection());
-						messageManager.setSide(sai.getSelection());
-						messageManager.setError("");
+						messageManager.reset();
+						if (sai.getSelection() != "done") {
+							messageManager.setSide(sai.getSelection());
+							messageManager.setError("");
+						}
 						break;
 					case "BuggyMessage":
 						console.log("BuggyMessage", msg);
-						messageManager.setError(msg.getBuggyMsg())
+						messageManager.reset();
+						messageManager.setHint(msg.getBuggyMsg())
 						console.log(msg.getBuggyMsg());
 						break;
 					case "ShowHintsMessage":
 						console.log("HintsMessage", msg);
 						var hm = msg.getProperty("HintsMessage");
+						messageManager.reset();
 						messageManager.setHint(hm);
-
+						break;
+					case "SuccessMessage":
+						console.log("SuccessMessage", msg);
+						messageManager.reset();
+						messageManager.setHint(msg.getSuccessMessage())
+						console.log(msg.getSuccessMessage());
 						break;
 					default:
 						break;
