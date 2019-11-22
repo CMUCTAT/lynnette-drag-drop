@@ -13,7 +13,9 @@ let exp = parse.algParse("3x + 6 = 9");
 // let exp = parse.algParse("3x / ? = 11 - 32 + 6");
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
-const initial = exp
+
+// const initial = exp;
+const initial = parse.algParse("? = ?");
 
 history.push(initial);
 
