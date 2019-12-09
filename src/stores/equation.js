@@ -9,13 +9,13 @@ import { history } from './history.js';
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
-let exp = parse.algParse("3x + 6 = 9");
+// let exp = parse.algParse("3x + 6 = 9");
 // let exp = parse.algParse("3x / ? = 11 - 32 + 6");
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 
 // const initial = exp;
-const initial = parse.algParse("? = ?");
+const initial = parse.algParse("2x = 0 - 4");
 
 history.push(initial);
 
@@ -54,8 +54,7 @@ function createDraftEquation() {
                     dragOperation.to = "Token";
                     let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
                     let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                    
-                    if (!destData.item.variable && !destData.item.constant) {
+                    if (destData.item.variable === null && destData.item.constant === null) {
                         let src = parse.algParse(srcData.item.value())
                         let dest = Object.path(eqn, destData.item.path)
                         src.sign = dest.sign;
