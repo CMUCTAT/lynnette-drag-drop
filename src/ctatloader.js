@@ -248,8 +248,9 @@ if (window.jQuery) {
 						console.log(msg.getBuggyMsg());
 						break;
 					case "ShowHintsMessage":
-						console.log("HintsMessage", msg);
+						console.log("HintsMessage", msg.getXMLString());
 						var hm = msg.getProperty("HintsMessage");
+						console.log("hm", hm);
 						messageManager.reset();
 						messageManager.setHint(hm);
 						break;
