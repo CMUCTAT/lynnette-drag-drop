@@ -19,12 +19,17 @@
 	}
 
 	function hint() {
-		console.log("hint");
-		CTATCommShell.commShell.processComponentAction(new CTATSAI("hint", "ButtonPressed", "hint request"))
+		console.log("messageManager", $messageManager);
+		if (!($messageManager.error)) {
+			console.log("hint");
+			CTATCommShell.commShell.processComponentAction(new CTATSAI("hint", "ButtonPressed", "hint request"))
+		}
 	}
 
 	function done() {
-		CTATCommShell.commShell.processDone(-1)
+		if (!($messageManager.error)) {
+			CTATCommShell.commShell.processDone(-1)
+		}
 	}
 
 	let val = '';
