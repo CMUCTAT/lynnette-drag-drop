@@ -15,7 +15,7 @@ window.parse = parse;
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
 
 // const initial = exp;
-const initial = parse.algParse("2x = 0 - 4");
+const initial = parse.algParse("? = ?");
 
 history.push(initial);
 
