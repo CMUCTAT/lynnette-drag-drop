@@ -9,7 +9,7 @@ import { history } from './history.js';
 const builder = new CTATTutoringServiceMessageBuilder ();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
-let exp = parse.algParse("3x + 6 = 9");
+// let exp = parse.algParse("3x + 6 = 9");
 // let exp = parse.algParse("3x / ? = 11 - 32 + 6");
 // let exp = parse.algParse("2/3 * 5/4 = 9");
 // let exp = parse.algParse("x+-2=6x + 5/?/3");
@@ -30,7 +30,9 @@ let dragOperation = {
 
 function createDraftEquation() {
 	const { subscribe, set, update } = writable(initial);
-    const apply = (student=true) => update(eqn => {
+    const apply = (student = true) => update(eqn => {
+        console.log("APPLY");
+        
         if (student) {
             console.log("eqn:", eqn, "history.current", get(history).current);
             var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
@@ -54,8 +56,7 @@ function createDraftEquation() {
                     dragOperation.to = "Token";
                     let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
                     let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                    
-                    if (!destData.item.variable && !destData.item.constant) {
+                    if (destData.item.variable === null && destData.item.constant === null) {
                         let src = parse.algParse(srcData.item.value())
                         let dest = Object.path(eqn, destData.item.path)
                         src.sign = dest.sign;
@@ -85,8 +86,26 @@ function createDraftEquation() {
                 }
             } else if (srcData.item instanceof Operator) {
                 dragOperation.from = "Operator";
-                if (destData.item instanceof Token || destData.item instanceof Expression) {
-                    dragOperation.to = destData.item instanceof Token ? "Token" : "Expression";
+                if (destData.item instanceof Token) {
+                    dragOperation.to = "Token";
+                    let operation = srcData.item.operation;
+                    // let dest = parse.algGetExpression(Object.path(eqn, destData.item.path.slice(0, -2)), destData.item.indices[0], destData.item.indices[1])
+                    // console.log(dest);
+                    
+                    let subexp;
+                    if (destData.item.indices.length > 1) {
+                        destData.item.indices.sort()
+                        subexp = parse.algGetExpression(Object.path(eqn, destData.item.path.slice(0, -2)), destData.item.indices[0], destData.item.indices[1])
+                    } else {
+                        subexp = Object.path(eqn, destData.item.path)
+                    }
+                    console.log(subexp);
+                    
+                    let next = parse.algReplaceExpression(parse.algParse(parse.algStringify(eqn)), subexp, parse.algCreateExpression(operation, subexp, '?'))
+                    //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place not immutably
+                    return next;
+                } else if (destData.item instanceof Expression) {
+                    dragOperation.to = "Expression";
                     let operation = srcData.item.operation;
                     eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this; 
                     // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
@@ -96,6 +115,8 @@ function createDraftEquation() {
                 }
             }
         }
+        console.log(1);
+        
         return eqn;
     }
 	return {
