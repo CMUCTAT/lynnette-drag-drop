@@ -270,3 +270,4 @@ if (window.jQuery) {
 else {
 	console.log("Error: JQuery not available, can not execute $(window).on('load',...)");
 }	
+
