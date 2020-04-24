@@ -1,285 +1,241 @@
 <script>
-	import OperatorComponent from './components/equation/Operator.svelte';
-	import PreviewEquation from './components/equation/PreviewEquation.svelte';
-	import OperatorBox from './components/OperatorBox.svelte';
-	import History from './components/History.svelte';
-	import Alien from './components/Alien.svelte';
-	import { draftEquation } from './stores/equation.js';
-	import { history } from './stores/history.js';
-	import { Operator } from './stores/classes';
-	import { parseGrammar } from './stores/equation';
-	import { messageManager } from './stores/messageManager';
-	let operators = [new Operator('PLUS'), new Operator('MINUS'), new Operator('TIMES'), new Operator('DIVIDE')];
-	window.test = false;
-	$ : test = window.test;
+  import { parseGrammar } from "./grammarParser.js";
+  import { draftEquation, dragdropData } from "./stores/equation.js";
+  import { history } from "./stores/history.js";
+  import soundEffects from "./soundEffect.js";
+  import Equation from "./components/Equation.svelte";
+  import DraggableOperator from "./components/DraggableOperator.svelte";
+  import History from "./components/History.svelte";
 
-	function undo() {
-		history.step(-1);
-		messageManager.reset();
-	}
+  // menu elements
+  import Buttons from "./components/menu/Buttons.svelte";
+  import Alien from "./components/menu/Alien.svelte";
 
-	function hint() {
-		console.log("hint");
-		CTATCommShell.commShell.processComponentAction(new CTATSAI("hint", "ButtonPressed", "hint request"))
-	}
+  let muted = false;
 
-	function done() {
-		CTATCommShell.commShell.processDone(-1)
-	}
+  import {
+    PlusOperator,
+    MinusOperator,
+    TimesOperator,
+    DivideOperator
+  } from "./classes.js";
+  import {
+    showMessages,
+    lastCorrect,
+    error,
+    alienState
+  } from "./stores/messageManager.js";
 
-	let val = '';
-	window.setEqn = newEqn => {
-		history.reset();
-		history.push(window.parse.algParse(newEqn));
-	}
-	let testing = false;
+  function onUndo() {
+    history.undo();
+
+    if ($lastCorrect === $history.current) {
+      error.set(null);
+    }
+  }
 </script>
 
-<div class="root">
-	<div class="sidebar"></div>
-	<div class="content">
-		<div class="operators">
-			<OperatorBox operators={operators}/>
-		</div>
-		<div class="equation-container" class:disable={$messageManager.error}>
-			{#if $history.current}<PreviewEquation state={parseGrammar($history.current)} draft={parseGrammar($draftEquation)} error={$messageManager.side}/>{/if}
-		</div>
-	</div>
-	<div class="alien-overlay">
-		<div class="history">
-			<div class="history-title">History</div>
-			<div class="history-items">
-				{#if $history.current}<History></History>{/if}
-			</div> 
-		</div>
-		<div class="alien">
-			<Alien state={$messageManager.success ? 'success' : $messageManager.error ? 'error' : 'default'}/>
-		</div>
-		{#if $messageManager.error || $messageManager.hint || $messageManager.success}
-			<div class="message">
-				{#if $messageManager.error}
-					<div class="error">{$messageManager.error.message}</div>
-				{/if}
-				{#if $messageManager.hint}
-					<div class="hint">{$messageManager.hint.message}</div>
-				{/if}
-				{#if $messageManager.success}
-					<div class="success">{$messageManager.success.message}</div>
-				{/if}
-			</div>
-		{/if}
-		<div class="buttons">
-			<button on:click={undo} class="button undo" class:active={$messageManager.error}>Undo</button>
-			<!-- <button on:click={undo} class="button undo" class:active={true}>Undo</button> -->
-			<div class="bottom">
-				<button class="button button-done" on:click={done}>Done</button>
-				<button class="button button-hint" on:click={hint}>Hint</button>
-			</div>
-		</div>
-	</div>
-	{#if testing}<div class="testing">
-		<button on:click={() => {if ($messageManager.error) messageManager.reset(); else messageManager.setError('Error');}}>Toggle Error</button>
-		<button on:click={() => {if ($messageManager.success) messageManager.reset(); else messageManager.setSuccess('Success!');}}>Toggle Success</button>
-		<button on:click={undo}>Undo</button>
-		<input type="text" bind:value={val}>
-		<button on:click={() => window.setEqn(val)}>Set Eqn</button>
-	</div>{/if}
-	<input type="checkbox" bind:checked={testing} style={"position: fixed; bottom: 0px; right: 0px; z-index: 100; margin: 0; opacity:0;"}>
-</div>
-
 <style>
-	:root {
-		/* --drag-highlight-color: #ffe364; */
-		--drag-highlight-color: #b964ff;
-	}
-	.testing {
-		position: fixed;
-		bottom: 30px;
-		left: 50%;
-		transform: translateX(-50%);
-	}
-	.root {
-		position: relative;
-		height: 100vh;
-		background: center / cover no-repeat url("./images/lynnette-sapce-bg.png")
-	}
-	.message {
-  		justify-self: start;
-  		align-self: start;
-		position: relative;
-		top: 30px;
-		left: -30px;
-		grid-area: message;
-		min-height: 60px;
-		background: #fff;
-		color: #333;
-		border-radius: 4px;
-		padding: 30px 15px 15px 15px;
-		font-size: 30px;
-	}
-	.message:after {
-		content: '';
-		position: absolute;
-		left: -40px;
-		top: 35px;
-		width: 0;
-		height: 0;
-		border-style: solid;
-		border-width: 0 40px 40px 0;
-		border-color: transparent #fff transparent transparent;
-	}
-	.sidebar {
-		width: 250px;
-		position: fixed;
-		top: 0;
-		left: 0;
-		bottom: 0;
-		background: center / cover no-repeat url("./images/lynnette-side-bar.png");
-	}
-	.alien-overlay {
-		pointer-events: none;
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: grid;
-		grid-template-areas: "history . buttons" "alien message buttons";
-		grid-template-columns: 200px 1fr;
-		grid-template-rows: 1fr 200px;
-	}
-	.history {
-		grid-area: history;
-		color: #333;
-		padding: 10px 55px 0px 10px;
-	}
-	.buttons {
-		pointer-events: none;
-		grid-area: buttons;
-		/* position: absolute;
-		z-index: 2;
-		right: 0;
-		top: 0;
-		bottom: 0;
-		padding: 20px; */
-	}
-	.alien-overlay div > * {
-		pointer-events: all;
-	}
-	.alien {
-		grid-area: alien;
-		justify-self: end;
-		position: relative;
-		display: inline-block;
-	}
-	.history-items {
-		border-top: 2px #333 solid;
-	}
-	.history-title {
-		text-align: center;
-	}
-	.content {
-		padding: 40px 0;
-		grid-area: content;
-		position: relative;
-		/* background: #0f0; */
-	}
-	.equation-container {
-		display: flex;
-		justify-content: center;
-	}
-	.equation-container.disable {
-		pointer-events: none;
-	}
-	.operators {
-		display: flex;
-		justify-content: center;
-		padding: 5px;
-		color: #fff;
-	}
-
-	.equals > div {
-		height: 20px;
-	}
-	
-
-	@keyframes ripple {
-		0% {
-			opacity: 1;
-			width: 100%; 
-			height: 100%;
-		}
-		100% {
-			opacity: 0;
-			width: 150%; 
-			height: 150%;
-		}
-	}
-	.button-done {
-		background: #dbf471;
-		color: #353f615b;
-	}
-	.button-hint {
-		background: #ffe364;
-		color: #7c5f295b;
-	}
-	.button {
-		border: none;
-		width: 100px;
-		height: 100px;
-		border-radius: 50%;
-		margin: 20px;
-		font-size: 30px;
-		cursor: pointer;
-	}
-	.buttons .bottom {
-		position: absolute;
-		display: flex;
-		bottom: 20px;
-		right: 40px;
-	}
-	.undo {
-		opacity: 0;
-		pointer-events: none;
-		font-size: 40px;
-		transition: opacity 0.3s ease, box-shadow 0.3s cubic-bezier(.27,.27,.08,.96);
-		position: relative;
-		cursor: pointer;
-		width: 150px;
-		height: 150px;
-		border-radius: 50%;
-		background: #f1384d;
-		border: none;
-		color: #361b2477;
-		/* border: 10px #eed836 solid; */
-	}
-	.undo:after {
-		opacity: 0;
-		content: '';
-		width: 100%; 
-		height: 100%;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		position: absolute;
-		border: 3px solid #f1384d;
-		box-sizing: border-box;
-		border-radius: 50%;
-		z-index: 0;
-		-webkit-animation: ripple 1.5s infinite;
-		-moz-animation:    ripple 1.5s infinite;
-		-o-animation:      ripple 1.5s infinite;
-		animation:         ripple 1.5s infinite; 
-	}
-	.undo.active {
-		opacity: 1;
-		pointer-events: all;
-	}
-	/* .testing {
-		opacity: 0;
-		transition: 0.5s opacity ease;
-	}
-	.testing:hover {
-		opacity: 1;
-	} */
+  .app {
+    height: 100vh;
+    width: 100%;
+    display: grid;
+    grid-template-areas:
+      "steps operators buttons"
+      "steps main buttons"
+      "alien main buttons";
+    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-rows: 200px 1fr 30%;
+    row-gap: 50px;
+    background: center / cover no-repeat url("./images/lynnette-sapce-bg.png");
+  }
+  .steps {
+    grid-area: steps;
+    max-width: 300px;
+    background: #f5f4f3;
+    border-bottom-right-radius: 40px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+  .history {
+    flex: 1;
+    overflow: auto;
+    margin-bottom: 40px;
+  }
+  .alien {
+    grid-area: alien;
+    position: relative;
+  }
+  .alien svg {
+    height: 100%;
+  }
+  .main {
+    grid-area: main;
+    justify-self: center;
+  }
+  .buttons {
+    grid-area: buttons;
+    justify-self: center;
+    align-self: end;
+    padding-bottom: 100px;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+  }
+  .operators {
+    grid-area: operators;
+    margin: 50px;
+    border: 2px dashed #fff;
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    justify-self: center;
+    align-self: center;
+    user-select: none;
+  }
+  .equation {
+    position: relative;
+  }
+  .equation.disable {
+    pointer-events: none;
+  }
+  .draft-equation {
+    position: absolute;
+    bottom: 0;
+    transform: translateY(100%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  #hintwindow {
+    position: absolute;
+    left: calc(100% - 60px);
+    /* left: 100%; */
+    box-shadow: rgba(0, 0, 0, 0.05) 0 0 10px 10px;
+    top: 80px;
+    background: #f5f4f3;
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    height: 50%;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transition: all 0.25s ease;
+  }
+  #hintwindow.visible {
+    opacity: 1;
+    top: 50px;
+  }
+  #hintwindow :global(.CTATHintWindow--hint-content) {
+    flex: 1;
+    overflow: auto;
+  }
+  #hintwindow :global(.CTATHintWindow--hint-button-area) {
+    text-align: right;
+  }
+  :global(.ctatpageoverlay) {
+    position: fixed;
+    padding: 30px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #f5f4f3;
+  }
+  :global(.CTATHintWindow--button) {
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  :global(.CTATHintWindow--button):hover {
+    transform: scale(1.1);
+  }
+  :global(.CTATHintWindow--button):disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  :root {
+    /* --drag-highlight-color: #26ffd0; */
+    --drag-highlight-color: #7b57ff;
+  }
+  .mute {
+    border: none;
+    background: none;
+    color: #fff;
+    font-size: 30px;
+    /* width: 30px;
+    height: 30px; */
+    padding: 0 10px;
+    cursor: pointer;
+    position: relative;
+  }
+  .mute.muted:after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translate(-50%, 0) rotate(45deg);
+    height: 80%;
+    width: 3px;
+    background: #f00;
+  }
 </style>
+
+<div class="app">
+  <div class="steps">
+    <h1>Steps</h1>
+    <div class="history">
+      {#if true}
+        <History />
+      {/if}
+    </div>
+  </div>
+  <div class="alien">
+    <svg viewBox="0 0 302 269" style="enable-background:new 0 0 302 269;">
+      <path
+        style="fill:#FF6E52;"
+        d="M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z" />
+      <path
+        style="fill:#FFC33E;"
+        d="M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z" />
+      <path
+        style="fill:#f5f4f3;"
+        d="M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z" />
+    </svg>
+    <Alien state={$alienState} />
+    <div id="hintwindow" class="CTATHintWindow" class:visible={$showMessages} />
+  </div>
+  <div class="operators">
+    <DraggableOperator operator={new PlusOperator('', [])} />
+    <DraggableOperator operator={new MinusOperator('', [])} />
+    <DraggableOperator operator={new TimesOperator('', [])} />
+    <DraggableOperator onlySymbol operator={new DivideOperator('', [])} />
+  </div>
+  <div class="main">
+    {#if $history.current}
+      <div class="equation" class:disable={$error}>
+        <Equation error={$error} equation={parseGrammar($history.current)} />
+        {#if $dragdropData.drop}
+          <div class="draft-equation">
+            <Equation equation={parseGrammar($draftEquation)} />
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </div>
+  <div class="buttons">
+    <Buttons error={$error} {onUndo} />
+
+    <button
+      class="mute"
+      class:muted
+      on:click={() => {
+        soundEffects.mute(!soundEffects._muted);
+        muted = !muted;
+      }}>
+      🕨
+    </button>
+  </div>
+</div>

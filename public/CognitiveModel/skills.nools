@@ -1,0 +1,57 @@
+global skillDefinitions = [
+	{
+		category: "transformation",
+		skillName: "subtraction-var",
+		label: "Subtract Variable"
+	},
+	{
+		category: "transformation",
+		skillName: "subtraction-const",
+		label: "Subtract Constant"
+	},
+	{
+		category: "transformation",
+		skillName: "division-simple",
+		label: "Simple Division"
+	},
+	{
+		category: "transformation",
+		skillName: "division-complex",
+		label: "Complex Division"
+	},
+	{
+		category: "simplification",
+		skillName: "combine-like-var",
+		label: "Combine Like Variable Terms"
+	},
+	{
+		category: "simplification",
+		skillName: "combine-like-const",
+		label: "Combine Like Constant Terms"
+	},
+	{
+		category: "simplification",
+		skillName: "divide",
+		label: "Simplify Division"
+	},
+	{
+		category: "simplification",
+		skillName: "distribute-division",
+		label: "Distribute Division"
+	},
+	{
+		category: "simplification",
+		skillName: "cancel-var",
+		label: "Cancel Variable Terms"
+	},
+	{
+		category: "simplification",
+		skillName: "cancel-const",
+		label: "Cancel Const Terms"
+	},
+	{
+		category: "simplification",
+		skillName: "distribute-multiplication",
+		label: "Distribute Multiplication"
+	},
+];

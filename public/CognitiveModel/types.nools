@@ -1,0 +1,298 @@
+define Problem {     // do we need this at all? mostly used for accessing the solution rows in order
+	name: null,
+	rows: null,
+	combinedDivTerms: null,
+	distributedDivTerms: null,
+	movedSimpleTerms : null,
+	termToBeCanceled : null,
+	variableSide : null,
+	constantSide : null,
+	divisorToBeDeleted : null,
+	swapped : null,
+
+	numTran : null,
+	numSim : null,
+
+	currTransformation : null,
+
+	constructor: function(n,l, config) {
+		this.name = n;
+		this.rows = l;
+		this.movedSimpleTerms = [];
+		this.termToBeCanceled = [];
+		this.divisorToBeDeleted = [];
+		this.combinedDivTerms = [];
+		this.distributedDivTerms = [];
+		this.swapped = false;
+		this.numTran = 10;
+		this.numSim = 10;
+		this.stepSkipLevel = config.stepSkipLevel || 3;
+		this.shallowSearch = config.shallowSearch || false;
+		this.useDiagrams = config.useDiagrams || false;
+		this.allowNegativeTerms = config.allowNegativeTerms || false;
+		this.dragNDrop = config.dragNDrop;
+		this.forceSimplify = config.forceSimplify;
+		this.operatorsFirst = config.operatorsFirst;
+	}
+}
+
+define Expr {          // wonder if we should call this type "termArray" or "termSum"
+   terms: null,
+   side: null,
+   type: null,
+   topLevel: null,
+   factNr: null,
+   constructor: function(s, t, top) {
+   		this.side = s;
+   		this.terms = t;
+        this.type = "Expr";             // if Nools has function that returns the fact type, would be 
+        								//     better to use that instead
+		this.topLevel = top;
+        setFactNr(this);
+   }
+}
+
+define simpleTerm {
+	coeff: null,
+	var: null,
+	side: null,
+	type: null,
+	factNr: null,
+   	constructor: function(c, v, s) {
+   		this.coeff = c;
+   		this.var = v;
+   		this.side = s;
+        this.type = "simpleTerm";
+        setFactNr(this);
+   }
+}
+
+define divTerm {
+	factors: null,
+	side: null,
+	type: null,
+	factNr: null,
+	constructor: function(f, s) {
+		this.factors = f;
+		this.side = s;
+		this.type = "divTerm";
+        setFactNr(this);
+	}
+}
+
+define productTerm {
+	factors: null,
+	side: null,
+	type: null,
+	factNr: null,
+	constructor: function(f, s) {
+		this.factors = f;
+		this.side = s;
+		this.type = "productTerm";
+        setFactNr(this);f
+	}
+}
+
+define unknownTerm {
+	factNr: null,
+	type: null,
+	couldBe: null,
+	constructor: function(f) {
+		this.type = "unknownTerm";
+		setFactNr(this);
+	}
+}
+
+define PartialTransformation {
+	exp1: null,
+	exp2: null,
+	operator: null,
+	operand: null,
+	operator2Selected: false,
+	constructor: function(e1, e2, operator, operand) {
+		this.exp1 = e1;
+		this.exp2 = e2;
+		this.operator = operator;
+		this.operand = operand;
+	}
+}
+
+define cycleInfo {      // stores info that is needed only for the duration of the cycle
+	focus: null,
+	selection: null,
+	otherSideFree: null,     // call this bothSidesFree ?  seems more appropriate
+	copyOK: null,
+	factNum : null,
+
+	//for search space control:
+	divEarlyCancelTerm : null,
+	divEarlyCombineTerm : null,
+	
+	swapped : false,
+	combined : false,
+	divided : false,
+	addSubtracted : false,
+	dividedEarly : false,
+	addedToSideAfterDivide : false,
+	distributedMult : false,
+	multiplied : false,
+
+	divFactNum : null,
+	multFactNum : null,
+	cancelCombineNum : null,
+	addSubToSideCombineNum : null,
+	divAddSubToSideNum : null,
+
+	dividedTerms : null,
+
+	//for limiting step skipping
+	numTransformation: null,
+	numSimplification: null,
+	skippedTooManySteps : null,
+	opStr: null,
+	ogStr: null,
+	
+	//true if model-generated exp is bug prediction
+	inputIsBug: false,
+	bugMessage: '',
+	
+	//type of student interaction (dragndrop only)
+	stepType: null,
+	
+	//corresponding interfaceElement fact
+	interfaceElement: null,
+	
+	constructor: function(f, s, free, nTrans, ogStr, st, ie) {
+		this.focus = f;
+		this.selection = s;
+		this.otherSideFree = free;
+
+		this.divEarlyCancelTerm = null;
+		this.divEarlyCombineTerm = null;
+
+		this.divFactNum = -100;
+		this.multFactNum = -100;
+		this.cancelCombineNum = -100;
+		this.addSubToSideCombineNum = -100;
+		this.divAddSubToSideNum = -100;
+
+		this.dividedTerms = [];
+
+		this.numSimplification = 0;
+		this.numTransformation = nTrans || 0;
+		this.skippedTooManySteps = false;
+
+		this.opStr = '';
+		this.ogStr = ogStr;
+		
+		this.stepType = st;
+		
+		this.interfaceElement = ie;
+		
+		setFactNr(this);
+	}
+}
+
+define transformation{
+	type: null,
+	terms: null,
+	constructor: function(name,terms){
+		this.terms = terms;
+		this.type = name;
+	}
+}
+
+define rowInfo {
+	modified: null,
+	tranformed: null,
+	number: null,
+	transformations: null,
+	constructor: function(rowNum) {
+		this.number = rowNum;
+		this.modified = false;
+		this.transformed = true;
+		this.transformations = [];
+	}
+}
+
+define interfaceElement {
+	name: null,
+	value: null,
+	side: null,
+	constructor: function(n, v, s) {
+		this.name = n;
+		this.value = v;
+		this.side = s;
+	}
+}
+
+define interfaceElementDnd {
+	name: null,
+	side: null,
+	operator: null,
+	operand: null,
+	constructor: function(n, s, or, od) {
+		this.name = n;
+		this.side = s;
+		this.operator = or;
+		this.operand = od;
+	}
+}
+
+define interfaceRow {
+	name: null,
+    preExplanations: null,        // may not use
+    solutionSteps: null,
+    postExplanations: null,       // may not use
+    groups: null,
+    constructor: function(n, l, r) {
+    	this.name = n;
+    	this.solutionSteps = [l,r];
+    }
+}
+
+define StudentValues {
+	selection: null,
+	action: null,
+	input: null,
+	constructor: function(s, a, i) {
+		this.selection = s;
+		this.action = a;
+		this.input = i;
+	}
+}
+
+define TPA {
+	selection: null,
+	action: null,
+	input: null,
+	constructor: function(s, a, i) {
+		this.selection = s;
+		this.action = a;
+		this.input = i;
+	}
+}
+
+define Hint {
+	precedence: 0,
+	msg: "",
+	constructor: function(m, optPrecedence) {
+		this.msg = m;
+		this.precedence = optPrecedence || 0;
+	}
+}
+
+define IsHintMatch  {
+	constructor: function() {     // do we need empty constructor?
+
+	}
+}
+
+define Skill {
+  name: null,
+  category: null,
+  constructor: function(n, c) {
+    this.name = n;
+    this.category = c;
+  }
+}

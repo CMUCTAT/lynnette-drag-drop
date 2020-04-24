@@ -1,0 +1,654 @@
+import("types.nools");
+import("skills.nools");
+import("functions.nools");
+import("diagrams.nools");
+import("transformations.nools");
+import("simplificationsFocusedSide.nools");
+import("simplificationsUnfocusedSide.nools");
+
+global shallowSearch = false;
+global allowNegativeTerms = true;
+
+/*****************************
+
+TODO: possible for there to be > 1 rowInfo in WM in drag-n-drop mode
+
+******************************/
+
+//set up working memory
+rule bootstrap {
+	when {
+		b: Boolean b === true from true;
+	}
+	then {
+		setParser();
+		
+		var config = {
+			stepSkipLevel: 3,
+			shallowSearch: false,
+			useDiagrams: false,
+			allowNegativeTerms: true,
+			dragNDrop: false,
+			forceSimplify: false,
+			pregenConflictTree: false,
+			operatorsFirst: false
+		};
+		//set up problem config
+		//amt of step skipping allowed
+		try {
+			config.stepSkipLevel = stepSkipLevel;
+		} catch(e) {}
+		
+		//don't deep search if step skipping disallowed (to get bug feedback)
+		try {
+			config.shallowSearch = shallowSearch;
+		} catch(e) {}
+		
+		//whether this interface uses diagrams 
+		try {
+			config.useDiagrams = useDiagrams;
+		} catch(e) {}
+		
+		//whether negative terms are allowed to be created by transformations
+		try {
+			config.allowNegativeTerms = allowNegativeTerms;
+		} catch(e) {}
+		
+		//whether this interface uses drag n' drop
+		try {
+			config.dragNDrop = dragNDrop; 
+		} catch (e) {}
+		if (config.dragNDrop) {
+			config.shallowSearch = true;
+			config.stepSkipLevel = 1;
+		}
+		
+		//whether equation must be fully simplified before starting new transformation
+		try {
+			config.forceSimplify = forceSimplify;
+		} catch (e) {}
+		
+		//whether to pregen conflict tree
+		try {
+			config.pregenConflictTree = pregenConflictTree;
+		} catch (e) {}
+		
+		//whether student must select both operators before any operands (dnd only)
+		try {
+			config.operatorsFirst = operatorsFirst;
+		} catch (e) {}
+		
+		//setting up interface
+		var initLName = "startLeft";
+		var initRName = "startRight";
+		assert(new interfaceElement(initLName, initLeft));
+		assert(new interfaceElement(initRName, initRight));
+		assert(new interfaceRow("row0", initLName, initRName));
+		var rowNames = [];
+		if (config.dragNDrop) {
+			assert(new interfaceElementDnd("left", "left"));
+			assert(new interfaceElementDnd("right", "right"));
+			assert(new interfaceRow("intRow", "left", "right"));
+			rowNames.push("intRow");
+			//one persistent rowInfo fact for dragNDrop
+			assert(new rowInfo(1));
+		} else {
+			//  Note: row0 should not be in the list of rows (because used already)
+			for (var i = 1; i < 16; i++) {
+				name = "row"+i;
+				lName = "solveLeft"+i;
+				rName = "solveRight"+i;
+				rowNames.push(name);
+				assert(new interfaceElement(lName, null, "left"));
+				assert(new interfaceElement(rName, null, "right"));
+				assert(new interfaceRow(name, lName, rName)); 
+				// Leaving out the explanation fields for now
+			}
+		}
+		//setting up internal representation of the equation in working memory
+		if(parseProblem){
+			//initialize working memory by parsing the problem string
+			var facts = getAllFacts(initLeft, initRight);
+			facts.forEach(function(fact){
+				generateFact(facts,fact);
+			});
+			console.log(facts);
+		}
+		
+		
+		var p = new Problem(pName, rowNames, config);
+		assert(p);
+
+		setProblemAttribute("use_backtracking", true);
+		setProblemAttribute("use_hint_fact", true);
+		if (config.pregenConflictTree) {
+			setProblemAttribute("pregen_conflict_tree", true);
+		}
+		
+		addPregenSAI({selection: "solveLeft1"});
+		addPregenSAI({selection: "solveRight1"});
+		addPregenSAI({selection: "done"});
+		
+		//TPAs to set up initial expression
+		if (config.dragNDrop) {
+			assert(new TPA('_root', "setEqn", initLeft+' = '+initRight));
+		} else {
+			assert(new TPA(initLName, "UpdateTextField", initLeft));
+			assert(new TPA(initRName, "UpdateTextField", initRight));
+			//TPA to display tape diagrams for initial exp
+			if (config.useDiagrams) {
+				var argStr = initLeft+','+initRight+','+finalX;
+				assert(new TPA("_root", "setGivenDiagrams", argStr));
+				modify(p, "currentDiagram", {
+					operation: "initial",
+					expBefore: initLeft+"="+initRight
+				});
+			} else {
+				assert(new TPA("_root", "showNextRow", ''));
+			}
+		}
+		
+		halt();
+		
+	}
+}
+
+rule HintFinishTransformation{
+	salience: 8;
+	when {
+		p: Problem {rows: pRows};
+		ci: cycleInfo ci.selection === "hint";
+		ri: rowInfo ri.transformations.length {transformations: rowT};
+		r: interfaceRow r.name === pRows[0] {solutionSteps: steps};
+		ie1: interfaceElement ie1.name in steps && !ie1.value {side: s};
+	} then {
+		var transform = rowT[0],
+			expAfter = transform.expAfter,
+			operand = transform.operand,
+			thisSide = s,
+			otherSide = s === "left" ? "right" : "left",
+			input = expAfter.split("=")[thisSide === "left" ? 0 : 1];
+		switch(transform.operation) {
+			case 'subtraction':
+				assert(new Hint("You subtracted "+operand+" from the "+otherSide+", now do the same on the "+thisSide+"."));
+				break;
+			case 'addition':
+				assert(new Hint("You added "+operand+" to the "+otherSide+", now do the same on the "+thisSide+"."));
+				break;
+			case 'division-simple':
+			case 'division-complex':
+				assert(new Hint("You divided the "+otherSide+" by "+operand+", now do the same on the "+thisSide+"."));
+				break;
+		}
+		assert(new Hint("Enter "+input+" on the "+thisSide+" side."));
+		backtrack();
+	}
+}
+
+rule HintFinishTransformationDragNDrop {
+	salience: 8;
+	when {
+		p: Problem p.dragNDrop;
+		ci: cycleInfo ci.selection === "hint";
+		ri: rowInfo ri.transformations.length {transformations: rowT};
+		ie1: interfaceElementDnd ie1.operand && ie1.operator;
+		ie2: interfaceElementDnd !ie2.operand || !ie2.operator {side: s};
+	} then {
+		var transform = rowT[0],
+			expAfter = transform.expAfter,
+			operand = transform.operand,
+			thisSide = s,
+			otherSide = s === "left" ? "right" : "left",
+			input = expAfter.split("=")[thisSide === "left" ? 0 : 1];
+		switch(transform.operation) {
+			case 'subtraction':
+				assert(new Hint("You subtracted "+operand+" from the "+otherSide+", now do the same on the "+thisSide+"."));
+				break;
+			case 'addition':
+				assert(new Hint("You added "+operand+" to the "+otherSide+", now do the same on the "+thisSide+"."));
+				break;
+			case 'division-simple':
+			case 'division-complex':
+				assert(new Hint("You divided the "+otherSide+" by "+operand+", now do the same on the "+thisSide+"."));
+				break;
+		}
+		assert(new Hint("Enter "+input+" on the "+thisSide+" side."));
+		backtrack();
+	}
+}
+
+//handles new student input, assert new cycleInfo fact
+rule focusSolutionStep {
+	when {
+		not (h: IsHintMatch);
+		not (ci: cycleInfo);
+		p: Problem {rows: rows};
+		sv: StudentValues sv.tutored {selection: sel};
+		r: interfaceRow r.name === rows[0] {solutionSteps: steps};
+		ie1: interfaceElement ie1.name === sel && ie1.name in steps && !ie1.value {side: s};
+		ie2: interfaceElement ie2.name in steps && ie2.name !== sel;   // the  other side
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";
+	}
+	then {
+		clearInputHistory();
+		let eStr = eqStr(e1.terms, e2.terms);
+		assert(new cycleInfo(s, sel, !ie2.value, p.nTransLastCycle, eStr));
+		if ( !ie2.value ) {
+			assert(new rowInfo(16-rows.length));
+		}
+	}
+}
+
+rule focusSolutionStepDragNDrop {
+	when {
+		not (h: IsHintMatch);
+		not (ci: cycleInfo);
+		p: Problem p.dragNDrop {rows: rows};
+		sv: StudentValues sv.tutored {selection: side, action: stepType};
+		ie1: interfaceElementDnd ie1.side === side && (!ie1.operator || !ie1.operand) {side: s};
+		ie2: interfaceElementDnd ie2.side !== side;   // the  other side
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";
+	}
+	then {
+		console.log("%c[NOOLS] " + "%cFOCUS SOLUTION STEP", "color: #f53", "");
+		console.log(getStudentInput());
+		if (sv === getStudentInput()) {
+			clearInputHistory();
+			let eStr = eqStr(e1.terms, e2.terms);
+			stepType = (stepType === "OperatorToExpression" || stepType === "OperatorToToken") ? "operator" : "operand";
+			console.log(stepType);
+			console.log("focusSolutionStepDragNDrop, sv is ");
+			console.log(sv);
+			console.log("stepType is "+stepType);
+			assert(new cycleInfo(side, side, true, p.nTransLastCycle, eStr, stepType, ie1));	
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule startHintCycle {
+	when {
+		p: Problem {rows: pRows};
+		h: IsHintMatch;
+		not( ci: cycleInfo );
+		r: interfaceRow r.name === pRows[0] {solutionSteps: steps};
+		ie1: interfaceElement ie1.name in steps && !ie1.value {side: s}; 
+		ie2: interfaceElement ie2.name in steps && ie2.side !== s;
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";		
+	} then {
+		let eStr = eqStr(e1.terms, e2.terms);
+		assert(new cycleInfo(s, "hint", !ie2.value, p.nTransLastCycle, eStr));
+		if ( !ie2.value ) {
+			assert(new rowInfo(16-pRows.length));
+		}
+	}
+}
+
+rule startHintCycleDragNDrop {
+	when {
+		p: Problem p.dragNDrop {rows: pRows};
+		h: IsHintMatch;
+		not( ci: cycleInfo );
+		r: interfaceRow r.name === pRows[0] {solutionSteps: steps};
+		ie1: interfaceElementDnd {side: s}; 
+		ie2: interfaceElementDnd ie2.side !== s;
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";		
+	} then {
+		let eStr = eqStr(e1.terms, e2.terms);
+		assert(new cycleInfo(s, "hint", true, p.nTransLastCycle, eStr));
+	}
+}
+
+/*
+allow copy side if there is an div term in the other side
+*/
+rule copySide1 {
+	salience: 500;
+	when {
+		not (h: IsHintMatch);
+		p: Problem !p.dragNDrop;
+		ri: rowInfo !ri.modified;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug {focus: f, otherSideFree: free};
+        exists (e: Expr e.side !== f && hasDivTerm(e));   // don't want an activation for each match
+	}
+	then {
+		modify(ci, "copyOK", f);
+	}
+}
+/*
+allow copy side if there is like terms in the other side
+*/
+rule copySide2 {
+	salience: 500;
+	when {
+		not (h: IsHintMatch);
+		p: Problem !p.dragNDrop;
+		ri: rowInfo !ri.modified;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug {focus: f};
+		e: Expr e.side !== f {terms: eTerms};
+        t1: simpleTerm t1 in eTerms {var: v};
+        t2: simpleTerm t2 in eTerms && t2.var === v && (t2.factNr > t1.factNr);
+	}
+	then {
+		modify(ci, "copyOK", f);
+	}
+}
+
+rule copySide3 {
+	salience: 500;
+	when {
+		not (h: IsHintMatch);
+		p: Problem !p.dragNDrop;
+		ri: rowInfo !ri.modified;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug {focus: f};
+		e: Expr e.side !== f {terms: eTerms};
+		pt: productTerm pt in eTerms {factors: ptFactors};
+        factorExpr1: Expr (factorExpr1 === ptFactors[0] || factorExpr1 === ptFactors[1]) && factorExpr1.terms.length > 1;
+		factorExpr2: Expr (factorExpr2 === ptFactors[1] || factorExpr2 === ptFactors[0]) && factorExpr2 !== factorExpr1;
+	} then {
+		modify(ci, "copyOK", f);
+	}
+}
+
+rule write {
+	salience: 10;
+	when {
+		not (h: IsHintMatch);
+		ri: rowInfo {modified: m};   // too narrow in general, but works for the time being
+		ci: cycleInfo !ci.simplification {focus: f, selection: s, otherSideFree: free, copyOK: cOK, inputs: inputList, opStr: os, ogStr: expAtStart};
+		sv: StudentValues sv.selection === s {input : studentInput};
+		p: Problem !p.dragNDrop && (m || cOK) {rows: rows, stepSkipLevel: ssl};   //  bit  of a hack;  curious whether this works
+		ie: interfaceElement ie.name === s;      // or store in cycleInfo? have already checked that
+		               // value is empty in focusSolutionStep   (yay!)
+		e: Expr e.side === f && e.topLevel {terms: allTerms};
+		e2: Expr e2.side !== f && e2.topLevel {terms: allTerms2};
+	}
+	then {
+		var rowNum = parseInt(/\d+$/.exec(rows[0])[0], 10);
+		var input = eqStr(allTerms);
+		var nTrans = os.split('t').length - 1;
+		var nSimp = os.split('s').length - 1;
+		writeInput(input);
+	/*
+		console.log("number of transformation:", nTrans);
+		console.log("number of simplification:", nSimp);
+		console.log("opStr: "+os);
+	*/
+		var skippedTooManySteps = false;
+		var ti = os.indexOf('t');
+		var needToSimplify = p.forceSimplify && !parser.algSimplified(expAtStart) && (ti === 0);
+		switch(ssl) {
+			case 1: //1 trans OR 1 simp allowed
+				skippedTooManySteps = (nTrans + nSimp) > 1;
+				break;
+			case 2: //1 trans, infinite simp allowed, trans must be first operation
+				skippedTooManySteps = (ti > 0) || (nTrans > 1);
+				break;
+		}
+		var isBug = ci.inputIsBug || skippedTooManySteps || needToSimplify;
+		if(checkSAI({selection: s, action: "UpdateTextField", input: input}, SAIeq, isBug)) {
+			if(isBug){
+				console.log("bug match");
+				var message;
+				if (needToSimplify) {
+					message = "You need to fully simplify the expression before you can begin a new transformation";
+				} else if (skippedTooManySteps) {
+					message = "Yes, that is correct, but you are skipping too many steps. Can you go step-by-step?";
+				} else {
+					message = ci.bugMessage;
+				}
+				setSuccessOrBugMsg(message);
+				backtrack();
+			}else{
+				//correct
+				modify(ie, "value", input);    
+				if ( !free ) {
+					//whole row completed
+					retract(ri);
+					modify(p, "rows", rows.slice(1));
+					rowNum++;
+					addPregenSAI({selection: "solveLeft"+rowNum});
+					addPregenSAI({selection: "solveRight"+rowNum});
+					addPregenSAI({selection: "done"});
+					modify(p, "nTransLastCycle", 0);
+					var fullExp = eqStr(allTerms, allTerms2);
+					var simpd = parser.algSimplified(fullExp);
+					var tpa = null,
+						diagramData = null,
+						transList = ri.transformations;
+				
+					if (p.useDiagrams) {
+						if (ri.transformations.length) {
+							if (simpd) {
+								//show diagrams for transformation
+								tpa = genDiagramTPA(ri.transformations);
+								diagramData = ri.transformations[0];
+							} else {
+								p.diagramsDeferredFor = ri.transformations;
+							}
+						} else if (p.diagramsDeferredFor && simpd) {
+							//show diagrams for transformation
+							tpa = genDiagramTPA(p.diagramsDeferredFor);
+							diagramData = p.diagramsDeferredFor[0];
+							p.diagramsDeferredFor = null;
+						}
+					}
+					if (tpa) {	
+						assert(new TPA(tpa[0], tpa[1], tpa[2]));
+						modify(p, "currentDiagram", diagramData);
+					} else {
+						assert(new TPA("_root", "showNextRow", 'arg'));
+					}
+				} else {
+					addPregenSAI({selection: "solve"+(f === "left" ? "Right" : "Left")+rowNum});
+					modify(p, "nTransLastCycle", nTrans);
+				}
+				modify(p, "swapped", ci.swapped);
+				retract(ci);
+				
+				halt();
+			}
+		}else {
+			//wrong
+			//console.log("wrong");
+			backtrack();
+		}
+	}
+}
+
+rule writeDragNDropTransformation {
+	salience: 10;
+	when {
+		not (h: IsHintMatch);
+		ri: rowInfo {modified: m};   // too narrow in general, but works for the time being
+		ci: cycleInfo !ci.simplification && ci.opStr.charAt(0) === 't'
+		{focus: f, selection: s, otherSideFree: free, copyOK: cOK, inputs: inputList, opStr: os, ogStr: expAtStart, stepType: ciStepType};
+		sv: StudentValues sv.selection === s {input : studentInput};
+		p: Problem p.dragNDrop && (m || cOK) {rows: rows, stepSkipLevel: ssl};   //  bit  of a hack;  curious whether this works
+		e: Expr e.side === f && e.topLevel {terms: allTerms};
+		e2: Expr e2.side !== f && e2.topLevel {terms: allTerms2};
+		pt: PartialTransformation;
+		ie1: interfaceElementDnd ie1.side === f;
+		ie2: interfaceElementDnd ie2.side !== f;
+	} then {
+		console.log("%c[NOOLS]" + "%c WRITE TRANSFORMATION", "color: #f53", "");
+		console.log(e, pt, ciStepType);
+		var input = applyPartialTransformation(e, pt, (ciStepType === "operand"));
+		var studentSideInput = studentInput.split("=")[(f === "left" ? 0 : 1)];
+		var nTrans = os.split('t').length - 1;
+		var nSimp = os.split('s').length - 1;
+		writeInput(input);
+	/*
+		console.log("number of transformation:", nTrans);
+		console.log("number of simplification:", nSimp);
+		console.log("opStr: "+os);
+	*/
+		var ti = os.indexOf('t');
+		var	needToSimplify = p.forceSimplify && !parser.algSimplified(expAtStart) && (ti === 0);
+		
+		var needSecondOperator = (p.operatorsFirst && ciStepType === "operand" && !pt.operator2Selected);
+		
+		var isBug = ci.inputIsBug || needToSimplify || needSecondOperator;
+		if(checkSAI({selection: s, action: "UpdateTextField", input: input}, ()=>{
+			return checkEqualEquation(input, studentSideInput);
+		}, isBug)) {
+			if(isBug){
+				console.log("bug match");
+				var message;
+				if (needToSimplify) {
+					message = "You need to fully simplify the expression before you can begin a new transformation";
+				} else if (needSecondOperator) {
+					message = "You need to apply the operator to the other side of the equation before choosing an operand";
+				} else {
+					message = ci.bugMessage;
+				}
+				setSuccessOrBugMsg(message);
+				undoAll();
+			}else{
+				//correct
+				modify(ie1, ciStepType, "done");    
+				modify(ri, "modified", false);
+				if ( ie1.operator && ie1.operand && ie2.operator && ie2.operand ) {
+					//whole row completed
+					
+					//retract(ri);
+					modify(ri, "transformations", []);
+					modify(ri, "transformed", true);
+					
+					modify(p, "nTransLastCycle", 0);
+					
+					//apply transformation once full row filled in
+					applyTransformation(p, pt);
+					retract(pt);
+					
+					//clear interfaceElement facts
+					clearInterfaceElements(ie1, ie2);
+				} else {
+					modify(p, "nTransLastCycle", nTrans);
+				}
+				modify(p, "swapped", ci.swapped);
+				retract(ci);
+				halt();
+			}
+		}else {
+			//wrong
+			//console.log("wrong");
+			backtrack();
+		}
+	}
+}
+
+rule writeDragNDropSimplification {
+	salience: 10;
+	when {
+		not (h: IsHintMatch);
+		ri: rowInfo {modified: m};   // too narrow in general, but works for the time being
+		ci: cycleInfo !ci.simplification 
+		{focus: f, selection: s, otherSideFree: free, copyOK: cOK, inputs: inputList, opStr: os, ogStr: expAtStart, stepType: ciStepType};
+		sv: StudentValues sv.selection === s {input : studentInput};
+		p: Problem p.dragNDrop && (m || cOK) {rows: rows, stepSkipLevel: ssl};   //  bit  of a hack;  curious whether this works
+		e: Expr e.side === f && e.topLevel {terms: allTerms};
+		not(pt: PartialTransformation);
+		ie1: interfaceElementDnd ie1.side === f;
+	} then {
+		
+		console.log("%c[NOOLS] " + "%cwriteDragNDrop, stepType is "+ciStepType, "color: #f53", "");
+		var input = eqStr(allTerms);
+		var studentSideInput = studentInput.split("=")[(f === "left" ? 0 : 1)];
+		var nTrans = os.split('t').length - 1;
+		var nSimp = os.split('s').length - 1;
+		writeInput(input);
+	/*
+		console.log("number of transformation:", nTrans);
+		console.log("number of simplification:", nSimp);
+		console.log("opStr: "+os);
+	*/
+		var isBug = ci.inputIsBug;
+		if(checkSAI({selection: s, action: "UpdateTextField", input: input}, ()=>{
+			return checkEqualEquation(input, studentSideInput);
+		}, isBug)) {
+			if(isBug){
+				console.log("bug match");
+				var message = ci.bugMessage;
+				setSuccessOrBugMsg(message);
+				undoAll();
+			}else{
+				//correct
+				modify(ri, "modified", false);
+				modify(p, "nTransLastCycle", 0);	
+				
+				//apply transformation once second operand filled in
+				modify(p, "swapped", ci.swapped);
+				retract(ci);
+				halt();
+			}
+		}else {
+			//wrong
+			//console.log("wrong");
+			backtrack();
+		}
+	}
+}
+
+rule done {
+	when {
+		p: Problem !p.currentDiagram;
+		e1: Expr e1.topLevel && e1.side === "left" && e1.terms.length === 1 {terms: terms1};
+		e2: Expr e2.topLevel && e2.side === "right" && e2.terms.length === 1 {terms: terms2};
+		t1: simpleTerm t1 in terms1 && (t1.var === null || t1.coeff === 1) {var: v1};
+		t2: simpleTerm t2 in terms2 && t2.var !== v1 && (t2.var === null || t2.coeff === 1);
+	}
+	then {
+		assert(new Hint("You've determined the value of x, so the problem is done.  Click \"Finish Problem\" to move on"));
+		if (checkSAI({selection: "done", action: "ButtonPressed", input: -1})) {
+			halt();
+		} 
+		else {
+			backtrack();
+		}
+	}
+}
+
+/*
+rule helpTransformation {
+	when {
+		exists (h: IsHintMatch);
+		left: Expr left.side === "left" {terms: lTerms};
+		right: Expr right.side === "right" {terms: rTerms} ;
+		t: transformation {terms: transTerms, type: name};
+	}
+	then {
+		hint = ". You have done: " + name + ", please complete by simplify: ";
+		console.log(transTerms.length);
+		transTerms.forEach(function(termNum){
+			term = getTermFromNum(termNum);
+			if(term){
+				hint += termStr(term) + " on the side "+term.side;
+			}
+		});
+		var eq = getEquationString(lTerms, rTerms);    // have equation object?  maybe not
+		assert(new Hint("The equation is: " + eq + hint));
+		halt();
+	}
+}
+
+rule helpNoTransformation {
+	when {
+		exists (h: IsHintMatch);
+		left: Expr left.side === "left" {terms: lTerms};
+		right: Expr right.side === "right" {terms: rTerms} ;
+//		not (t: transformation);
+	}
+	then {
+		hint = getHintMessage();
+		var eq = getEquationString(lTerms, rTerms);  
+		assert(new Hint("The equation is: " + eq + ". " + hint));
+		halt();
+	}
+}
+*/

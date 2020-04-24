@@ -1,174 +1,101 @@
-import {immerable} from 'immer'
+const generateID = () => Math.random().toString(36).substr(2, 9);
 
-function parseTree(node) {
-    if (/* RelationNode */) {
-        return new Equation(parseTree(/* RelationNode.left */), parseTree(/* RelationNode.right */));
-    }
-    if (/* Unary node */) {
-
-    } else if (/* Add Node */) {
-        let items = []
-        node.terms.foreach((term, i) => {
-            if (i > 0) { 
-                items.push(term.sign > 0 ? add() : subtract());
-            }
-            items.push(parseTree(term));
-        })
-    } else if (/* Mult Node */) {
-        if (node.terms.every(term => term instanceof CTATConstantNode || term instanceof CTATVariableNode)) {
-            return new Token();
-        } else {
-            let items = []
-            node.terms.foreach((term, i) => {
-                if (i > 0) { 
-                    if (term.exp > 0) { 
-                        items.push(mult());
-                    }
-                }
-                items.push(parseTree(term));
-            })
-        }
-    }
+class EquationNode {
+  constructor(parent, path) {
+    this.parent = parent;
+    this.path = path;
+    this.id = generateID();
+  }
 }
 
-function generateID() {
-	return Math.random().toString(36).substr(2, 9);
+export class Equation extends EquationNode {
+  constructor(left, right) {
+    super(null, null);
+    this.left = left;
+    this.right = right;
+  }
+
+  stringify() {
+    return this.left.stringify() + " = " + this.right.stringify();
+  }
 }
 
-export class Expression {
-    constructor(items) {
-        this[immerable] = true
-        this.items = items;
-        this.id = generateID();
-    }
-
-    stringify() {
-        return "(" + this.items.map(item => item.stringify()).join(" ") + ")";
-    }
+export class Token extends EquationNode {
+  constructor(parent, path, constant, variable, ...indices) {
+    super(parent, path);
+    this.constant = constant;
+    this.variable = variable;
+    this.indices = indices;
+  }
+  stringify() {
+    return this.value();
+  }
+  value() {
+    const constant = !(this.variable && this.constant === 1)
+      ? this.constant === -1
+        ? "-"
+        : this.constant
+      : "";
+    const variable = this.variable || "";
+    return constant + variable;
+  }
 }
 
-export class Token {
-    // [immerable] = true
-    constructor(constant, variable, editable=false) {
-        this[immerable] = true
-        this.constant = constant;
-        this.variable = variable;
-        this.editable = editable;
-        this.id = generateID();
-    }
-
-    stringify() {
-        return this.constant + (this.variable ? this.variable : '');
-    }
+export class UnknownToken extends Token {
+  constructor(parent, path, startIndex = null) {
+    super(parent, path, null, null, startIndex, null);
+    this.unknown = true;
+  }
 }
 
-export class Operator {
-    constructor(symbol, operation) {
-        this[immerable] = true
-        this.symbol = symbol;
-        this.operation = operation;
-        this.id = generateID();
-    }
-    equals(other) {
-        return other instanceof Operator && other.symbol === this.symbol && other.operation === this.operation
-    }
-    stringify() {
-        return this.symbol;
-    }
+export class Expression extends EquationNode {
+  constructor(parent, path, nodes, parens = false) {
+    super(parent, path);
+    this.nodes = nodes;
+    this.parens = parens;
+  }
+  stringify() {
+    return "(" + this.nodes.map((item) => item.stringify()).join(" ") + ")";
+  }
 }
 
-const addOp = (op0, op1) => {
-    console.log("ADD OPERATION ->", op0, op1);
-}
-export const add = () => new Operator('+', addOp);
-
-const subtractOp = (op0, op1) => {
-    console.log("SUBTRACT OPERATION ->", op0, op1);
-}
-export const subtract = () => new Operator('-', subtractOp);
-
-const multiplyOp = (op0, op1) => {
-    console.log("MULTIPLY OPERATION ->", op0, op1);
-}
-export const multiply = () => new Operator('×', multiplyOp);
-
-const divideOp = (op0, op1) => {
-    console.log("DIVIDE OPERATION ->", op0, op1);
-}
-export const divide = () => new Operator('÷', divideOp);
-
-export class Equation {
-    constructor(left, right) {
-        this[immerable] = true
-        this.left = left;
-        this.right = right;
-        this.id = generateID();
-    }
-    
-    stringify() {
-        return this.left.stringify() + " = " +  this.right.stringify();
-    }
+const Operations = { PLUS: "+", MINUS: "-", TIMES: "×", DIVIDE: "÷" };
+export class Operator extends EquationNode {
+  constructor(parent, path, symbol, operation) {
+    super(parent, path);
+    this.symbol = symbol;
+    this.operation = operation;
+  }
+  equals(other) {
+    return typeof other === "string" || other instanceof String
+      ? this.symbol === other
+      : other instanceof Operator && other.symbol === this.symbol;
+  }
+  stringify() {
+    return this.symbol;
+  }
 }
 
+export class PlusOperator extends Operator {
+  constructor(parent, path) {
+    super(parent, path, Operations.PLUS, "PLUS");
+  }
+}
 
+export class MinusOperator extends Operator {
+  constructor(parent, path) {
+    super(parent, path, Operations.MINUS, "MINUS");
+  }
+}
 
+export class TimesOperator extends Operator {
+  constructor(parent, path) {
+    super(parent, path, Operations.TIMES, "TIMES");
+  }
+}
 
-
-
-
-
-
-
-// class Operation {
-//     constructor(symbol, terms) {
-//         this[immerable] = true
-//         this.symbol = symbol;
-//         this.terms = terms;
-//     }
-// }
-// export class Addition extends Operation {
-//     constructor(terms) {
-//         super('+', terms);
-//     }
-// }
-// export class Subtraction extends Operation {
-//     constructor(terms) {
-//         super('-', terms);
-//     }
-// }
-// export class Multiplication extends Operation {
-//     constructor(terms) {
-//         super('×', terms);
-//     }
-// }
-// export class Division extends Operation {
-//     constructor(terms) {
-//         super('÷', terms);
-//     }
-// }
-
-// class Term {
-//     constructor(value) {
-//         this[immerable] = true
-//         this.value = value;
-//     }
-// }
-
-// export class Constant extends Term {
-//     constructor(value) {
-//         super(value);
-//     }
-// }
-// export class Variable extends Term {
-//     constructor(value) {
-//         super(value);
-//     }
-// }
-
-// export class Equation {
-//     constructor(left, right) {
-//         this[immerable] = true
-//         this.left = left;
-//         this.right = right;
-//     }
-// }
+export class DivideOperator extends Operator {
+  constructor(parent, path) {
+    super(parent, path, Operations.DIVIDE, "DIVIDE");
+  }
+}

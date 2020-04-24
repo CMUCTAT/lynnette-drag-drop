@@ -1,282 +1,296 @@
-import { writable, get } from 'svelte/store';
-import { Expression, Token, Operator, Equation } from './classes';
-import { history } from './history.js';
+import { writable, get } from "svelte/store";
+// import { history } from './history.js';
+import {
+  Equation,
+  Token,
+  Expression,
+  Operator,
+  PlusOperator,
+  MinusOperator,
+  TimesOperator,
+  DivideOperator,
+  UnknownToken,
+} from "../classes.js";
+import { history } from "./history";
 
-// const initial = new Equation(
-//     new Expression([new Token(1, null), 'DIVIDE', new Token(2, 'x')]),
-//     new Expression([new Token(3, null)])
-// )
-const builder = new CTATTutoringServiceMessageBuilder ();
+function createDragdropData() {
+  const { subscribe, set, update } = writable({ drag: null, drop: null });
+  return {
+    subscribe,
+    setDrag: (node) => update((state) => Object.assign(state, { drag: node })),
+    setDrop: (node) => update((state) => Object.assign(state, { drop: node })),
+  };
+}
+export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
-// let exp = parse.algParse("3x + 6 = 9");
-// let exp = parse.algParse("3x / ? = 11 - 32 + 6");
-// let exp = parse.algParse("2/3 * 5/4 = 9");
-// let exp = parse.algParse("x+-2=6x + 5/?/3");
 
-// const initial = exp;
-const initial = parse.algParse("2x = 0 - 4");
+const initial = null;
 
-history.push(initial);
-
-
-Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x]) ? xs[x] : null, o);
-
+// Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
 let dragOperation = {
-    side: null,
-    from: null,
-    to: null
-}
+  side: null,
+  from: null,
+  to: null,
+};
 
+/**
+ * Creates an draftEquation store, which can be globally accessed and updated by any Svelte element;
+ * convenient to apply draft operations from any child component without needing to provide it a function as a prop
+ * @param {CTATAlgebraTreeNode} initial the initial state of the equation
+ */
 function createDraftEquation() {
-	const { subscribe, set, update } = writable(initial);
-    const apply = (student = true) => update(eqn => {
-        console.log("APPLY");
-        
-        if (student) {
-            console.log("eqn:", eqn, "history.current", get(history).current);
-            var sai = new CTATSAI(dragOperation.side, dragOperation.from + "To" + dragOperation.to, parse.algStringify(eqn));
-            if ((CTATCommShell.commShell) && (get(history).current !== eqn))
-                CTATCommShell.commShell.processComponentAction(sai);
-        }
-        
-        if (get(history).current !== eqn) {
-            history.push(eqn);
-        }
-        return eqn;
-    });
-    const moveItem = (srcData, destData, eqn) => {
-        eqn = get(history).current;
-        dragOperation.side = destData.item.path[0];
+  // let initial = window.parse.algParse('2*(3+2)/(4/x) = 1 - ?');
+  const { subscribe, set, update } = writable(initial);
 
-        if (srcData.item !== destData.item) {
-            if (srcData.item instanceof Token) {
-                dragOperation.from = "Token";
-                if (destData.item instanceof Token) {
-                    dragOperation.to = "Token";
-                    let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                    let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                    if (destData.item.variable === null && destData.item.constant === null) {
-                        let src = parse.algParse(srcData.item.value())
-                        let dest = Object.path(eqn, destData.item.path)
-                        src.sign = dest.sign;
-                        src.exp = dest.exp;
-                        let next = parse.algReplaceExpression(eqn, dest, src);
-                        return next;
-                    } else if (srcParent === destParent) {
-                        let parent = srcParent;
-                        let indices = srcData.item.indices.concat(destData.item.indices);
-                        let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['combineSimilar'], false, ...indices))
-                        parent = Object.path(next, srcData.item.path.slice(0, -2));
-                        next = parse.algReplaceExpression(next, parent, parse.algApplyRules(parent, ['removeIdentity']))                        
-                        return next;
-                    }
-                } else if (destData.item instanceof Expression) {
-                    dragOperation.to = "Expression";
-                    let srcParent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                    let destParent = Object.path(eqn, destData.item.path.slice(0, -2));
-                    if (srcParent === destParent && srcParent.operator !== 'EQUAL') {
-                        let parent = Object.path(eqn, srcData.item.path.slice(0, -2));
-                        let n0 = parseInt(srcData.item.path.slice(-1)[0]);
-                        let n1 = parseInt(destData.item.path.slice(-1)[0]);
+  /**
+   * Will perform a draft operation on the equation, i.e. will change the equation, but not write to history
+   *
+   * @param {EquationNode} src the source EquationNode
+   * @param {EquationNode} dest the destination EquationNode
+   * @param {*} eqn the current equation
+   * @returns new modified equation
+   */
+  function draftOperation(src, dest, eqn) {
+    eqn = get(history).current; //the draft equation will always reset to the head of the history stack before applying draft operations; otherwise the draft would be multiple steps ahead of the current equation
 
-                        let next = parse.algReplaceExpression(eqn, parent, parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, n0, n1));
-                        return next;
-                    }
-                }
-            } else if (srcData.item instanceof Operator) {
-                dragOperation.from = "Operator";
-                if (destData.item instanceof Token) {
-                    dragOperation.to = "Token";
-                    let operation = srcData.item.operation;
-                    // let dest = parse.algGetExpression(Object.path(eqn, destData.item.path.slice(0, -2)), destData.item.indices[0], destData.item.indices[1])
-                    // console.log(dest);
-                    
-                    let subexp;
-                    if (destData.item.indices.length > 1) {
-                        destData.item.indices.sort()
-                        subexp = parse.algGetExpression(Object.path(eqn, destData.item.path.slice(0, -2)), destData.item.indices[0], destData.item.indices[1])
-                    } else {
-                        subexp = Object.path(eqn, destData.item.path)
-                    }
-                    console.log(subexp);
-                    
-                    let next = parse.algReplaceExpression(parse.algParse(parse.algStringify(eqn)), subexp, parse.algCreateExpression(operation, subexp, '?'))
-                    //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place not immutably
-                    return next;
-                } else if (destData.item instanceof Expression) {
-                    dragOperation.to = "Expression";
-                    let operation = srcData.item.operation;
-                    eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this; 
-                    // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
-                    let dest = Object.path(eqn, destData.item.path)
-                    let next = parse.algReplaceExpression(eqn, dest, parse.algCreateExpression(operation, dest, '?'));
-                    return next;
-                }
-            }
-        }
-        console.log(1);
-        
-        return eqn;
+    // eqn = initial;
+    if (src === dest)
+      //if src and dest are the same, we're dragging an node onto itself, so nothing happens
+      return eqn;
+    //we determine what to do based on what the src and dest is
+    //some of these may never trigger given how the interface manages type checking for its drag/drop operations
+    console.log(src, dest);
+    if (src instanceof Token) {
+      if (dest instanceof Token) {
+        return tokenToToken(src, dest, eqn);
+      } else if (dest instanceof Expression) {
+        return tokenToExpression(src, dest, eqn);
+      } else if (dest instanceof Operator) {
+        return tokenToOperator(src, dest, eqn);
+      } else {
+        throw new TypeError("Drag destination is not a proper item type");
+      }
+    } else if (src instanceof Expression) {
+      if (dest instanceof Token) {
+        return expressionToToken(src, dest, eqn);
+      } else if (dest instanceof Expression) {
+        return expressionToExpression(src, dest, eqn);
+      } else if (dest instanceof Operator) {
+        return expressionToOperator(src, dest, eqn);
+      } else {
+        throw new TypeError("Drag destination is not a proper item type");
+      }
+    } else if (src instanceof Operator) {
+      if (dest instanceof Token) {
+        return operatorToToken(src, dest, eqn);
+      } else if (dest instanceof Expression) {
+        return operatorToExpression(src, dest, eqn);
+      } else if (dest instanceof Operator) {
+        return operatorToOperator(src, dest, eqn);
+      } else {
+        throw new TypeError("Drag destination is not a proper item type");
+      }
+    } else {
+      throw new TypeError("Drag source is not a proper item type");
     }
-	return {
-        subscribe,
-        moveItem: (srcData, destData) => update(eqn => moveItem(srcData, destData, eqn)),
-        resolveOperator: path => {
-            let changed;
-            update(eqn => {
-                let splitPath = path.split(',');
-                let clippedPath = splitPath.slice(0, -1);
-                let op0 = parseInt(splitPath.slice(-1)[0]) + 1;
-                let op1 = op0 - 2;
-                let parsed = parseGrammar(eqn);
-                let item0 = Object.path(parsed, clippedPath.concat(['items', op0]));
-                let item1 = Object.path(parsed, clippedPath.concat(['items', op1]));
-                let next = moveItem({ item: item0 }, { item: item1 });
-                changed = get(history).current !== next;
-                return next;
-            });
-            apply();
-            return changed;
-        },
-        updateToken: (token, value) => {
-            update(eqn => {
-                eqn = parse.algParse(get(history).current);
-                let e = parse.algParse(eqn)
-                let newToken = parse.algParse(value);
-                let oldToken = Object.path(e, token.path)
-                // parse.algFindExpression(e, oldToken);
-                newToken.sign = oldToken.sign;
-                newToken.exp = oldToken.exp;
-                dragOperation.side = token.path[0];
-                dragOperation.from = "Update";
-                dragOperation.to = "Token";
-    
-                let next = parse.algReplaceExpression(e, oldToken, newToken)
-                return next;
-            });
-            apply();
-        },
-        set: next => set(next),
-        reset: () => set(get(history).current),
-        apply
-	};
+  }
+
+  /**
+   * Pushes the current draft equation onto the history stack and sends an SAI to the Tutor describing the operation that has been performed
+   *
+   * @param {*} eqn the current draft equation
+   * @returns the current draft equation (shouldn't have been modified)
+   */
+  function apply(eqn) {
+    let sai = new CTATSAI(
+      dragOperation.side,
+      dragOperation.from + "To" + dragOperation.to,
+      parse.algStringify(eqn)
+    );
+    console.log(`%c${sai.toXMLString()}`, "color: #15f");
+
+    if (CTATCommShell.commShell) {
+      CTATCommShell.commShell.processComponentAction(sai);
+    }
+    if (
+      get(history).current !== eqn &&
+      parse.algStringify(get(history).current) !== parse.algStringify(eqn)
+    ) {
+      history.push(eqn);
+    }
+    return eqn;
+  }
+
+  /**
+   * Updates an unknown token with a value in the case where a student *types* in a value into an UnknownToken; dragging a value to an UnknownToken is accounted for in draftOperation
+   *
+   * @param {*} eqn the current draft equation
+   * @param {UnknownToken} token the token being modified
+   * @param {string|number} value the value to put in the token
+   * @returns modified equation
+   */
+  function updateToken(eqn, token, value) {
+    eqn = get(history).current;
+    dragOperation = { from: "Update", to: "Token", side: token.path[0] };
+    let target = Object.path(eqn, token.path);
+    let newToken = parse.algParse(value);
+    newToken.sign = target.sign;
+    newToken.exp = target.exp;
+    let next = parse.algReplaceExpression(eqn, target, newToken);
+    return apply(next);
+  }
+
+  return {
+    subscribe,
+    draftOperation: (src, dest) => update((eqn) => draftOperation(src, dest, eqn)),
+    updateToken: (token, value) => update((eqn) => updateToken(eqn, token, value)),
+    apply: () => update((eqn) => apply(eqn)),
+    reset: () => set(initial),
+    set: (eqn) => set(eqn),
+  };
 }
+
 export const draftEquation = createDraftEquation();
 
+/**
+ * Extends Object with the path function which traverses an object via the specified path array
+ * e.g. Object.path({a: {b: c: ['foo', 'bar']}}, ['a', 'b', 'c', 1]) returns 'bar'
+ */
+Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x] ? xs[x] : null), o);
 
-
-function createDragData() {
-	const { subscribe, set } = writable({});
-
-	return {
-        subscribe,
-        reset: () => set({}),
-        set: (item, path) => {
-            return set({item: item, path: path})
-        },
-	};
-}
-export const dragData = createDragData();
-
-function createDropData() {
-	const { subscribe, set, update } = writable({});
-
-	return {
-        subscribe,
-        reset: () => set({}),
-        set: (item, path, drag) => {
-            draftEquation.moveItem(drag, {item: item, path: path});
-            return set({item: item, path: path})
-        },
-	};
-}
-export const dropData = createDropData();
-
-export function parseGrammar(exp) {
-    
-    let test = parseGrammarTree(exp, [])
-    
-    return test
-}
-
-
-function parseGrammarTree(exp, ignoreSign) {
-    let path = exp.path.join(',').split(',');
-    switch(exp.operator) {
-        case 'EQUAL':
-            let operands = parse.algGetOperands(exp)
-            return new Equation(parseGrammarTree(operands[0]), parseGrammarTree(operands[1]));
-        case 'CONST':
-            return new Token((ignoreSign ? 1 : exp.sign) * exp.value, null, path, parseInt(path.slice(-1)[0]));
-        case 'VAR':
-            return new Token(1, exp.variable, path, parseInt(path.slice(-1)[0]));
-        case 'UMINUS':
-            return new Token(-exp.base.value, null, path, parseInt(path.slice(-1)[0]));
-        case 'UNKNOWN':
-            return new Token(null, null, path, parseInt(path.slice(-1)[0]));
-        case 'PLUS':
-            return new Expression(exp.terms.reduce((res, item, i) => {
-                let token = parseGrammarTree(item, i > 0);
-                let operator = item.sign > 0 ? new Operator('PLUS') : new Operator('MINUS')
-                return i > 0 ? res.concat(operator, token) : res.concat(token);
-            }, []), path);
-        case 'TIMES':
-            let divide = []
-            let newExp = new Expression(exp.factors.reduce((res, item, i) => {
-                let token = parseGrammarTree(item);
-                if (item.exp < 0) {
-                    divide.push(token);
-                    return res;
-                } else {
-                    return i > 0 ? res.concat(new Operator('TIMES'), token) : res.concat(token);
-                }
-            }, []), path);
-            if (divide.length > 0) {
-                newExp = new Expression([
-                    flatten(combineConstVars(newExp, path)),
-                    new Operator('DIVIDE'),
-                    flatten(combineConstVars(new Expression(divide.reduce((res, item, i) => {
-                        return i > 0 ? res.concat(new Operator('TIMES'), item) : res.concat(item);
-                    }, []))))
-                ])
-            }
-            
-            return flatten(combineConstVars(newExp, path));
-        default:
-            
-            return null;
-    }
+/**
+ * When a token is dragged onto a token, the following should happen:
+ * if the destination is the unknown operator ("?"), then replace its value with the source's value and return the result
+ * else if the two tokens have the same parent (of the same expression), then combine them with respect to their operators
+ * else this drag operation is not algebraically valid, thus nothing happens
+ * @param {Object} src source object containing the node and its path
+ * @param {Object} dest destination object containing the node and its path
+ * @param {CTATAlgebraTreeNode} eqn the current equation
+ */
+function tokenToToken(src, dest, eqn) {
+  dragOperation = { from: "Token", to: "Token", side: dest.path[0] };
+  if (dest instanceof UnknownToken) {
+    let d = Object.path(eqn, dest.path);
+    let s = parse.algParse(src.value());
+    s.exp = d.exp;
+    s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
+    return parse.algReplaceExpression(eqn, d, s);
+  } else if (src.parent === dest.parent) {
+    let parentPath = src.path.slice(0, -2);
+    let parent = Object.path(eqn, parentPath);
+    let indices = src.indices.concat(dest.indices);
+    indices.sort();
+    let next = parse.algReplaceExpression(
+      eqn,
+      parent,
+      parse.algApplyRulesSelectively(parent, ["combineSimilar"], false, ...indices)
+    );
+    parent = Object.path(next, parentPath);
+    return parse.algReplaceExpression(
+      next,
+      parent,
+      parse.algApplyRules(parent, ["removeIdentity"])
+    );
+  } else {
+    return eqn;
+  }
 }
 
-function flatten(expression) {
-    return expression.items.length === 1 ? expression.items[0] : expression;
+/**
+ * When a token is dragged onto an expression, the following should happen:
+ * if the two items have the same parent (of the same expression), distribute the token upon the expression
+ * else nothing happens
+ * @param {Object} src source object containing the node and its path
+ * @param {Object} dest destination object containing the node and its path
+ * @param {CTATAlgebraTreeNode} eqn the current equation
+ */
+function tokenToExpression(src, dest, eqn) {
+  dragOperation = { from: "Token", to: "Expression", side: dest.path[0] };
+  if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
+    let parent = Object.path(eqn, src.path.slice(0, -2));
+    let i0 = parseInt(src.path.slice(-1)[0]);
+    let i1 = parseInt(dest.path.slice(-1)[0]);
+    return parse.algReplaceExpression(
+      eqn,
+      parent,
+      parse.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
+    );
+  } else {
+    return eqn;
+  }
 }
 
-function combineConstVars(expression, path) {
-    let items = expression.items.reduce((res, item, i) => {
-        if (item instanceof Operator) {
-            return res.concat(item);
-        } else if (i > 1) {
-            let prev = res[res.length - 2];
-            let op = res[res.length - 1];
-            
-            if(item instanceof Token && prev instanceof Token && item.variable && !prev.variable && op.equals('TIMES')) {
-                res.splice(res.length - 2, 2, new Token(
-                    item.constant * prev.constant,
-                    item.variable || '' + prev.variable || '',
-                    item.path, parseInt(item.path.slice(-1)[0]), parseInt(prev.path.slice(-1)[0])));
-                return res;
-            } else if (op.equals('DIVIDE')) { //TODO figure out a ref for this
-                res.splice(res.length - 2, 2, new Expression([prev, op, item], path))
-                return res;
-            } else {
-                return res.concat(item);
-            }
-        } else {
-            return res.concat(item);
-        }
-    }, []);
-    expression.items = items;
-    return expression;
+/**
+ * When a token is dragged on an operator, then nothing happens, because that doesn't make sense
+ * @param {Object} src source object containing the node and its path
+ * @param {Object} dest destination object containing the node and its path
+ * @param {CTATAlgebraTreeNode} eqn the current equation
+ */
+function tokenToOperator(src, dest, eqn) {
+  dragOperation = { from: "Token", to: "Operator", side: dest.path[0] };
+  return eqn;
+}
+
+function expressionToToken(src, dest, eqn) {
+  dragOperation = { from: "Expression", to: "Token", side: dest.path[0] };
+}
+
+function expressionToExpression(src, dest, eqn) {
+  dragOperation = { from: "Expression", to: "Expression", side: dest.path[0] };
+}
+
+/**
+ * When an expression is dragged on an operator, then nothing happens, because that doesn't make sense
+ * @param {Object} src source object containing the node and its path
+ * @param {Object} dest destination object containing the node and its path
+ * @param {CTATAlgebraTreeNode} eqn the current equation
+ */
+function expressionToOperator(src, dest, eqn) {
+  dragOperation = { from: "Expression", to: "Operator", side: dest.path[0] };
+  return eqn;
+}
+
+function operatorToToken(src, dest, eqn) {
+  dragOperation = { from: "Operator", to: "Token", side: dest.path[0] };
+  let subexp;
+  let indices = dest.indices;
+  if (indices > 1) {
+    indices.sort();
+    let parent = Object.path(eqn, dest.path.slice(0, -2));
+    subexp = parse.algGetExpression(parent, ...indices);
+  } else {
+    subexp = Object.path(eqn, dest.path);
+  }
+  let next = parse.algReplaceExpression(
+    parse.algParse(parse.algStringify(eqn)),
+    subexp,
+    parse.algCreateExpression(src.operation, subexp, "?")
+  );
+  //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
+  return next;
+}
+
+function operatorToExpression(src, dest, eqn) {
+  dragOperation = { from: "Operator", to: "Expression", side: dest.path[0] };
+  // eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this;
+  // console.log(eqn);
+
+  // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
+  let d = Object.path(eqn, dest.path);
+  let next = parse.algReplaceExpression(eqn, d, parse.algCreateExpression(src.operation, d, "?"));
+
+  return parse.algParse(parse.algStringify(next)); //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
+}
+
+/**
+ * When an operator is dragged on an operator, then nothing happens, because it's probably too much of a hassle to rework the equation
+ * @param {Object} src source object containing the node and its path
+ * @param {Object} dest destination object containing the node and its path
+ * @param {CTATAlgebraTreeNode} eqn the current equation
+ */
+function operatorToOperator(src, dest, eqn) {
+  //TODO this should be technically feasible to code, but it's probably not necessary to implement
+  dragOperation = { from: "Operator", to: "Operator", side: dest.path[0] };
+  return eqn;
 }

@@ -1,0 +1,164 @@
+rule PickDiagram {
+	when {
+		prob: Problem {rows: problemRows};
+		rowNum: Number from 15 - prob.rows.length;
+		sv: StudentValues sv.selection === "groupExplain"+rowNum+"Diagrams" && sv.input {selection: s, action: a, input: i};
+		not(ci: cycleInfo);
+	} then {
+		retract(sv);
+		var diagramRowNum = 15 - problemRows.length;
+		var tutorInput = "radioExplain"+diagramRowNum+"Diagram1";
+		var studentInputRegex = RegExp('^radioExplain'+diagramRowNum+'Diagram1');
+		if (checkSAI({selection: s, action: a, input: tutorInput}, () => studentInputRegex.test(i))) {
+			modify(prob, "currentDiagram", null);
+			assert(new TPA("_root", "hideIncorrectDiagrams", 'arg'));
+			assert(new TPA("_root", "showNextRow", 'arg'));
+			halt();
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule WrongDiagramInitial {
+	when {
+		prob: Problem prob.rows.length === 15 {rows: problemRows};
+		rowNum: Number from 15 - prob.rows.length;
+		sv: StudentValues sv.selection === "groupExplain"+rowNum+"Diagrams" && sv.input {selection: s, action: a, input: i};
+		not(ci: cycleInfo);
+	} then {
+		checkSAI({selection: s, action: a, input: i}, () => {
+			let diagramNum = /^radioExplain0Diagram(\d)/.exec(i)[1];
+			if (diagramNum === "2") {
+				//figure out which terms were switched
+				var t1,t2;
+				var sides = getFacts("Expr").filter((e)=>e.topLevel);
+				var side1Vars = getVarTerms(sides[0]),
+					side1Const = getConstTerms(sides[0]),
+					side2Vars = getVarTerms(sides[1]),
+					side2Const = getConstTerms(sides[1]);
+				if (side1Vars.length && side2Vars.length) {
+					t1 = side1Vars[0];
+					t2 = side2Vars[0];
+				} else if (side1Const.length && side2Const.length) {
+					t1 = side1Const[0];
+					t2 = side2Const[0];
+				}
+				setSuccessOrBugMsg("Look at the tapes for "+termStr(t1)+" and "+termStr(t2)+". Do they have appropriate sizes?");
+				return true;
+			} else if (diagramNum === "3") {
+				setSuccessOrBugMsg("Tapes have different lengths. You need to choose one which has tapes with the same length.");
+				return true;
+			}
+			return false;
+		}, true);
+		backtrack();
+	}
+}
+
+rule WrongDiagramSubtraction {
+	when {
+		prob: Problem getCurrentDiagramType(prob) === "subtraction" {currentDiagram: cd, rows: problemRows};
+		rowNum: Number from 15 - prob.rows.length;
+		sv: StudentValues sv.selection === "groupExplain"+rowNum+"Diagrams" && sv.input {selection: s, action: a, input: i};
+		not(ci: cycleInfo);
+	} then {
+		var diagramRowNum = 15 - problemRows.length;
+		var studentInputRegex = RegExp('^radioExplain'+diagramRowNum+'Diagram(\\d)');
+		checkSAI({selection: s, action: a, input: i}, () => {
+			let diagramNum = studentInputRegex.exec(i)[1];
+			if (diagramNum === "2") {
+				setSuccessOrBugMsg("Subtracted tapes have different lengths. You need to choose one which is subtracting the same thing from both sides.");
+				return true;
+			} else if (diagramNum === "3") {
+				setSuccessOrBugMsg("You need to subtract from both tapes.");
+				return true;
+			}
+			return false;
+		}, true);
+		backtrack();
+	}
+}
+
+rule WrongDiagramSimpleDivision {
+	when {
+		prob: Problem getCurrentDiagramType(prob) === "division-simple" {currentDiagram: cd, rows: problemRows};
+		rowNum: Number from 15 - prob.rows.length;
+		sv: StudentValues sv.selection === "groupExplain"+rowNum+"Diagrams" && sv.input {selection: s, action: a, input: i};
+		not(ci: cycleInfo);
+	} then {
+		var diagramRowNum = 15 - problemRows.length;
+		var studentInputRegex = RegExp('^radioExplain'+diagramRowNum+'Diagram(\\d)');
+		checkSAI({selection: s, action: a, input: i}, () => {
+			let diagramNum = studentInputRegex.exec(i)[1];
+			if (diagramNum === "2") {
+				setSuccessOrBugMsg("You need to divide both tapes.");
+				return true;
+			} else if (diagramNum === "3") {
+				setSuccessOrBugMsg("You need to divide the tapes, not to subtract.");
+				return true;
+			}
+			return false;
+		}, true);
+		backtrack();
+	}
+}
+
+rule WrongDiagramComplexDivision {
+	when {
+		prob: Problem getCurrentDiagramType(prob) === "division-complex" {currentDiagram: cd, rows: problemRows};
+		rowNum: Number from 15 - prob.rows.length;
+		sv: StudentValues sv.selection === "groupExplain"+rowNum+"Diagrams" && sv.input {selection: s, action: a, input: i};
+		not(ci: cycleInfo);
+	} then {
+		var diagramRowNum = 15 - problemRows.length;
+		var studentInputRegex = RegExp('^radioExplain'+diagramRowNum+'Diagram(\\d)');
+		var divisor = cd.operand;
+		checkSAI({selection: s, action: a, input: i}, () => {
+			let diagramNum = studentInputRegex.exec(i)[1];
+			if (diagramNum === "2") {
+				setSuccessOrBugMsg("Did you divide everything by "+divisor+"? You need to divide every different tape by "+divisor);
+				return true;
+			} else if (diagramNum === "3") {
+				setSuccessOrBugMsg("You need to divide the tapes, not to subtract.");
+				return true;
+			}
+			return false;
+		}, true);
+		backtrack();
+	}
+}
+
+rule HintDiagram {
+	when {
+		h: IsHintMatch;
+		p: Problem p.currentDiagram {currentDiagram: cd};
+	} then {
+		var operation = cd.operation,
+			operand = cd.operand,
+			expBefore = cd.expBefore,
+			expAfter = cd.expAfter;
+			
+		switch(operation) {
+			case 'initial':
+				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));
+				assert(new Hint("The tape at the top shows the left-hand side of the equation, and one at the bottom shows the right-hand side of the equation."));
+			break;
+			case 'subtraction': 
+				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));;
+				assert(new Hint("Remember that you need to subtract (take out) the same thing from both sides."));
+			break;
+			case 'division-simple':
+				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));
+				assert(new Hint("Remember that you need to divide by the same number from both sides."));
+				assert(new Hint("Make sure to differentiate between subtraction and division and how they are represented."));
+			break;
+			case 'division-complex':
+				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));
+				assert(new Hint("If you divide a tape by "+operand+", the length of the tape would be 1/"+operand));
+				assert(new Hint("Make sure to differentiate between subtraction and division and how they are represented."));
+			break;
+		}
+		backtrack();
+	}
+}

@@ -1,43 +1,24 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-<head>
-	<meta charset='utf8'>
-	<meta name='viewport' content='width=device-width'>
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width" />
 
-	<title>Svelte app</title>
+    <title>Lynnette Drag & Drop</title>
 
-	<link rel='icon' type='image/png' href='favicon.png'>
-	<link rel='stylesheet' href='Assets/global.css'>
-	<link rel='stylesheet' href='Assets/bundle.css'>
-	<script type="text/javascript" src="Assets/jquery.min.js"></script>
-	<script type="text/javascript" src="Assets/ctat.min.js"></script>
-<!--	<script type="text/javascript" src="Assets/ctatloader.js"></script>  in bundle.js -->
-	<script type="text/javascript" src="Assets/nools.js"></script>
-	<script type="text/javascript" src="Assets/modelhelperfuns.js"></script>
-</head>
+    <link rel="icon" type="image/png" href="./Assets/favicon.png" />
+    <link rel="stylesheet" href="./Assets/global.css" />
+    <link rel="stylesheet" href="./Assets/bundle.css" />
+    <script
+      type="text/javascript"
+      src="https://cdn.ctat.cs.cmu.edu/html-editor/js/jquery.js"
+    ></script>
+    <script type="text/javascript" src="./Assets/ctat/ctat.min.js"></script>
+    <script type="text/javascript" src="./Assets/ctat/nools.js"></script>
+    <script type="text/javascript" src="./Assets/ctat/modelhelperfuns.js"></script>
 
-<body>
-	<div class="CTATTextField" id="start-state" style="display: none;"></div>
-	<script src='bundle.js'></script>
-	<script>
-/*		
-		let p = new CTATAlgebraParser()
-		let e = p.algParse("3x + 6 = 9/?")
-		console.log(e.right.factors[1]);
-		console.log(p.algCreateExpression('DIVIDE', e.right.factors[1], '?').toString());
-		console.log(p.algReplaceExpression(e, e.right.factors[1], p.algCreateExpression('DIVIDE', e.right.factors[1], '?')).toString());
-*/		
-		
-		
-		// // let e = p.algParse("5x + 7 = 8 + ?");
-		// console.log(e.left.terms[0].factors[1]);
-		// let f = p.algFindExpression(e, '5x');
-		// console.log(f);
-		// let s = f[0]
-		// // console.log(p.algReplaceExpression(e, s, p.algCreateExpression('PLUS', s, '?')).toString());
-		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
-		// console.log(p.algReplaceExpression(e, e.left.terms[0].factors[1], p.algCreateExpression('PLUS', e.left.terms[0].factors[1], '?')).toString());
-		
-	</script>
-</body>
+    <script defer src="./Assets/bundle.js"></script>
+  </head>
+
+  <body></body>
 </html>

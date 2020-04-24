@@ -1,0 +1,8 @@
+import("productionrulesMB.nools");
+
+global pName = "16eq8x";
+global initLeft = "16";
+global initRight = "8x";
+global dragNDrop = true;
+
+global parseProblem = true;

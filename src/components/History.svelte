@@ -1,12 +1,12 @@
 <script>
 	import { history } from '../stores/history';
-	import ExpressionDisplay from './equation/display/ExpressionDisplay.svelte';
-	import OperatorDisplay from './equation/display/OperatorDisplay.svelte';
-	import TokenDisplay from './equation/display/TokenDisplay.svelte';
-	import { Operator, Expression, Token } from '../stores/classes';
-	import { parseGrammar } from '../stores/equation'
+	import ExpressionDisplay from './display/ExpressionDisplay.svelte';
+	import OperatorDisplay from './display/OperatorDisplay.svelte';
+	import TokenDisplay from './display/TokenDisplay.svelte';
+	import { Operator, Expression, Token } from '../classes.js';
+	import { parseGrammar } from '../grammarParser.js';
 	let ref;
-	
+
 	$: parsedHistory = $history.all.map(item => parseGrammar(item));
 </script>
 

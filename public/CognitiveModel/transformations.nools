@@ -1,0 +1,698 @@
+/*
+transformation
+
+divide the equation by the factor of the productTerm
+c(ax+b) = d => c(ax + b)/c = d/c 
+*/
+rule divideFactor{
+	salience: 3;
+	when{
+		p : Problem ;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug && !ci.simplification {focus : s};
+		ri: rowInfo;
+		pt: productTerm {factors: ptFactors};
+		factor1: Expr (factor1 === ptFactors[0] || factor1 === ptFactors[1]) && factor1.terms.length === 1 {terms: factor1Terms};
+		factor2: Expr (factor2 === ptFactors[0] || factor2 === ptFactors[1]) && factor2.terms.length !== 1 {terms: factor2Terms};
+		factor1Term: simpleTerm factor1Term === factor1Terms[0];
+		e1: Expr (pt in e1.terms) && e1.topLevel {side : side1, terms: e1Terms};
+		e2: Expr (e2.side !== side1 && e2.topLevel) {side : side2, terms: e2Terms};
+	}
+	then{
+		var nTrans = ci.opStr.split('t').length - 1;
+		var coeff = factor1Term.coeff;
+		var variable = factor1Term.var;
+		if(p.shallowSearch && p.stepSkipLevel < 3 && nTrans) {
+			backtrack();
+		} else if(!checkDivisible(e1,coeff,pt) || !checkDivisible(e2,coeff,pt)){
+			backtrack();
+		}else{
+			var expBefore = s === "left" ? eqStr(e1Terms, e2Terms) : eqStr(e2Terms, e1Terms);
+			
+			if (!p.dragNDrop) {
+				divideExpBy(e1, factor1Term, side1);
+				divideExpBy(e2, factor1Term, side2);
+			} else {
+				// hmm.... 
+				if (!genPartialTransformation(e1, e2, "division", {var: variable, coeff: coeff}, ci)) {
+					backtrack();
+				}
+			}
+			modify(ci,"opStr", ci.opStr+'t');
+			modify(ri,"modified",true);
+			modify(ci,"swapped",true);
+			
+	/*
+			//divide terms by coeff for e1
+			var newTerms = e1.terms.slice();
+			var top1 = e1;
+			modify(e1,"topLevel",false);
+			var coeff1 = assert(new simpleTerm(coeff , variable, side1));
+			var bottom1 = assert(new Expr(side1,[coeff1],false));
+			var newDiv1 = assert(new divTerm([top1, bottom1], side1));
+			var newTopLevelExpr1 = assert(new Expr(side1,[newDiv1],true));
+			
+			//divide terms by coeff for e2
+			var top2 = e2;
+			modify(e2,"topLevel",false);
+			var coeff2 = assert(new simpleTerm(coeff , variable, side2));
+			var bottom2 = assert(new Expr(side2,[coeff2],false));
+			var newDiv2 = assert(new divTerm([top2, bottom2], side2));
+			var newTopLevelExpr2 = assert(new Expr(side2,[newDiv2],true));
+	
+			var newTrans = assert(new transformation("divideFactor",[newDiv1.factNr,newDiv2.factNr]));
+			modify(p,"currTransformation",newTrans);
+	*/
+			//data for displaying diagrams
+			var expAfter = side1 === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			var rowTransData = ri.transformations.slice();
+			var newTrans = {
+				operation: "division-complex",
+				operand: (variable && Math.abs(coeff) === 1 ) ? variable : ''+coeff+(variable || ''),
+				expBefore: expBefore,
+				expAfter: expAfter
+			};
+			rowTransData.push(newTrans);
+			modify(ri, "transformations", rowTransData);
+			
+			assert(new Skill(getSkillForTrans('division-complex'), "transformation"));
+			
+			var input = eqStr(s === side1 ? e1.terms : e2.terms);
+			if (ci.selection === "hint") {
+				assert(new Hint("You have a product term on the "+side1+" side.  You can divide both sides by one of its factors."));
+				assert(new Hint("Divide both sides by "+newTrans.operand));
+				assert(new Hint("Enter "+input+" on the "+s+" side."));
+				backtrack();
+			} else if(inputRepeated(input, s)){
+				backtrack();
+			}else if (!p.dragNDrop){
+				recordInput(input, s);
+			}
+		}
+	}
+}
+
+/*
+transformation
+
+divide the whole expression by coeff of the variable
+ax + b + c = d => (ax + b + c) / a = d / a
+*/
+rule divideEarly {
+	salience: 3;
+	when {
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug && !ci.simplification {focus : f};
+		p: Problem (!termToBeCancelOnSide(p.termToBeCanceled,f)) //there is no term that needs to be canceled
+			{movedSimpleTerms: movedTerms, termToBeCanceled : termCancel};
+		ri: rowInfo;
+		t1: simpleTerm (t1 notIn termCancel && t1.var && t1.coeff != 1 && t1.coeff != 0) //the variable term is not to be canceled
+			{var : v, coeff : c};
+		e1: Expr (e1.topLevel && t1 in e1.terms) {side : side1, terms : terms1};
+		e2: Expr ((e2.side !== side1) && e2.topLevel && (e1.terms.length > 1 || e2.terms.length > 1)) //only when there is multiple terms
+			{side : side2, terms : terms2};
+	}
+	then{
+		var nTrans = ci.opStr.split('t').length - 1;
+		if(p.shallowSearch && p.stepSkipLevel < 3 && nTrans) {
+			backtrack();
+		}else if(!checkDivisible(e1,c) || !checkDivisible(e2,c)){
+			backtrack();
+		}else{
+			var expBefore = side1 === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			modify(ci,"opStr", ci.opStr+'t');
+			
+			if (!p.dragNDrop) {
+				divideExpBy(e1, {coeff: c, var: null}, side1);
+				divideExpBy(e2, {coeff: c, var: null}, side2);
+			} else {
+				// hmm.... 
+				if (!genPartialTransformation(e1, e2, "division", {var: null, coeff: c}, ci)) {
+					backtrack();
+				}
+			}
+			
+	/*		
+			//divide the whole expression by coeff
+			var top1 = e1;
+			var coeff1 = assert(new simpleTerm(c , null, side1));
+			var bottom1 = assert(new Expr(side1,[coeff1],false));
+			var newDiv1 = assert(new divTerm([top1, bottom1], side1));
+			var newTopLevelExpr1 = assert(new Expr(side1,[newDiv1],true));
+			//e1 e2 are no longer topLevel
+			modify(e1,"topLevel",false);
+			modify(e2,"topLevel",false);
+			//divide the whole expression by coeff
+			var top2 = e2;
+			var coeff2 = assert(new simpleTerm(c , null, side2));
+			var bottom2 = assert(new Expr(side2,[coeff2],false));
+			var newDiv2 = assert(new divTerm([top2, bottom2], side2));
+			var newTopLevelExpr2 = assert(new Expr(side2,[newDiv2],true));
+*/
+			
+			//shrinking the search tree
+			modify(ci,"divEarlyCancelTerm",e1);
+			modify(ci,"divEarlyCombineTerm",e1);
+			modify(ci,"dividedEarly",true);
+	/*
+			var newTrans = assert(new transformation("divideEarly",[newDiv1.factNr,newDiv2.factNr]));
+			modify(p,"currTransformation",newTrans);
+	*/
+	
+			//data for displaying diagrams
+			var expAfter = side1 === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			var rowTransData = ri.transformations.slice();
+			var newTrans = {
+				operation: "division-complex",
+				operand: ''+c,
+				expBefore: expBefore,
+				expAfter: expAfter
+			};
+			rowTransData.push(newTrans);
+			modify(ri, "transformations", rowTransData);
+			modify(ri, "modified", true);
+			
+			assert(new Skill(getSkillForTrans('division-complex'), "transformation"));
+			
+			var input = eqStr(f === side1 ? e1.terms : e2.terms);
+			
+			if (ci.selection === "hint") {
+				assert(new Hint("You have a variable with a coefficient on the "+side1+" side.  You can get the variable by itself by dividing both sides by the coefficient."));
+				assert(new Hint("Divide both sides by the coefficient of x, which is "+c));
+				assert(new Hint("Enter "+input+" on the "+f+" side."));
+				backtrack();
+			} else if (inputRepeated(input, f)){
+				backtrack();
+			} else if (!p.dragNDrop) {
+				recordInput(input, f);
+			}
+		}
+	}
+}
+
+/*
+	transformation
+
+	enable students to swap side
+	swap the two side of the equation if there is a variable term on the right hand side of the equation
+	MAYBE FIXME: allows swapping even if there is a var on both sides
+*/
+/*
+rule swapSide {
+	salience : -1;
+	when{
+		p: Problem !p.swapped {variableSide: varSide, constantSide: constSide};
+		not (h: IsHintMatch);
+		ri: rowInfo;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.addSubtracted && !ci.dividedEarly && !ci.distributedMult && !ci.multiplied && !ci.swapped
+			{focus : f}; //swap at the end
+		e1: Expr e1.topLevel && e1.side === "right" && hasVarTerm(e1);
+		e2: Expr e2.topLevel && e2.side === "left";
+	}then{
+		var focusedExp, unfocusedExp;
+		if (f === "right") {
+			focusedExp = e1;
+			unfocusedExp = e2;
+		} else {
+			focusedExp = e2;
+			unfocusedExp = e1;
+		}
+		var allTerms = unfocusedExp.terms;
+		//e1 should be exp on focus side (f), e2 on other side, allterms = e2.terms
+		modify(ci,"opStr", ci.opStr+'t');
+		modify(ci,"swapped", true);
+		modify(e1, "side", "left");
+		modify(e2, "side", "right");
+		modify(ri,"modified", true);
+		if (varSide) {
+			modify(p, "variableSide", oppositeSide(varSide));
+		}
+		if (constSide) {
+			modify(p, "constantSide", oppositeSide(constSide));
+		}	
+
+		var input = eqStr(allTerms);
+		if(inputRepeated(input, f)){
+			backtrack();
+		}else{
+			recordInput(input, f);
+		}
+	}
+}
+*/
+
+
+/*
+transformation
+
+move variable term to the left of the equation when variable and constant side are not determined
+move variable term on the right hand side of the equation to the left hand side 
+*/
+/*
+rule moveVariableToLeft{
+	salience : 5;
+	when {
+		p: Problem (p.variableSide === null) && (p.constantSide === null) //variable side and constant side are not determined
+			{movedSimpleTerms: movedTerms, termToBeCanceled: termCancel};
+		not (h: IsHintMatch);
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug {focus: s}; 
+        ri: rowInfo;
+        t1: simpleTerm ((t1 notIn movedTerms) && (t1.var !== null)) {coeff: c, var: v, factNr : newNum};// term to be "moved"
+        e1: Expr (e1.side === "right" && e1.topLevel && t1 in e1.terms); // e1 is the side from which we are moving
+		e2: Expr (e2.side === "left" && e2.topLevel);     // e2 is the other side
+		
+		not (t4: simpleTerm (t4 in e1.terms) && (t4.coeff === -1*c) && (t4.var === v)); // no cancel term on the same side
+	}
+	then {
+		var expBefore = eqStr(e2.terms, e1.terms);
+		modify(ci,"opStr", ci.opStr+'t');
+		c = t1.coeff;
+		//insert -ax to the right side
+		var newT1 = assert(new simpleTerm(-1*c, v, "right"));
+		var newTerms1 = (e1.terms).slice();
+		var idx = newTerms1.indexOf(t1);
+		newTerms1.splice(idx+1, 0, newT1);
+		modify(e1, "terms", newTerms1);
+
+		//insert -ax to the left side
+		var newTerms2 = (e2.terms).slice();
+		var newT2 = assert(new simpleTerm(-1*c, v, "left"));
+		newTerms2.push(newT2);
+		modify(e2, "terms", newTerms2);
+		modify(ri, "modified", true);
+	
+	//	var newTrans = assert(new transformation("addSubSimpleTerm",[newT1.factNr, newT2.factNr]));
+	//	modify(p,"currTransformation",newTrans);
+	
+		//keep record of all moved Terms
+		var newMovedTerms = movedTerms.slice();
+		newMovedTerms.push(t1);
+	    newMovedTerms.push(newT1);
+		newMovedTerms.push(newT2);
+		modify(p,"movedSimpleTerms",newMovedTerms);
+		//keep record of all terms to be canceled
+		var newTermCancel = termCancel.slice();
+		newTermCancel.push(t1);
+	    newTermCancel.push(newT1);
+		modify(p,"termToBeCanceled",newTermCancel);
+		//keep record of variable and constant side
+		modify(p,"variableSide","left");
+	    modify(p,"constantSide","right");
+	    modify(ci,"swapped",true);
+
+		//data for displaying diagrams
+		var expAfter = eqStr(e2.terms, e1.terms);
+		var rowTransData = ri.transformations.slice();
+		var newTrans = {
+			operation: c < 0 ? "addition" : "subtraction",
+			operand: (v && Math.abs(c) === 1 ) ? v : ''+c+(v || ''),
+			expBefore: expBefore,
+			expAfter: expAfter
+		};
+		rowTransData.push(newTrans);
+		modify(ri, "transformations", rowTransData);
+		
+	    var input = eqStr((s === "right" ? newTerms1 : newTerms2));
+		if(inputRepeated(input, s)){
+			backtrack();
+		}else{
+			recordInput(input, s);
+		}
+	}
+}
+*/
+
+
+/*
+transformation
+
+move variable/constant term to the variable/constant side when they are already determined
+*/
+rule addSubtractToSide {
+	salience : 4;
+	when {
+		p: Problem (p.variableSide !== null && p.constantSide !== null) //variable side and constant side are already determined
+			{movedSimpleTerms: movedTerms, termToBeCanceled: termCancel, variableSide: varSide, constantSide : constSide};
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug && !ci.simplification {dividedTerms : divTerms, focus: focusedSide};
+        ri: rowInfo;
+        t1: simpleTerm (t1 notIn movedTerms) {coeff: c, var: v, factNr : newNum};
+        e1: Expr ((e1.side === varSide && t1.var === null) || // e1 is the side from which we are moving 
+				  (e1.side === constSide && t1.var !== null)) && 
+				  e1.topLevel && 
+				  t1 in e1.terms {side: s};
+		e2: Expr e2.side !== s && e2.topLevel;     // e2 is the other side
+        not (t2: simpleTerm t2 in e1.terms && (t2.coeff === -1*c) && (t2.var === v)); //no cancelTerm
+	}
+	then {
+		var nTrans = ci.opStr.split('t').length - 1;
+		if(p.shallowSearch && p.stepSkipLevel < 3 && nTrans) {
+			backtrack();
+		} else {
+			var expBefore = s === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+
+			//insert term to be cancelled
+			var newT1, newT2, newTCoeff = -1*c;
+			if (!p.dragNDrop) {
+				addTermToExp(p, e1, newTCoeff, v, s, t1);
+				addTermToExp(p, e2, newTCoeff, v, oppositeSide(s));
+			} else {
+				//hmm...
+				if (!genPartialTransformation(e1, e2, "subtraction", t1, ci)) {
+					backtrack();
+				}
+			}
+			
+		/*
+			if (newT1) {
+				var newTerms1 = (e1.terms).slice();
+				var idx = newTerms1.indexOf(t1);
+				newTerms1.splice(idx+1, 0, newT1);
+				modify(e1, "terms", newTerms1);
+				//moved term to the other side
+				var newTerms2 = (e2.terms).slice();
+				newTerms2.push(newT2);
+				modify(e2, "terms", newTerms2);
+				
+				//keep record of all moved Terms
+				var newMovedTerms = movedTerms.slice();
+				newMovedTerms.push(t1);
+				newMovedTerms.push(newT1);
+				newMovedTerms.push(newT2);
+				modify(p,"movedSimpleTerms",newMovedTerms);
+				
+				//keep record of all terms to be canceled
+				var newTermCancel = termCancel.slice();
+				newTermCancel.push(t1);
+				newTermCancel.push(newT1);
+				modify(p,"termToBeCanceled",newTermCancel);
+			}
+			var newTrans = assert(new transformation("addSubSimpleTerm",[newT1.factNr, newT2.factNr]));
+			modify(p,"currTransformation",newTrans);
+		*/
+			//prevent duplication
+			if(divTerms.includes(t1.factNr)){
+				modify(ci,"addedToSideAfterDivide",true);
+			}
+			modify(ci, "addSubtracted", true);
+			modify(ci,"opStr", ci.opStr+'t');
+
+			//data for displaying diagrams
+			var expAfter = s === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			var rowTransData = ri.transformations.slice();
+			var newTrans = {
+				operation: c < 0 ? "addition" : "subtraction",
+				operand: (v && Math.abs(c) === 1 ) ? v : ''+c+(v || ''),
+				expBefore: expBefore,
+				expAfter: expAfter
+			};
+			rowTransData.push(newTrans);
+			modify(ri, "transformations", rowTransData);
+			modify(ri, "modified", true);
+	
+			assert(new Skill(getSkillForTrans(newTrans.operation, newTrans.operand), "transformation"));
+			
+			var input = eqStr((focusedSide === e1.side ? e1.terms : e2.terms));
+			if (ci.selection === "hint") {
+				var moving = (v ? "variables" : "constants");
+				var movingTo = e2.side;
+				assert(new Hint("You have "+moving+" on both sides.  How can you have all "+moving+" on the "+movingTo+" and none on the "+e1.side+"?"));
+				assert(new Hint("How can you get rid of "+newTrans.operand+" on the "+e1.side+"?"));
+				assert(new Hint("Subtract "+newTrans.operand+" from both sides."));
+				assert(new Hint("Enter "+input+" on the "+focusedSide));
+				backtrack();
+			} else if(inputRepeated(input, focusedSide)){
+				backtrack();
+			}else if (!p.dragNDrop){
+				recordInput(input, focusedSide);
+			}
+		}
+	}
+}
+
+/*
+transformation
+
+move terms according to like/unlike terms
+term moved (t1) must be a simpleTerm, i.e. simplified (can't move 6/3, for ex.)
+*/
+rule addSubtractSimpleTerm{
+	salience : 4;
+	when {
+		p: Problem (p.variableSide === null && p.constantSide === null)
+		{movedSimpleTerms: movedTerms, termToBeCanceled: termCancel, variableSide: varSide, constantSide : constSide};
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug && !ci.simplification {focus : f};    // start transformation only if neither side has been written
+        ri: rowInfo;
+        t1: simpleTerm (t1 notIn movedTerms) {coeff: c, var: v, factNr : newNum}; // term to be moved
+        t1IsConst: Boolean from isConst(t1);
+		e1: Expr e1.topLevel && 
+				t1 in e1.terms && 	  // e1 is the side from which we are moving
+				(hasVarTerm(e1) && t1IsConst || hasConstTerm(e1) && !t1IsConst) //unlike term on same side
+				{side: s, terms: e1Terms};
+		e2: Expr e2.side !== s && 
+				e2.topLevel && 
+				(hasConstTerm(e2) && isConst(t1) || hasVarTerm(e2) && !t1IsConst) //like term on other side 
+				{terms: e2Terms};
+
+        not (t4: simpleTerm (t4.coeff === -1*c) && (t4.var === v) && t4 in e1Terms); // no cancelTerms
+	}
+	then {
+		var nTrans = ci.opStr.split('t').length - 1;
+		if(p.shallowSearch && p.stepSkipLevel < 3 && nTrans) {
+			backtrack();
+		} else {
+			var otherSideLikeCoeffs = t1IsConst ? getConstTerms(e2) : getVarTerms(e2);
+			var likeCoeff = parseFloat(algSimplify(eqStr(otherSideLikeCoeffs).replace(/(\d+)?x/g, (m, g1) => g1 || '1' )));
+			if (!p.allowNegativeTerms && ((likeCoeff + (-1*c)) < 0)) {
+				backtrack();
+			} else {
+				//expression before applying transformation
+				var expBefore = s === "left" ? eqStr(e1Terms, e2Terms) : eqStr(e2Terms, e1Terms);
+				
+				//insert new term to the other side
+				var newT1, newT2;
+				if (!p.dragNDrop) {
+					addTermToExp(p, e1, -1*c, v, s, t1);
+					addTermToExp(p, e2, -1*c, v, oppositeSide(s));
+				} else {
+					//hmm...
+					let operation = (c < 0) ? "addition" : "subtraction";
+					let operand = {
+						coeff: Math.abs(c),
+						var: t1.var
+					};
+					if (!genPartialTransformation(e1, e2, operation, t1, ci)) {
+						backtrack();
+					}
+				}
+				
+			/*
+				if (newT1) {
+					var newTerms1 = (e1.terms).slice();
+					var idx = newTerms1.indexOf(t1);
+					newTerms1.splice(idx+1, 0, newT1);
+					modify(e1, "terms", newTerms1);
+					//moved term to the other side
+					var newTerms2 = (e2.terms).slice();
+					newTerms2.push(newT2);
+					modify(e2, "terms", newTerms2);
+					
+					//keep record of all moved Terms
+					var newMovedTerms = movedTerms.slice();
+					newMovedTerms.push(t1);
+					newMovedTerms.push(newT1);
+					newMovedTerms.push(newT2);
+					modify(p,"movedSimpleTerms",newMovedTerms);
+					
+					//keep record of all terms to be canceled
+					var newTermCancel = termCancel.slice();
+					newTermCancel.push(t1);
+					newTermCancel.push(newT1);
+					modify(p,"termToBeCanceled",newTermCancel);
+				}
+				var newTrans = assert(new transformation("addSubSimpleTerm",[newT1.factNr, newT2.factNr]));
+				modify(p,"currTransformation",newTrans);
+				
+				//keep record of variable and constant side
+				if (t1.var === null){
+					modify(p,"variableSide",t1.side);
+					modify(p,"constantSide",oppositeSide(t1.side));
+				}else{
+					modify(p,"constantSide",t1.side);
+					modify(p,"variableSide",oppositeSide(t1.side));
+				}
+			*/
+				
+				//cycleinfo
+				modify(ci, "addSubtracted", true);
+				modify(ci,"opStr", ci.opStr+'t');
+				
+				//data for displaying diagrams
+				var expAfter = s === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+				var rowTransData = ri.transformations.slice();
+				var newTrans = {
+					operation: c < 0 ? "addition" : "subtraction",
+					operand: (v && Math.abs(c) === 1 ) ? v : ''+c+(v || ''),
+					expBefore: expBefore,
+					expAfter: expAfter
+				};
+				rowTransData.push(newTrans);
+				modify(ri, "transformations", rowTransData);
+				modify(ri, "modified", true);     // following a transformation, both sides can be written
+				
+				assert(new Skill(getSkillForTrans(newTrans.operation, newTrans.operand), "transformation"));
+				
+				var input = eqStr(f === e1.side ? e1.terms : e2.terms);
+				if (ci.selection === "hint") {
+					var moving = (v ? "variables" : "constants");
+					var movingTo = e2.side;
+					assert(new Hint("You have "+moving+" on both sides.  How can you have all "+moving+" on the "+movingTo+" and none on the "+e1.side+"?"));
+					assert(new Hint("How can you get rid of "+newTrans.operand+" on the "+e1.side+"?"));
+					assert(new Hint("Subtract "+newTrans.operand+" from both sides."));
+					assert(new Hint("Enter "+input+" on the "+f));
+					backtrack();
+				} else if (inputRepeated(input, f)){
+					backtrack();
+				}else if (!p.dragNDrop){
+					recordInput(input, f);
+				}
+			}
+		}
+	}
+}
+
+
+/*
+transformation
+
+divide only when ax=b
+ax = b => ax/a = b/a
+*/
+rule divideSimpleTerms {
+	salience: 3;
+	when {
+		p: Problem;
+		ci: cycleInfo ci.otherSideFree && !ci.copyOK && !ci.inputIsBug && !ci.simplification {focus: f};  // cannot do transformation after one of the sides has been entered
+		ri: rowInfo;
+        t1: simpleTerm (t1.var && t1.coeff != 1 && t1.coeff != 0) {coeff: cv, var: v};    // var term
+        t2: simpleTerm !t2.var;
+		e1: Expr (e1.terms.length === 1) && e1.topLevel && t1 in e1.terms {side: sv};
+		e2: Expr (e2.terms.length === 1) && e2.topLevel && t2 in e2.terms && e2.side !== sv {side: s2};
+	}
+	then {
+		var nTrans = ci.opStr.split('t').length - 1;
+		if(p.shallowSearch && p.stepSkipLevel < 3 && nTrans) {
+			backtrack();
+		} else {
+		
+			modify(ci,"opStr", ci.opStr+'t');
+			var expBefore = sv === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			if (!p.dragNDrop) {
+				divideExpBy(e1, {coeff: cv, var: null}, sv);
+				divideExpBy(e2, {coeff: cv, var: null}, s2);
+			} else {
+				// hmm.... 
+				if (!genPartialTransformation(e1, e2, "division", {var: null, coeff: cv}, ci)) {
+					backtrack();
+				}
+			}
+		
+		/*
+			var newTrans = assert(new transformation("divideSimpleTerms",[newD1.factNr, newD2.factNr]));
+			modify(p,"currTransformation",newTrans);
+		*/
+			
+			//data for displaying diagrams
+			var expAfter = sv === "left" ? eqStr(e1.terms, e2.terms) : eqStr(e2.terms, e1.terms);
+			var rowTransData = ri.transformations.slice();
+			var newTrans = {
+				operation: "division-simple",
+				operand: ''+cv,
+				expBefore: expBefore,
+				expAfter: expAfter
+			};
+			rowTransData.push(newTrans);
+			modify(ri, "transformations", rowTransData);
+			modify(ri, "modified", true);       // following a transformation, both sides can be written
+			
+			assert(new Skill(getSkillForTrans("division-simple"), "transformation"));
+			
+			var input = eqStr(sv === f ? e1.terms : e2.terms);
+			if (ci.selection === "hint") {
+				assert(new Hint("You have a variable with a coefficient on the "+sv+" side.  You can get the variable by itself by dividing both sides by the coefficient."));
+				assert(new Hint("Divide both sides by the coefficient of x, which is "+cv));
+				assert(new Hint("Enter "+input+" on the "+f+" side."));
+				backtrack();
+			} else if (inputRepeated(input, f)){
+				backtrack();
+			}else if (!p.dragNDrop) {
+				recordInput(input, f);
+			}
+		}
+	}
+}
+/*
+	BUG - non-strategic move of a term
+	moving term t is considered 'non-strategic' if any of the following conditions are met:
+		-there is a like term on the same side as t
+		-there is no like term on the other side
+		-there is no unlike term on the same side as t
+*/
+rule nonStrategicAddSubtractSimpleTerm {
+	salience: -2;
+	when {
+		p: Problem !p.dragNDrop {movedSimpleTerms: movedTerms, termToBeCanceled: termCancel, variableSide: varSide, constantSide : constSide};
+		not (h: IsHintMatch);
+		ci: cycleInfo ci.otherSideFree && !ci.simplification && !ci.swapped && !ci.copyOK && !ci.inputIsBug && !ci.addSubtracted && !ci.dividedEarly && !ci.divided {focus : f};    // start transformation only if neither side has been written
+        ri: rowInfo;
+        t1: simpleTerm (t1 notIn movedTerms) {coeff: c, var: v, factNr : newNum}; // term to be moved
+        t1IsConst: Boolean from isConst(t1);
+		e1: Expr e1.topLevel && 
+				t1 in e1.terms	  // e1 is the side from which we are moving
+				{side: s, terms: e1Terms};
+		e2: Expr e2.side !== s && 
+				e2.topLevel
+				{terms: e2Terms};
+
+		or(
+			likeTermSameSide: Boolean likeTermSameSide === true from (hasConstTerm(e1) && isConst(t1) || hasVarTerm(e1) && !t1IsConst), 
+			noLikeTermOtherside: Boolean likeTermOtherside === false from (hasConstTerm(e2) && isConst(t1) || hasVarTerm(e2) && !t1IsConst),
+			noUnlikeTermSameSide: Boolean unlikeTermSameSide === false from (hasVarTerm(e1) && t1IsConst || hasConstTerm(e1) && !t1IsConst)
+		);
+	} then {
+		modify(ci,"opStr", ci.opStr+'t');
+		
+		//insert cancel term
+		c = t1.coeff;
+		var newT1 = assert(new simpleTerm(-1*c, v, s));
+		var newTerms1 = (e1.terms).slice();  // to get a new Array - otherwise, backtracking won't work
+		var idx = newTerms1.indexOf(t1);
+		newTerms1.splice(idx+1, 0, newT1);      // insert after the term we are moving (so hints look good)
+		modify(e1, "terms", newTerms1);
+		
+		//insert new term to the other side
+		var newTerms2 = (e2.terms).slice();
+		var newT2 = assert(new simpleTerm(-1*c, v, oppositeSide(s)));
+		newTerms2.push(newT2);    // no  need to adjust positions, added at the end
+		modify(e2, "terms", newTerms2);
+		modify(ri, "modified", true);     // following a transformation, both sides can be written
+	/*
+		var newTrans = assert(new transformation("addSubSimpleTerm",[newT1.factNr, newT2.factNr]));
+		modify(p,"currTransformation",newTrans);
+	*/
+		//keep record of all moved Terms
+		var newMovedTerms = movedTerms.slice();
+		newMovedTerms.push(t1);
+	    newMovedTerms.push(newT1);
+		newMovedTerms.push(newT2);
+		modify(p,"movedSimpleTerms",newMovedTerms);
+		
+		modify(ci, "addSubtracted", true);
+		modify(ci, "inputIsBug", true);
+		modify(ci, "bugMessage", (c < 0 ? "adding " : "subtracting ")+(Math.abs(c)+(v ? v : ''))+" is not strategic.");
+
+		var input = eqStr(f === e1.side ? newTerms1 : newTerms2);
+		if(inputRepeated(input, f)){
+			backtrack();
+		}else if (!p.dragNDrop){
+			recordInput(input, f);
+		}
+	}
+}

@@ -1,0 +1,641 @@
+rule DistributeMultiplication{
+	salience: 5;
+	when{
+		ci: cycleInfo !ci.copyOK && !ci.simplification {focus : s};
+		ri: rowInfo;
+		pt: productTerm;
+		factorExpr1: Expr (factorExpr1 === pt.factors[0] || factorExpr1 === pt.factors[1]) && factorExpr1.terms.length > 1;
+		factorExpr2: Expr (factorExpr2 === pt.factors[1] || factorExpr2 === pt.factors[0]) && factorExpr2 !== factorExpr1;
+		e: Expr pt in e.terms && e.topLevel && e.side === s;
+	}then {
+	/*	
+		var pt = simpData.pt,
+			factorExpr1 = simpData.factorExpr1,
+			factorExpr2 = simpData.factorExpr2,
+			e = simpData.e;
+	*/		
+		modify(ci,"opStr", ci.opStr+'s');
+		// creating a productTerm for every term
+		var allTerms = [];
+		var resultTerms = [];
+		for(var i = 0; i < factorExpr1.terms.length; i++){
+			var factorTerm1 = factorExpr1.terms[i];
+			allTerms.push(factorTerm1);
+			for(var j = 0; j < factorExpr2.terms.length; j++){
+				var factorTerm2 = factorExpr2.terms[j];
+				if(i == 0){
+					allTerms.push(factorTerm2); //pushed only once
+				}
+				if ((factorTerm1.var && factorTerm1.coeff === 1 && !factorTerm2.var) ||
+					(factorTerm2.var && factorTerm2.coeff === 1 && !factorTerm1.var)) {
+					//special case "a * x", create new simpleTerm instead of productTerm
+					var newSimpleTerm = new simpleTerm(factorTerm1.coeff * factorTerm2.coeff, factorTerm1.var || factorTerm2.var, factorTerm1.side);
+					assert(newSimpleTerm);
+					resultTerms.push(newSimpleTerm);
+				} else {
+					//create new factors and productTerm
+					var newFactorTerm1 = new simpleTerm(factorTerm1.coeff, factorTerm1.var, factorTerm1.side);
+					var newFactorTerm2 = new simpleTerm(factorTerm2.coeff, factorTerm2.var, factorTerm2.side);
+					var newFactorExpr1 = new Expr(pt.side,[newFactorTerm1],false);
+					var newFactorExpr2 = new Expr(pt.side,[newFactorTerm2],false);
+					var newProductTerm = new productTerm([newFactorExpr1,newFactorExpr2],pt.side);
+					assert(newFactorTerm1);
+					assert(newFactorTerm2);
+					assert(newFactorExpr1);
+					assert(newFactorExpr2);
+					assert(newProductTerm);
+					resultTerms.push(newProductTerm);
+				}
+			}
+		}
+		var newTerms = e.terms.slice();
+		newTerms.splice(newTerms.indexOf(pt),1);
+		resultTerms.forEach(function(newTerm){
+			newTerms.push(newTerm);
+		});
+		modify(e,"terms",newTerms);
+
+		retract(pt);
+		retract(factorExpr1);
+		retract(factorExpr2);
+		allTerms.forEach(function(factor){
+			retract(factor);
+		});
+		
+		modify(ri, "modified", true);
+
+		//tree duplication
+		modify(ci, "distributedMult",true);
+
+		var input = eqStr(newTerms), 
+			expSide = e.side;
+			
+		if(ci.selection === "hint") {
+			assert(new Hint("You can simplify the "+s+" side by distributing the multiplication"));
+			assert(new Hint("Multiply each of the terms in the expression "+eqStr(factorExpr1.terms)+" by "+eqStr(factorExpr2.terms)));
+			assert(new Hint("Enter "+input+" on the "+s+" side"));
+			backtrack();
+		}else if(inputRepeated(input, expSide)){
+			backtrack();
+		}else{
+			recordInput(input, expSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("distribute-multiplication", "simplification"));
+		}
+	}
+}
+
+rule DistributeDivision{
+	salience: 5;
+	when{
+		p: Problem {currTransformation : ct, combinedDivTerms: combined};
+//		currTrans: transformation currTrans === ct;
+		ci: cycleInfo !ci.copyOK && !ci.simplification {focus : s};
+		ri: rowInfo;
+		//numerator should be multiple terms, denominator should be only one simpleTerm
+		dt: divTerm dt notIn combined {factors: dtFactors};
+		topExpr: Expr topExpr === dtFactors[0] && topExpr.terms.length !== 1 {terms: topExprTerms};
+		bottomExpr: Expr bottomExpr === dtFactors[1] && bottomExpr.terms.length === 1 {terms: bottomExprTerms};
+		coeffTerm: simpleTerm coeffTerm === bottomExprTerms[0];
+		e: Expr dt in e.terms && e.topLevel && e.side === s {terms: eTerms};
+	}then {
+	/*
+		var dt = simpData.dt,
+			dtFactors = dt.factors,
+			topExpr = simpData.topExpr,
+			topExprTerms = topExpr.terms,
+			bottomExpr = simpData.bottomExpr,
+			bottomExprTerms = bottomExpr.terms,
+			coeffTerm = simpData.coeffTerm,
+			e = simpData.e,
+			eTerms = e.terms;
+	*/		
+		var	eSide = e.side;
+		var terms = topExpr.terms;
+		var c = coeffTerm.coeff;
+		var newTerms = eTerms.filter((term) => term !== dt);
+		
+		var isDivisible = function(term, divisor) {
+			var divisible = false;
+			switch(term.type) {
+				case "simpleTerm": 
+					divisible = (term.coeff && term.coeff % divisor === 0);
+				break;
+				case "productTerm":
+					var l = term.factors.length;
+					for (let i = 0; i < l; i++) {
+						let factorExp = term.factors[i];
+						if (factorExp.terms.length === 1 && isDivisible(factorExp.terms[0], divisor)) {
+							divisible = true;
+							break;
+						}
+					}
+				break;
+			}
+			return divisible;
+		};
+		
+		var canDistribute = terms.every((term)=>{
+			return isDivisible(term, coeffTerm.coeff);
+		});
+		
+		if (canDistribute) {
+			modify(ci,"opStr", ci.opStr+'s');
+			var distributed = p.distributedDivTerms.slice();
+	//		var newTransTerms = currTrans.terms.slice();
+			
+			// creating a divterm for every term
+			//divide the whole equation by coeff of the variable
+			terms.forEach(function(term){
+				var newTerm = assert(new simpleTerm(c , null, s));
+				var newTop = assert(new Expr(s, [term], false));
+				var newBottom = assert(new Expr(s,[newTerm],false));
+				var newDiv = assert(new divTerm([newTop, newBottom], s));
+	//			newTransTerms.push(newDiv.factNr);
+
+				newTerms.push(newDiv);
+				distributed.push(newDiv);
+			});
+			modify(e, "terms", newTerms);
+			modify(p, "distributedDivTerms", distributed);
+	/*
+			if(newTransTerms.indexOf(dt.factNr) >= 0){
+				newTransTerms.splice(newTransTerms.indexOf(dt.factNr),1);
+			}
+			
+			if(newTransTerms.length === 0){
+				retract(currTrans);
+				modify(p,"currTransformation",null);
+			}else{
+				modify(currTrans,"terms",newTransTerms);
+			}
+	*/
+			retract(dt);
+			retract(topExpr);
+			retract(bottomExpr);
+			retract(coeffTerm);
+			
+			modify(ri, "modified", true);
+
+			var input = eqStr(newTerms);
+			if (inputRepeated(input, eSide)) {
+				backtrack();
+			} else if (ci.selection !== "hint") {
+				recordInput(input, eSide);
+				modify(ci, "simplification", null);
+				assert(new Skill("distribute-division", "simplification"));
+			} else if (eSide === s || ci.otherSideFree) {
+				assert(new Hint("You have to distribute the division term on the "+eSide+" in order to simplify it"));
+				assert(new Hint("Divide each of the terms in the numerator ("+terms.map((t)=>termStr(t)).join(", ")+") by the denominator ("+termStr(coeffTerm)+")"));
+				assert(new Hint("Enter "+input+" on the "+eSide));
+				backtrack();
+			} else {
+				backtrack();
+			}
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule CombineDivTerms {
+	salience: 5;
+	when{
+		p: Problem {currTransformation : ct, distributedDivTerms: distributed};
+//		currTrans: transformation currTrans === ct;
+		ci: cycleInfo !ci.copyOK  && !ci.simplification {focus : s};
+		ri: rowInfo;
+		e: Expr e.side === s {terms: eTerms};
+		divTerm1: divTerm divTerm1 in eTerms && divTerm1 notIn distributed {factors: dt1Factors, factNr: dt1FactNr};
+		divTerm2: divTerm divTerm2 in eTerms && divTerm2.factNr > dt1FactNr && divTerm2 notIn distributed {factors: dt2Factors, factNr: dt2FactNr};
+		topExpr1: Expr topExpr1 === dt1Factors[0] && topExpr1.terms.length === 1 {terms: topExpr1Terms};
+		topExpr2: Expr topExpr2 === dt2Factors[0] && topExpr2.terms.length === 1 {terms: topExpr2Terms};
+		numerTerm1: simpleTerm numerTerm1 === topExpr1Terms[0] {var: numerTerm1Var, coeff: nt1Coeff};
+		numerTerm2: simpleTerm numerTerm2 === topExpr2Terms[0] && numerTerm2.var === numerTerm1Var {coeff: nt2Coeff};
+		btmExpr1: Expr btmExpr1 === dt1Factors[1] && btmExpr1.terms.length === 1 {terms: btmExpr1Terms};
+		btmExpr2: Expr btmExpr2 === dt2Factors[1] && btmExpr2.terms.length === 1 {terms: btmExpr2Terms};
+		denomTerm1: simpleTerm denomTerm1 === btmExpr1Terms[0] {coeff: dt1Coeff, var: dt1Var};
+		denomTerm2: simpleTerm denomTerm2 === btmExpr2Terms[0] && denomTerm2.coeff === dt1Coeff && denomTerm2.var === dt1Var;
+	} then {
+	/*
+		var e = simpData.e,
+			eTerms = e.terms,
+			divTerm2 = simpData.divTerm2,
+			topExpr1 = simpData.topExpr1,
+			topExpr1Terms = topExpr1.terms,
+			numerTerm1 = simpData.numerTerm1,
+			numerTerm2 = simpData.numerTerm2;
+	*/	
+		var	eSide = e.side;
+		//expression wm stuff
+		var newETerms = eTerms.filter((term) => term !== divTerm2);
+		var newTopExprTerms = topExpr1Terms.slice();
+		newTopExprTerms.push(numerTerm2);
+		modify(e, "terms", newETerms);
+		modify(topExpr1, "terms", newTopExprTerms);
+		
+		//cycle info stuff
+		modify(ci,"opStr", ci.opStr+'s');
+		var combined = p.combinedDivTerms.slice();
+		combined.push(divTerm1);
+		modify(p, "combinedDivTerms", combined);
+		//current trans stuff
+/*
+		var newTransTerms = currTrans.terms.slice();
+		[dt1FactNr,dt2FactNr].forEach((factNr) => {
+			let idx;
+			if((idx = newTransTerms.indexOf(factNr)) >= 0){
+				newTransTerms.splice(idx,1);
+			}
+		});
+		if(newTransTerms.length === 0){
+			retract(currTrans);
+			modify(p,"currTransformation",null);
+		}else{
+			modify(currTrans,"terms",newTransTerms);
+		}
+*/		
+		modify(ri, "modified", true);
+
+		var input = eqStr(newETerms);
+		if (ci.selection === "hint") {
+			
+			backtrack();
+		}else if(inputRepeated(input, eSide)){
+			backtrack();
+		}else{
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+		}
+	}
+}
+
+rule Multiply{
+	salience: 5;
+	when {
+		p : Problem;
+		not (h: IsHintMatch);
+        ri: rowInfo ;
+        ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, multFactNum: multNum};
+        pt: productTerm pt.factNr > multNum {factors: ptFactors};
+        factorExpr1: Expr factorExpr1 === ptFactors[0] && factorExpr1.terms.length === 1 {terms: fe1Terms};
+        factorExpr2: Expr factorExpr2 === ptFactors[1] && factorExpr2.terms.length === 1 {terms: fe2Terms};
+		factorTerm1: simpleTerm factorTerm1 === fe1Terms[0];
+		factorTerm2: simpleTerm factorTerm2 === fe2Terms[0];
+		e: Expr e.topLevel && pt in e.terms && e.side === s;
+	}
+	then {		
+		var	eSide = e.side;
+		modify(ci,"opStr", ci.opStr+'s');
+		var coeff = factorTerm1.coeff * factorTerm2.coeff;
+		var variable = null;
+		if(factorTerm1.var !== null){
+			variable = factorTerm1.var;
+		}
+		if(factorTerm2.var !== null){
+			variable = factorTerm2.var;
+		}
+		var newTerm = new simpleTerm(coeff,variable,pt.side);
+		assert(newTerm);
+		var newTerms = e.terms.slice();
+		newTerms.splice(newTerms.indexOf(pt),1);
+		newTerms.push(newTerm);
+		modify(e,"terms",newTerms);
+
+		modify(ri,"modified",true);
+
+		modify(ci,"multFactNum",pt.factNr);
+		modify(ci,"multiplied",true);
+
+		retract(pt);
+		retract(factorExpr1);
+		retract(factorExpr2);
+		retract(factorTerm1);
+		retract(factorTerm2);
+		var input = eqStr(newTerms);
+		if(inputRepeated(input, eSide)){
+			backtrack();
+		}else{
+			modify(ci, "simplification", null);
+			recordInput(input, eSide);
+		}
+	}
+}
+
+rule DivideProductTerm{
+	salience: 5;
+	when {
+		p : Problem;
+		not (h: IsHintMatch);
+        ri: rowInfo ;
+        ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
+        dt: divTerm dt.factNr >= num {factNr : newNum, factors: dtFactors};
+		
+		dividendExpr: Expr dividendExpr === dtFactors[0] && dividendExpr.terms.length === 1 {terms: dividendTerms};
+		divisorExpr: Expr divisorExpr === dtFactors[1] && divisorExpr.terms.length === 1 {terms: divisorTerms};
+		dividend: productTerm dividend === dividendTerms[0] {factors: dividendFactors};
+		divisor: simpleTerm divisor === divisorTerms[0];
+		factor1: Expr factor1 === dividendFactors[0];
+		factor2: Expr factor2 === dividendFactors[1];
+		e: Expr e.topLevel && dt in e.terms && e.side === s;
+	}
+	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel
+		var	eSide = e.side;
+		modify(ci,"opStr", ci.opStr+'s');
+
+		var quotientExpr;
+		var coeffExpr;
+		var coeffTerm;
+		if(factor1.terms.length == 1){
+			quotientExpr = factor2;
+			coeffExpr = factor1;
+			coeffTerm = factor1.terms[0];
+		}else{
+			quotientExpr = factor1;
+			coeffExpr = factor2;
+			coeffTerm = factor2.terms[0];
+		}
+		var newTerms = (e.terms).slice();
+		var idx = newTerms.indexOf(dt);
+		//delete dt
+		newTerms.splice(idx,1);
+		//add quotient terms
+		quotientExpr.terms.forEach(function(term){
+			newTerms.push(term);
+		});
+		modify(e, "terms", newTerms);
+		retract(dt);
+		retract(dividendExpr);
+		retract(divisorExpr);
+		retract(divisor);
+		retract(dividend);
+		retract(coeffExpr);
+		retract(coeffTerm);
+		retract(quotientExpr);
+		//update the divFactNum
+		modify(ci,"divFactNum",newNum);
+		//update dividedTerms
+		var newDivTerms = divTerms.slice();
+		newDivTerms.push(dividend.factNr);
+		modify(ci,"dividedTerms",newDivTerms);
+
+		modify(ri, "modified", true);   // can write both sides now
+		modify(ci, "divided", true);
+
+		var input = eqStr(newTerms);
+		if(inputRepeated(input, eSide)){
+			backtrack();
+		}else{
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+		}
+	}
+}
+
+rule Divide{
+	salience: 5;
+	when {
+		p : Problem {currTransformation: ct};
+//		currTrans: transformation currTrans === ct;
+        ri: rowInfo ;
+        ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
+        
+		dt: divTerm dt.factNr >= num {factNr : newNum, factors: dtFactors};	
+		dividendExpr: Expr dividendExpr === dtFactors[0] && dividendExpr.terms.length === 1 {terms: dividendTerms};
+		divisorExpr: Expr divisorExpr === dtFactors[1] && divisorExpr.terms.length === 1 {terms: divisorTerms};
+		dividend: simpleTerm dividend === dividendTerms[0];
+		divisor: simpleTerm divisor === divisorTerms[0];
+		e: Expr e.topLevel && dt in e.terms && e.side === s;
+	}
+	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel		
+		var	eSide = e.side;
+		modify(ci,"opStr", ci.opStr+'s');
+		var newCoeff = dividend.coeff / divisor.coeff;   // convert to integer?
+		modify(dividend, "coeff", newCoeff);
+		var newTerms = (e.terms).slice();
+		var idx = newTerms.indexOf(dt);
+		newTerms.splice(idx,1,dividend);
+		modify(e, "terms", newTerms);
+		
+		//update the divFactNum
+		modify(ci,"divFactNum",newNum);
+		
+		//update dividedTerms
+		var newDivTerms = divTerms.slice();
+		newDivTerms.push(dividend.factNr);
+		modify(ci,"dividedTerms",newDivTerms);
+	/*
+		var newTransTerms = currTrans.terms.slice();
+		if(newTransTerms.indexOf(dt.factNr) >= 0){
+			newTransTerms.splice(newTransTerms.indexOf(dt.factNr),1);
+		}
+		
+		if(newTransTerms.length === 0){
+			retract(currTrans);
+			modify(p,"currTransformation",null);
+		}else{
+			modify(currTrans,"terms",newTransTerms);
+		}
+	*/
+
+		retract(divisor);
+		retract(dt);
+		retract(dividendExpr);
+		retract(divisorExpr);
+		modify(ri, "modified", true);   // can write both sides now
+		modify(ci, "divided", true);
+
+		var input = eqStr(newTerms);
+		
+		if (inputRepeated(input, eSide)) {
+			backtrack();
+		} else if (ci.selection !== "hint") {
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("divide", "simplification"));
+		} else if (eSide === s || ci.otherSideFree) {
+			var isConst = !dividend.var;
+			assert(new Hint("Now simplify the "+(isConst ? "constant" : "variable")+" term on the "+eSide+" side."));
+			assert(new Hint("What does "+termStr+" evaluate to?"));
+			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			backtrack();
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule CombineLikeTerms {   // terms don't cancel
+	salience : 6;
+	when {
+		p : Problem {currTransformation : currTrans};
+        ri: rowInfo ;
+        ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCombineTerm : divCombineExpr, cancelCombineNum : cancelCombine};
+        t1: simpleTerm ((divCombineExpr == null) || ((t1 notIn divCombineExpr.terms)))  //avoid duplication in tree
+        					&& (t1.factNr > cancelCombine) //avoid duplication in tree
+        						{coeff: c1, var: v}; //term to be combined
+        t2: simpleTerm (t2.var === v) && (t2.factNr > t1.factNr)    // different term
+        					&& (c1+t2.coeff !== 0) //not cancelTerm
+        					&& ((divCombineExpr == null) || ((t2 notIn divCombineExpr.terms)))  //avoid duplication in tree
+        						{coeff: c2};
+		e: Expr t1 in e.terms && t2 in e.terms && e.side === s;     // e is the side where we are combining like terms
+        not (t3: simpleTerm (t3 in e.terms) && (t3.var === v) && (((t3.coeff+c1 === 0) || (t3.coeff+c2 === 0)) && (t3.coeff != 0))); //no cancelTerm
+	}
+	then {
+	/*
+		var t1 = simpData.t1,
+			c1 = t1.coeff,
+			v = t1.var,
+			t2 = simpData.t2,
+			c2 = t2.coeff,
+			e = simpData.e,
+	*/		
+		var eSide = e.side;
+		modify(ci,"opStr", ci.opStr+'s');
+		var i;
+		var newT = assert(new simpleTerm(c1+c2, v, s));
+		var newTerms = (e.terms).slice();
+		var p1 = newTerms.indexOf(t1);
+		var p2 = newTerms.indexOf(t2);
+		if(p1 < p2){
+			newTerms.splice(p1,1,newT);
+			newTerms.splice(p2,1);
+		}else{
+			newTerms.splice(p2,1,newT);
+			newTerms.splice(p1,1);
+		}
+	/*
+		if(currTrans!=null){
+			var newTransTerms = currTrans.terms.slice();
+			if(newTransTerms.indexOf(t1.factNr) >= 0){
+				newTransTerms.splice(newTransTerms.indexOf(t1.factNr),1);
+			}
+			if(newTransTerms.indexOf(t2.factNr) >= 0){
+				newTransTerms.splice(newTransTerms.indexOf(t2.factNr),1);
+			}
+			if(newTransTerms.length === 0){
+				retract(currTrans);
+				modify(p,"currTransformation",null);
+			}else{
+				modify(currTrans,"terms",newTransTerms);
+			}
+		}
+	*/	
+		modify(e, "terms", newTerms);
+		retract(t1);
+		retract(t2);
+		modify(ri, "modified", true);
+		//avoid duplication in tree
+		modify(ci, "combined", true);
+		//modify(ci,"cancelCombineNum",t1.factNr);
+		var input = eqStr(newTerms),
+			isConst = !v;
+		if (inputRepeated(input, eSide)) {
+			backtrack();
+		} else if (ci.selection !== "hint") {
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("combine-like-"+(isConst ? "const" : "var"), "simplification"));
+		} else if (eSide === s || ci.otherSideFree) {
+			var term1 = termStr(t1),
+				term2 = termStr(t2);
+			assert(new Hint("You have two "+(isConst ? "constant" : "variable")+" terms on the "+eSide+" side that you can add together"));
+			assert(new Hint("On the "+eSide+" side, combine like terms by adding "+term1+" and "+term2+"."));
+			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			backtrack();
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule CancelTerms {
+	salience : 7;
+	when {
+		p: Problem {termToBeCanceled : termCancel, movedSimpleTerms : movedTerms, currTransformation : ct};
+//      currTrans: transformation currTrans === ct;
+		ri: rowInfo ;
+        ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCancelTerm : divCancelExpr, cancelCombineNum : cancelCombine};
+        t1: simpleTerm ((divCancelExpr === null) || (t1 notIn divCancelExpr.terms) ) && (t1.factNr > cancelCombine) //avoid duplication in search tree
+        				{coeff: c1, var: v};
+        t2: simpleTerm (t2.var === v) && (t2.factNr > t1.factNr) // avoid duplication in matching
+        				&& (c1 + t2.coeff === 0) 
+        				&& ( (divCancelExpr == null) || (t2 notIn divCancelExpr.terms) ) {coeff: c2};
+		e: Expr t1 in e.terms && t2 in e.terms && e.side === s {terms: allTerms}; 
+	}
+	then {
+	/*
+		var t1 = simpData.t1,
+			c1 = t1.coeff,
+			v = t1.var,
+			t2 = simpData.t2,
+			c2 = t2.coeff,
+			e = simpData.e,
+			allTerms = e.terms;
+	*/
+		var	eSide = e.side;
+		modify(ci,"opStr", ci.opStr+'s');
+		if (allTerms.length === 2) {    // we end up with a side that is 0 - unlikely, perhaps
+			var newT = assert(new simpleTerm(0, null, s));
+			modify(e, "terms", [newT]);
+		}
+		else {
+			var newTerms = (e.terms).slice();
+		   	var p1 = newTerms.indexOf(t1);
+		   	newTerms.splice(p1,1);
+		   	var p2 = newTerms.indexOf(t2);
+		   	newTerms.splice(p2,1);
+			modify(e, "terms", newTerms);
+		}
+		var topLevelExpr = getTopLevelExpression(s);
+		var input = eqStr(topLevelExpr.terms),
+			isConst = !v;
+		if (inputRepeated(input, eSide)) {
+			backtrack();
+		} else if (ci.selection !== "hint") {
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("cancel-"+(isConst ? "const" : "var"), "simplification"));
+		} else if (eSide === s || ci.otherSideFree) {
+			var term1 = termStr(t1),
+				term2 = termStr(t2);
+			assert(new Hint("On the "+eSide+" side, you have the terms "+term1+" and "+term2+". These terms cancel each other out."));
+			assert(new Hint("You can remove the terms "+term1+" and "+term2+" from the "+eSide+" side."));
+			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			backtrack();
+		} else {
+			backtrack();
+		}
+	/*
+		var newTransTerms = currTrans.terms.slice();
+		
+		if(newTransTerms.indexOf(t1.factNr) >= 0){
+			newTransTerms.splice(newTransTerms.indexOf(t1.factNr),1);
+		}
+		if(newTransTerms.indexOf(t2.factNr) >= 0){
+			newTransTerms.splice(newTransTerms.indexOf(t2.factNr),1);
+		}
+		if(newTransTerms.length === 0){
+			retract(currTrans);
+			modify(p,"currTransformation",null);
+		}else{
+			modify(currTrans,"terms",newTransTerms);
+		}
+	*/
+		//keep track of all terms to be canceled
+		var newTermCancel = termCancel.slice();
+		newTermCancel.splice(newTermCancel.indexOf(t1),1);
+		newTermCancel.splice(newTermCancel.indexOf(t2),1);
+		modify(p,"termToBeCanceled",newTermCancel);
+		//keep track of all terms that is moved
+		var newMovedTerms = movedTerms.slice();
+		newMovedTerms.splice(newMovedTerms.indexOf(t1),1);
+		newMovedTerms.splice(newMovedTerms.indexOf(t2),1);
+		modify(p,"movedSimpleTerms",newMovedTerms);
+		//avoid duplication in tree search
+		//modify(ci,"cancelCombineNum",t1.factNr);
+		retract(t1);
+		retract(t2);
+		modify(ri, "modified", true);
+	}
+}

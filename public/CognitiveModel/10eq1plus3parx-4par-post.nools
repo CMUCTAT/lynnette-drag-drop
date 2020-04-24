@@ -1,0 +1,8 @@
+import("productionrulesMB.nools");
+
+global pName = "10eq1+3parx-4par-post";
+global initLeft = "10";
+global initRight = "1+3(x-4)";
+global dragNDrop = true;
+
+global parseProblem = true;
