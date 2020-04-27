@@ -24,6 +24,10 @@ function createDragdropData() {
 export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
+window.setEqn = (newEqn) => {
+  history.reset();
+  history.push(window.parse.algParse(newEqn));
+};
 
 const initial = null;
 
@@ -170,6 +174,8 @@ Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x] ? xs[x] : null), o);
  */
 function tokenToToken(src, dest, eqn) {
   dragOperation = { from: "Token", to: "Token", side: dest.path[0] };
+  console.log(src, dest);
+
   if (dest instanceof UnknownToken) {
     let d = Object.path(eqn, dest.path);
     let s = parse.algParse(src.value());
@@ -180,12 +186,16 @@ function tokenToToken(src, dest, eqn) {
     let parentPath = src.path.slice(0, -2);
     let parent = Object.path(eqn, parentPath);
     let indices = src.indices.concat(dest.indices);
+    console.log(indices);
+
     indices.sort();
     let next = parse.algReplaceExpression(
       eqn,
       parent,
       parse.algApplyRulesSelectively(parent, ["combineSimilar"], false, ...indices)
     );
+    console.log(parse.algStringify(next));
+
     parent = Object.path(next, parentPath);
     return parse.algReplaceExpression(
       next,

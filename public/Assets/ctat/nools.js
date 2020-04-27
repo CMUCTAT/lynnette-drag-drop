@@ -77,6 +77,15 @@ var ConflictTree = declare({
 			}
 		},
 		
+		backtrackToNode: function(depth, id) {
+			while (this.currDepth !== depth) {
+				this.currNode.activationStatus = ConflictTree.ACTIVATION_STATES.BACKTRACKED;
+				this.currNode = this.currNode.parent;
+				this.currDepth--;
+			}
+			this.goToNode(depth, id);
+		},
+		
 		getNodeByActId: function(depth, id) {
 			return this.depthMap[depth][id] || null;
 		},
@@ -113,13 +122,21 @@ var ConflictTree = declare({
 			let processChildren = function(node, rules) {
 				let children = node.getChildren();
 				for (let childId in children) {
-					processNode(children[childId], rules);
+					processNode(children[childId], rules.slice());
 				}
 			}
 			
 			processChildren(this.head, []);
 			
 			return chains;
+		},
+		
+		setCurrentMatchStatus: function(status) {
+			this.getCurrNode().matcherStatus = status;
+		},
+		
+		setCurrentActivationStatus: function(status) {
+			this.getCurrNode().activationStatus = status;
 		},
 		
 		clear: function() {
@@ -154,7 +171,10 @@ var ConflictTree = declare({
 				for (let i = 0; i < depth; i++) {
 					tabStr+='        '
 				}
-				if (!firedOnly || node.activationStatus === ConflictTree.ACTIVATION_STATES.FIRED) {
+				if (!firedOnly || 
+					node.activationStatus === ConflictTree.ACTIVATION_STATES.FIRED || 
+					node.activationStatus === ConflictTree.ACTIVATION_STATES.HALTED || 
+					node.activationStatus === ConflictTree.ACTIVATION_STATES.BACKTRACKED) {
 					treeStr += tabStr + node.toString(inclSAIs);
 				}
 				processChildren(node, depth+1);
@@ -239,11 +259,11 @@ var ConflictTreeNode = declare({
 			} else {
 				str += '     ';
 			}
-			str += "["+this.id+"]"+this.name;
+			str += "["+this.id+"]"+this.name+this.activationStatus;
 			if (inclSAI) {
 				let tSAI = this.match ? this.match.tutor : null;
 				if (tSAI) {
-					str += tSAI.selection+' ; '+tSAI.action+" ; "+tSAI.input;
+					str += ' ' + tSAI.selection+' ; '+tSAI.action+" ; "+tSAI.input;
 				}
 			}
 			str += '\n';
@@ -253,10 +273,11 @@ var ConflictTreeNode = declare({
 });
 
 ConflictTree.ACTIVATION_STATES = {
-	NEW: "A",
-	BACKTRACKED: "B",
-	FIRED: "C",
-	REMOVED: "D"
+	NEW: "",
+	BACKTRACKED: "<",
+	FIRED: "*",
+	HALTED: "!",
+	REMOVED: ""
 };
 
 ConflictTree.MATCHER_STATES = {
@@ -2909,9 +2930,7 @@ module.exports = (function() {
 						return false;
 					}
 					this.brokeOn = null;
-					
-					oldActivations = focusedAgenda.toObject("activationId");
-					
+				
 					this.handlePreFire(activation, isFirstFire);
 					var fired = activation.rule.fire(this.flow, activation.match);
 					var searchNotOver = this.handlePostFire();
@@ -2957,8 +2976,9 @@ module.exports = (function() {
 				else if (this.flow.getEndOfChainReached()) { //check whether activation ended the chain
 					this.emit("endOfChain");
 					if (this.conflictTree.getCurrNode().matcherStatus === ConflictTree.MATCHER_STATES.MATCH) {
-						this.conflictTree.getCurrNode().matcherStatus = ConflictTree.MATCHER_STATES.MATCH_HALT; //set conflict tree node status to 'ended chain'
+						this.conflictTree.setCurrentMatchStatus(ConflictTree.MATCHER_STATES.MATCH_HALT); //set conflict tree node status to 'ended chain'
 					}
+					this.conflictTree.setCurrentActivationStatus(ConflictTree.ACTIVATION_STATES.HALTED);
 				}
 				//clear backtrack/end-of-chain signifiers
 				this.flow.unsetEndOfChainReached();
@@ -3013,16 +3033,18 @@ module.exports = (function() {
 					if ((atBranchPtThresh || isFirstFire) && !this.flow.iAmBacktracking) {
 						//create state object
 						stateAtBranch = this.flow.pushState(this.conflictTree.currDepth,
-														this.conflictTree.currNode.activationId);
-						//store activations to restore on backtrack
-						stateAtBranch.activations = pruneOldActivations ? newActivations : agendaMap;
+														this.conflictTree.currNode.activationId,
+														(pruneOldActivations ? this.getNewActivations() : agendaMap),
+														this.getNewActivations());
+	
 						this.emit("branch_point", {agenda: Object.keys(stateAtBranch.activations),
 													state: {factRecency: stateAtBranch.factRecency,
 															ruleRecency: stateAtBranch.ruleRecency,
 															factIdCounter: stateAtBranch.factIdTicker}});
 					}
-					oldActivations = newActivations;
 				}	
+				oldActivations = newActivations;
+				
 				agendaArray = this.getAgendaArray(true);
 				if (agendaArray.length) {
 					ret = agendaArray[agendaArray.length-1];
@@ -3144,6 +3166,7 @@ module.exports = (function() {
 				if (!this.flow.iAmBacktracking) {
 					this.emit("endOfChain");
 				}
+				this.conflictTree.setCurrentActivationStatus(ConflictTree.ACTIVATION_STATES.BACKTRACKED);
 				if (this.flow.peekStateStack()) {
 					this.emit("backtrack", initiatedByModel);
 					this.flow.iAmBacktracking = true;
@@ -3151,6 +3174,7 @@ module.exports = (function() {
 					//get state object
 					var stateAtBranch = this.flow.peekStateStack(),
 						branchPtAgenda = stateAtBranch.activations, //activations to restore
+						branchPtNewActs = stateAtBranch.newActivations,
 						focusedAgenda = this.getFocusedAgenda(),
 						agendaMap = focusedAgenda.toObject('activationId'),
 						agendaArray,
@@ -3168,14 +3192,15 @@ module.exports = (function() {
 							this.insert(this.terminalNodes[activation.name], activation);
 						}
 					}
-					oldActivations = agendaMap;
 					agendaArray = focusedAgenda.toArray();
 					
 					//get rid of activations (chains) already fired
 					for (let i = 0; i < stateAtBranch.branchesExplored; i++) {
 						exploredBranch = agendaArray.pop();
 						alreadyFired.push(exploredBranch.activationId);
+						delete branchPtNewActs[exploredBranch.activationId];
 					}
+					newActivations = branchPtNewActs;
 					//emit state restore event
 					this.emit("restore", {agenda: Object.keys(agendaMap),
 										fired: alreadyFired,
@@ -3266,6 +3291,15 @@ module.exports = (function() {
 				return this.getAgendaArray(false).map(function(activation) {
 					return activation.activationId;
 				});
+			},
+			
+			getNewActivations: function() {
+				var ret = {};
+				for (let a in newActivations) {
+					ret[a] = newActivations[a];
+				}
+				
+				return ret;
 			},
 			
 			/**
@@ -3613,12 +3647,14 @@ module.exports = declare(Flow, {
 			this.stateStack.pop();
 		},
 		
-		pushState: function(CTDepth,CTNodeId) {
+		pushState: function(CTDepth,CTNodeId, activations, newActivations) {
 			var stateObject = new StateObject(this.rootNode.bucket.recency,
 											this.workingMemory.recency,
 											this.workingMemory.getFactIdTicker(),
 											CTDepth,
-											CTNodeId);
+											CTNodeId,
+											activations,
+											newActivations);
 
 			this.stateStack.push(stateObject);
 			return stateObject;
@@ -3667,7 +3703,7 @@ module.exports = declare(Flow, {
 				}
 				this.workingMemory.recency = fRecency;
 				this.rootNode.bucket.recency = rRecency;
-				this.agenda.conflictTree.goToNode(CTDepth, CTId);
+				this.agenda.conflictTree.backtrackToNode(CTDepth, CTId);
 			}
 		},
 		
@@ -4788,7 +4824,8 @@ JoinNode.extend({
         },
 
         __checkMatch: function (context, o, propogate) {
-            var newContext;
+            
+			var newContext;
             if ((newContext = this.__createMatch(context, o)).isMatch() && propogate) {
                 this.__propagate("assert", newContext.clone());
             }
@@ -4796,6 +4833,7 @@ JoinNode.extend({
         },
 
         __createMatch: function (lc, o) {
+			
             if (this.type(o)) {
                 var createdFact = this.workingMemory.getFactHandle(o, true),
                     createdContext,
@@ -4877,12 +4915,12 @@ JoinNode.extend({
                     fromMatches = (context.fromMatches = {}),
                     rightMatches = leftContext.fromMatches,
                     o = this.from(context.factHash);
-
                 if (isArray(o)) {
-                    for (i = 0, l = o.length; i < l; i++) {
+                    
+					for (i = 0, l = o.length; i < l; i++) {
                         newContext = this.__checkMatch(context, o[i], false);
                         if (newContext.isMatch()) {
-                            factId = newContext.fact.id;
+							factId = newContext.fact.id;
                             if (factId in rightMatches) {
                                 this.__propagate("modify", newContext.clone());
                             } else {
@@ -6552,6 +6590,75 @@ Super.extend({
                 return createdContext;
             }
             return DEFAULT_MATCH;
+        },
+		
+		modifyLeft: function (context) {
+            var ctx = this.removeFromLeftMemory(context), newContext, i, l, factId, fact;
+            if (ctx) {
+                this.__addToLeftMemory(context);
+
+                var leftContext = ctx.data,
+                    fromMatches = (context.fromMatches = {}),
+                    rightMatches = leftContext.fromMatches,
+                    o = this.from(context.factHash),
+					baseId = context.hashCode.replace(':', '-')+'-';
+					
+                if (isArray(o)) {
+                    
+					for (i = 0, l = o.length; i < l; i++) {
+                        newContext = this.__checkMatch(context, o[i], false, baseId+i);
+                        if (newContext.isMatch()) {
+							factId = newContext.fact.id;
+                            if (factId in rightMatches) {
+                                this.__propagate("modify", newContext.clone());
+                            } else {
+                                this.__propagate("assert", newContext.clone());
+                            }
+                        }
+                    }
+                } else if (isDefined(o)) {
+                    newContext = this.__checkMatch(context, o, false);
+                    if (newContext.isMatch()) {
+                        factId = newContext.fact.id;
+                        if (factId in rightMatches) {
+                            this.__propagate("modify", newContext.clone());
+                        } else {
+                            this.__propagate("assert", newContext.clone());
+                        }
+                    }
+                }
+                for (i in rightMatches) {
+                    if (!(i in fromMatches)) {
+                        this.removeFromFromMemory(rightMatches[i]);
+                        this.__propagate("retract", rightMatches[i].clone());
+                    }
+                }
+            } else {
+                this.assertLeft(context);
+            }
+            fact = context.fact;
+            factId = fact.id;
+            var fm = this.fromMemory[factId];
+            this.fromMemory[factId] = {};
+            if (fm) {
+                var lc, entry, cc, createdIsMatch, factObject = fact.object;
+                for (i in fm) {
+                    entry = fm[i];
+                    lc = entry[0];
+                    cc = entry[1];
+                    createdIsMatch = cc.isMatch();
+                    if (lc.hashCode !== context.hashCode) {
+                        newContext = this.__createMatch(lc, factObject, false);
+                        if (createdIsMatch) {
+                            this.__propagate("retract", cc.clone());
+                        }
+                        if (newContext.isMatch()) {
+                            this.__propagate(createdIsMatch ? "modify" : "assert", newContext.clone());
+                        }
+
+                    }
+                }
+            }
         }
     }
 }).as(module);
@@ -9581,6 +9688,7 @@ module.exports = declare({
 		
 		memoryOps: null,
 		activations: null,
+		newActivations: null,
 		factIdTicker: 0,
 		ruleRecency: 0,
 		factRecency: 0,
@@ -9588,13 +9696,15 @@ module.exports = declare({
 		CTDepth: null,
 		CTNodeId: null,
 		
-		constructor: function(rRecency, fRecency, fidTicker, depth, nodeId) {
+		constructor: function(rRecency, fRecency, fidTicker, depth, nodeId, aList, newAList) {
 			this.factIdTicker = fidTicker;
 			this.ruleRecency = rRecency;
 			this.factRecency = fRecency;
 			this.memoryOps = [];
 			this.CTDepth = depth;
 			this.CTNodeId = nodeId;
+			this.activations = aList;
+			this.newActivations = newAList;
 		}
 	}
 });

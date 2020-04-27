@@ -1,0 +1,35 @@
+import("productionrulesMB.nools");
+
+//arbitrary name for the problem
+global pName = "testfile";
+
+//initial left side of the equation
+global initLeft = "2(5x-2)";
+
+//initial right side of the equation
+global initRight = "-50x";
+
+//the level of step skipping to allow (default 3):
+//  1 = strictly one step at a time (transformation OR simplification)
+//	2 = one transformation at a time + any number of simplifications.  If there is a transformation, it must be the first step
+//	3 = anything goes
+global stepSkipLevel = 2;
+
+//controls the depth of the model's search when stepSkipLevel is not 3 (default false)
+//	true = only search one transformation + any number of simplifications deep
+//	false = search through all possible steps w/ any amount of step skipping
+//	set this to true for better response time, false to have "you are skipping too many steps" feedback enabled
+global shallowSearch = false;
+
+//whether students must fully simplify the equation before beginning a new transformation (default false)
+global forceSimplify = true;
+
+//whether the model should run in the background or only as response to student input (default false)
+//	true = the model's predicted steps are generated asynchronously (ahead of student input)
+//	false = the model doesn't search until it receives input from the interface
+//	this is to optimize performance - setting to true should yield faster/more consistent response time - but it hasn't been tested very much
+global pregenConflictTree = false;
+
+//this should always be true
+global parseProblem = true; 
+

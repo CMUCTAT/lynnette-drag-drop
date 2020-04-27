@@ -1,6 +1,7 @@
 rule DistributeMultiplicationOtherSide{
 	salience: 0;
 	when{
+		p: Problem !p.dragNDrop;
 		not (h: IsHintMatch);
 		ci: cycleInfo !ci.copyOK && !ci.simplification {focus : s};
 		ri: rowInfo;
@@ -89,7 +90,7 @@ rule DistributeMultiplicationOtherSide{
 rule DistributeDivisionOtherSide {
 	salience: 0;
 	when{
-		p: Problem {currTransformation : ct, combinedDivTerms: combined};
+		p: Problem !p.dragNDrop {currTransformation : ct, combinedDivTerms: combined};
 //		currTrans: transformation currTrans === ct;
 		ci: cycleInfo !ci.copyOK && !ci.simplification {focus : s};
 		ri: rowInfo;
@@ -168,11 +169,6 @@ rule DistributeDivisionOtherSide {
 				if (s !== e.side) {
 					pruneOldActivations();
 				}
-			} else if (eSide === s || ci.otherSideFree) {
-				assert(new Hint("You have to distribute the division term on the "+eSide+" in order to simplify it"));
-				assert(new Hint("Divide each of the terms in the numerator ("+terms.map((t)=>termStr(t)).join(", ")+") by the denominator ("+termStr(coeffTerm)+")"));
-				assert(new Hint("Enter "+input+" on the "+eSide));
-				backtrack();
 			} else {
 				backtrack();
 			}
@@ -182,10 +178,63 @@ rule DistributeDivisionOtherSide {
 	}
 }
 
+rule CancelDivisionOtherSide {
+	salience: 5;
+	when {
+		p: Problem {currTransformation : ct, combinedDivTerms: combined};
+		ci: cycleInfo !ci.copyOK {focus : s};
+		ri: rowInfo;
+		pt: productTerm {factors: ptFactors};
+		ptFactor1: Expr ptFactor1 in ptFactors && ptFactor1.terms.length === 1;
+		ptFactor2: Expr ptFactor2 in ptFactors && ptFactor2.terms.length === 1 && ptFactor2 !== ptFactor1;
+		dt: divTerm dt === ptFactor1.terms[0];
+		dtDenomExp: Expr dtDenomExp === dt.factors[1] && dtDenomExp.terms.length === 1;
+		btmCancelTerm: simpleTerm btmCancelTerm === dtDenomExp.terms[0] {coeff: btmCancelCoeff, var: btmCancelVar};
+		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar; 
+		e: Expr pt in e.terms && e.topLevel && e.side === !s {terms: eTerms, side: eSide};
+	} then {
+		modify(ci,"opStr", ci.opStr+'s');
+		modify(ri, "modified", true);
+		
+		//
+		var dtNumerExp = dt.factors[0];
+		var dtNumerExpTerms = dtNumerExp.terms.slice();
+		modify(e, "terms", dtNumerExpTerms);
+		
+		retract(pt);
+		retract(ptFactor1);
+		retract(dt);
+		retract(dtNumerExp);
+		retract(dtDenomExp);
+		retract(btmCancelTerm);
+		retract(ptFactor2);
+		retract(topCancelTerm);
+		
+		var cancelTermStr = btmCancelCoeff+(btmCancelVar ? btmCancelVar : '');
+		
+		var input = eqStr(dtNumerExpTerms);
+		if (inputRepeated(input, eSide)) {
+			backtrack();
+		} else if (ci.selection !== "hint") {
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("cancel-division", "simplification"));
+		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
+			assert(new Hint("You can cancel terms in the division term on the "+eSide+" side."));
+			assert(new Hint("The "+cancelTermStr+" in the denominator cancels out the "+cancelTermStr+" in the numerator, so you can remove those terms from the expression."));
+			assert(new Hint("Enter "+input+" on the "+eSide));
+			backtrack();
+		} else {
+			backtrack();
+		}
+	}
+}
+
 rule CombineDivTermsOtherSide {
 	salience: 0;
 	when{
-		p: Problem {currTransformation : ct, distributedDivTerms: distributed};
+		p: Problem !p.dragNDrop {currTransformation : ct, distributedDivTerms: distributed};
 //		currTrans: transformation currTrans === ct;
 		ci: cycleInfo !ci.copyOK  && !ci.simplification {focus : s};
 		ri: rowInfo;
@@ -260,7 +309,7 @@ rule CombineDivTermsOtherSide {
 rule MultiplyOtherSide{
 	salience: 0;
 	when {
-		p : Problem;
+		p: Problem !p.dragNDrop;
 		not (h: IsHintMatch);
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, multFactNum: multNum};
@@ -328,7 +377,7 @@ rule MultiplyOtherSide{
 rule DivideProductTermOtherSide{
 	salience: 0;
 	when {
-		p : Problem;
+		p: Problem !p.dragNDrop;
 		not (h: IsHintMatch);
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
@@ -414,7 +463,7 @@ rule DivideProductTermOtherSide{
 rule DivideOtherSide {
 	salience: 0;
 	when {
-		p : Problem {currTransformation: ct};
+		p : Problem !p.dragNDrop {currTransformation: ct};
 //		currTrans: transformation currTrans === ct;
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
@@ -488,12 +537,6 @@ rule DivideOtherSide {
 			if (s !== e.side) {
 				pruneOldActivations();
 			}
-		} else if (eSide === s || ci.otherSideFree) {
-			var isConst = !dividend.var;
-			assert(new Hint("Now simplify the "+(isConst ? "constant" : "variable")+" term on the "+eSide+" side."));
-			assert(new Hint("What does "+termStr+" evaluate to?"));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
-			backtrack();
 		} else {
 			backtrack();
 		}
@@ -503,7 +546,7 @@ rule DivideOtherSide {
 rule CombineLikeTermsOtherSide {   // terms don't cancel
 	salience : 1;
 	when {
-		p : Problem {currTransformation : currTrans};
+		p : Problem !p.dragNDrop && p.hasAThingThatDontExist {currTransformation : currTrans};
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCombineTerm : divCombineExpr, cancelCombineNum : cancelCombine};
         t1: simpleTerm ((divCombineExpr == null) || ((t1 notIn divCombineExpr.terms)))  //avoid duplication in tree
@@ -562,6 +605,7 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 		modify(ri, "modified", true);
 		//avoid duplication in tree
 		modify(ci, "combined", true);
+		
 		//modify(ci,"cancelCombineNum",t1.factNr);
 		var input = eqStr(newTerms),
 			isConst = !v;
@@ -574,13 +618,6 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 			if (s !== e.side) {
 				pruneOldActivations();
 			}
-		} else if (eSide === s || ci.otherSideFree) {
-			var term1 = termStr(t1),
-				term2 = termStr(t2);
-			assert(new Hint("You have two "+(isConst ? "constant" : "variable")+" terms on the "+eSide+" side that you can add together"));
-			assert(new Hint("On the "+eSide+" side, combine like terms by adding "+term1+" and "+term2+"."));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
-			backtrack();
 		} else {
 			backtrack();
 		}
@@ -590,7 +627,7 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 rule CancelTermsOtherSide {
 	salience : 2;
 	when {
-		p: Problem {termToBeCanceled : termCancel, movedSimpleTerms : movedTerms, currTransformation : ct};
+		p: Problem !p.dragNDrop && p.hasAThingThatDontExist {termToBeCanceled : termCancel, movedSimpleTerms : movedTerms, currTransformation : ct};
 //      currTrans: transformation currTrans === ct;
 		ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCancelTerm : divCancelExpr, cancelCombineNum : cancelCombine};
@@ -637,13 +674,6 @@ rule CancelTermsOtherSide {
 			if (s !== e.side) {
 				pruneOldActivations();
 			}
-		} else if (eSide === s || ci.otherSideFree) {
-			var term1 = termStr(t1),
-				term2 = termStr(t2);
-			assert(new Hint("On the "+eSide+" side, you have the terms "+term1+" and "+term2+". These terms cancel each other out."));
-			assert(new Hint("You can remove the terms "+term1+" and "+term2+" from the "+eSide+" side."));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
-			backtrack();
 		} else {
 			backtrack();
 		}

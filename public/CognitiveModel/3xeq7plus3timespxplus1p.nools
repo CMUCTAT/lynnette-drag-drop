@@ -1,0 +1,8 @@
+import("productionrulesMB.nools");
+
+global pName = "3xeq7plus3timespxplus1p";
+global initLeft = "3x";
+global initRight = "7+2*(x+1)";
+global dragNDrop = true;
+
+global parseProblem = true;

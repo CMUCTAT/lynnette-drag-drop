@@ -65,7 +65,7 @@ rule bootstrap {
 		
 		//whether equation must be fully simplified before starting new transformation
 		try {
-			config.forceSimplify = forceSimplify;
+			config.forceSimplify = true; //forceSimplify;
 		} catch (e) {}
 		
 		//whether to pregen conflict tree
@@ -147,6 +147,7 @@ rule bootstrap {
 				assert(new TPA("_root", "showNextRow", ''));
 			}
 		}
+		
 		
 		halt();
 		
@@ -252,13 +253,10 @@ rule focusSolutionStepDragNDrop {
 		e2: Expr e2.topLevel && e2.side === "right";
 	}
 	then {
-		console.log("%c[NOOLS] " + "%cFOCUS SOLUTION STEP", "color: #f53", "");
-		console.log(getStudentInput());
 		if (sv === getStudentInput()) {
 			clearInputHistory();
 			let eStr = eqStr(e1.terms, e2.terms);
 			stepType = (stepType === "OperatorToExpression" || stepType === "OperatorToToken") ? "operator" : "operand";
-			console.log(stepType);
 			console.log("focusSolutionStepDragNDrop, sv is ");
 			console.log(sv);
 			console.log("stepType is "+stepType);
@@ -370,7 +368,7 @@ rule write {
 	}
 	then {
 		var rowNum = parseInt(/\d+$/.exec(rows[0])[0], 10);
-		var input = eqStr(allTerms);
+		var input = eqStr((f === 'left' ? allTerms : allTerms2), (f === 'left' ? allTerms2 : allTerms));
 		var nTrans = os.split('t').length - 1;
 		var nSimp = os.split('s').length - 1;
 		writeInput(input);
@@ -476,8 +474,6 @@ rule writeDragNDropTransformation {
 		ie1: interfaceElementDnd ie1.side === f;
 		ie2: interfaceElementDnd ie2.side !== f;
 	} then {
-		console.log("%c[NOOLS]" + "%c WRITE TRANSFORMATION", "color: #f53", "");
-		console.log(e, pt, ciStepType);
 		var input = applyPartialTransformation(e, pt, (ciStepType === "operand"));
 		var studentSideInput = studentInput.split("=")[(f === "left" ? 0 : 1)];
 		var nTrans = os.split('t').length - 1;
@@ -556,8 +552,7 @@ rule writeDragNDropSimplification {
 		not(pt: PartialTransformation);
 		ie1: interfaceElementDnd ie1.side === f;
 	} then {
-		
-		console.log("%c[NOOLS] " + "%cwriteDragNDrop, stepType is "+ciStepType, "color: #f53", "");
+		console.log("writeDragNDrop, stepType is "+ciStepType);
 		var input = eqStr(allTerms);
 		var studentSideInput = studentInput.split("=")[(f === "left" ? 0 : 1)];
 		var nTrans = os.split('t').length - 1;
@@ -597,7 +592,8 @@ rule writeDragNDropSimplification {
 
 rule done {
 	when {
-		p: Problem !p.currentDiagram;
+		p: Problem !p.currentDiagram && !p.dragNDrop;
+		not(ri: rowInfo);
 		e1: Expr e1.topLevel && e1.side === "left" && e1.terms.length === 1 {terms: terms1};
 		e2: Expr e2.topLevel && e2.side === "right" && e2.terms.length === 1 {terms: terms2};
 		t1: simpleTerm t1 in terms1 && (t1.var === null || t1.coeff === 1) {var: v1};
@@ -605,6 +601,25 @@ rule done {
 	}
 	then {
 		assert(new Hint("You've determined the value of x, so the problem is done.  Click \"Finish Problem\" to move on"));
+		if (checkSAI({selection: "done", action: "ButtonPressed", input: -1})) {
+			halt();
+		} 
+		else {
+			backtrack();
+		}
+	}
+}
+
+rule doneDragNDrop {
+	when {
+		p: Problem p.dragNDrop;
+		e1: Expr e1.topLevel && e1.side === "left" && e1.terms.length === 1 {terms: terms1};
+		e2: Expr e2.topLevel && e2.side === "right" && e2.terms.length === 1 {terms: terms2};
+		t1: simpleTerm t1 in terms1 && (t1.var === null || t1.coeff === 1) {var: v1};
+		t2: simpleTerm t2 in terms2 && t2.var !== v1 && (t2.var === null || t2.coeff === 1);
+	}
+	then {
+		assert(new Hint("You've determined the value of x, so the problem is done.  Click \"Done\" to move on"));
 		if (checkSAI({selection: "done", action: "ButtonPressed", input: -1})) {
 			halt();
 		} 

@@ -8,6 +8,7 @@ function getSkillForTrans(operation, operand) {
 	switch(operation) {
 		case 'division-simple':
 		case 'division-complex':
+		case 'multiplication':
 			skill = operation;
 		break;
 		case 'subtraction':
@@ -96,46 +97,38 @@ function getCurrentDiagramType(p) {
 @param fact: the one fact that will be asserted in the current function execution
 */
 function generateFact(facts,fact){
+	var newFact;
 	switch(fact.type){
 		case "simpleTerm" :
-			var newTerm = new simpleTerm(fact.coeff, fact.var,  fact.side);
-			var idx = facts.indexOf(fact);
-			facts[idx] = newTerm;
-			assert(newTerm);
+			newFact = new simpleTerm(fact.coeff, fact.var,  fact.side);
 			break;
 		case "divTerm" :
 			var factors = [];
 			fact.factors.forEach(function(idx){
 				factors.push(facts[idx]);
 			});
-			var newDivTerm = new divTerm(factors, fact.side);
-			var idx = facts.indexOf(fact);
-			facts[idx] = newDivTerm;
-			assert(newDivTerm);
+			newFact = new divTerm(factors, fact.side);
 			break;
 		case "productTerm" :
 			var factors = [];
 			fact.factors.forEach(function(idx){
 				factors.push(facts[idx]);
 			});
-			var newProductTerm = new productTerm(factors, fact.side);
-			var idx = facts.indexOf(fact);
-			facts[idx] = newProductTerm;
-			assert(newProductTerm);
+			newFact = new productTerm(factors, fact.side);
 			break;
 		case "Expr" :
 			var terms = [];
 			fact.terms.forEach(function(idx){
 				terms.push(facts[idx]);
 			});
-			var newExpr = new Expr(fact.side,terms,fact.topLevel);
-			var idx = facts.indexOf(fact);
-			facts[idx] = newExpr;
-			assert(newExpr);
+			newFact = new Expr(fact.side,terms,fact.topLevel);
 			break;
 		default :
 			return;
 	}
+	var idx = facts.indexOf(fact);
+	facts[idx] = newFact;
+	assert(newFact);
 }
 
 /*
@@ -201,9 +194,6 @@ function genPartialTransformation(e1, e2, operation, operand, ci) {
 }
 
 function applyPartialTransformation(exp, pt, inclOperand) {
-	console.log("applyPartialTransformation, pt is ");
-	console.log(pt);
-	console.log("include operand is "+inclOperand);
 	var expStr = eqStr(exp.terms),
 		operandStr = inclOperand ? simpleTermStr({var: pt.operand.var, coeff: Math.abs(pt.operand.coeff)}) : "?" ;
 	switch(pt.operator) {
@@ -215,6 +205,9 @@ function applyPartialTransformation(exp, pt, inclOperand) {
 		break;
 		case 'division': 
 			expStr = '('+expStr+')/'+operandStr;
+		break;
+		case 'multiplication':
+			expStr = operandStr+'*('+expStr+')';
 		break;
 	}
 	
@@ -229,15 +222,31 @@ function clearInterfaceElements(ie1, ie2) {
 }
 
 /** 	TRANSFORMATION FUNCTIONS 	**/
-function divideExpBy(exp, divisorVal, side) {
+function divideExpBy(exp, divisorVal, side, p) {
 	var c = divisorVal.coeff,
 		v = divisorVal.var;
+	
 	var newTopTerms = exp.terms.slice();
 	var divisorTerm = assert(new simpleTerm(c, v, side));
 	var newTopExpr = assert(new Expr(side, newTopTerms, false));
 	var newBtmExpr = assert(new Expr(side, [divisorTerm], false));
 	var newDivTerm = assert(new divTerm([newTopExpr, newBtmExpr], side));
 	modify(exp, "terms", [newDivTerm]);
+	
+	modify(p, "dividedBy", c+(v?v:''));
+	return exp;
+}
+
+function multiplyExpBy(exp, multVal, side, p) {
+	var c = multVal.coeff,
+		v = multVal.var;
+	
+	var newFactorTerms = exp.terms.slice();
+	var multiplierTerm = assert(new simpleTerm(c, v, side));
+	var newFactorExpr1 = assert(new Expr(side, newFactorTerms, false));
+	var newFactorExpr2 = assert(new Expr(side, [multiplierTerm], false));
+	var newProductTerm = assert(new productTerm([newFactorExpr1, newFactorExpr2], side));
+	modify(exp, "terms", [newProductTerm]);
 	return exp;
 }
 
@@ -283,8 +292,12 @@ function applyTransformation(probFact, pt) {
 			addTermToExp(probFact, e2, -1*operand.coeff, operand.var, e2.side, (e2.terms.indexOf(operand) >= 0 ? operand : null));
 		break;
 		case 'division': 
-			divideExpBy(e1, operand, e1.side);
-			divideExpBy(e2, operand, e2.side);
+			divideExpBy(e1, operand, e1.side, probFact);
+			divideExpBy(e2, operand, e2.side, probFact);
+		break;
+		case 'multiplication':
+			multiplyExpBy(e1, operand, e1.side);
+			multiplyExpBy(e2, operand, e2.side);
 		break;
 	}
 }

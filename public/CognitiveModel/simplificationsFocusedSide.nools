@@ -71,6 +71,7 @@ rule DistributeMultiplication{
 			expSide = e.side;
 			
 		if(ci.selection === "hint") {
+			setChainPriority(1);
 			assert(new Hint("You can simplify the "+s+" side by distributing the multiplication"));
 			assert(new Hint("Multiply each of the terms in the expression "+eqStr(factorExpr1.terms)+" by "+eqStr(factorExpr2.terms)));
 			assert(new Hint("Enter "+input+" on the "+s+" side"));
@@ -185,6 +186,7 @@ rule DistributeDivision{
 				modify(ci, "simplification", null);
 				assert(new Skill("distribute-division", "simplification"));
 			} else if (eSide === s || ci.otherSideFree) {
+				setChainPriority(1);
 				assert(new Hint("You have to distribute the division term on the "+eSide+" in order to simplify it"));
 				assert(new Hint("Divide each of the terms in the numerator ("+terms.map((t)=>termStr(t)).join(", ")+") by the denominator ("+termStr(coeffTerm)+")"));
 				assert(new Hint("Enter "+input+" on the "+eSide));
@@ -192,6 +194,59 @@ rule DistributeDivision{
 			} else {
 				backtrack();
 			}
+		} else {
+			backtrack();
+		}
+	}
+}
+
+rule CancelDivision {
+	salience: 5;
+	when {
+		p: Problem {currTransformation : ct, combinedDivTerms: combined};
+		ci: cycleInfo !ci.copyOK {focus : s};
+		ri: rowInfo;
+		pt: productTerm {factors: ptFactors};
+		ptFactor1: Expr ptFactor1 in ptFactors && ptFactor1.terms.length === 1;
+		ptFactor2: Expr ptFactor2 in ptFactors && ptFactor2.terms.length === 1 && ptFactor2 !== ptFactor1;
+		dt: divTerm dt === ptFactor1.terms[0];
+		dtDenomExp: Expr dtDenomExp === dt.factors[1] && dtDenomExp.terms.length === 1;
+		btmCancelTerm: simpleTerm btmCancelTerm === dtDenomExp.terms[0] {coeff: btmCancelCoeff, var: btmCancelVar};
+		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar; 
+		e: Expr pt in e.terms && e.topLevel && e.side === s {terms: eTerms, side: eSide};
+	} then {
+		modify(ci,"opStr", ci.opStr+'s');
+		modify(ri, "modified", true);
+		
+		//
+		var dtNumerExp = dt.factors[0];
+		var dtNumerExpTerms = dtNumerExp.terms.slice();
+		modify(e, "terms", dtNumerExpTerms);
+		
+		retract(pt);
+		retract(ptFactor1);
+		retract(dt);
+		retract(dtNumerExp);
+		retract(dtDenomExp);
+		retract(btmCancelTerm);
+		retract(ptFactor2);
+		retract(topCancelTerm);
+		
+		var cancelTermStr = btmCancelCoeff+(btmCancelVar ? btmCancelVar : '');
+		
+		var input = eqStr(dtNumerExpTerms);
+		if (inputRepeated(input, eSide)) {
+			backtrack();
+		} else if (ci.selection !== "hint") {
+			recordInput(input, eSide);
+			modify(ci, "simplification", null);
+			assert(new Skill("cancel-division", "simplification"));
+		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
+			assert(new Hint("You can cancel terms in the division term on the "+eSide+" side."));
+			assert(new Hint("The "+cancelTermStr+" in the denominator cancels out the "+cancelTermStr+" in the numerator, so you can remove those terms from the expression."));
+			assert(new Hint("Enter "+input+" on the "+eSide));
+			backtrack();
 		} else {
 			backtrack();
 		}
@@ -274,7 +329,6 @@ rule Multiply{
 	salience: 5;
 	when {
 		p : Problem;
-		not (h: IsHintMatch);
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, multFactNum: multNum};
         pt: productTerm pt.factNr > multNum {factors: ptFactors};
@@ -315,9 +369,17 @@ rule Multiply{
 		var input = eqStr(newTerms);
 		if(inputRepeated(input, eSide)){
 			backtrack();
-		}else{
+		} else if (ci.selection !== "hint") {
 			modify(ci, "simplification", null);
 			recordInput(input, eSide);
+		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
+			assert(new Hint("You can simplify the "+eSide+" side by multiplying two terms together."));
+			assert(new Hint("What does "+simpleTermStr(factorTerm1)+" * "+simpleTermStr(factorTerm2)+" evaluate to?"));
+			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			backtrack();
+		} else {
+			backtrack();
 		}
 	}
 }
@@ -408,6 +470,7 @@ rule Divide{
 		e: Expr e.topLevel && dt in e.terms && e.side === s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel		
+		var divTermStr = termStr(dt);
 		var	eSide = e.side;
 		modify(ci,"opStr", ci.opStr+'s');
 		var newCoeff = dividend.coeff / divisor.coeff;   // convert to integer?
@@ -454,9 +517,10 @@ rule Divide{
 			modify(ci, "simplification", null);
 			assert(new Skill("divide", "simplification"));
 		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
 			var isConst = !dividend.var;
 			assert(new Hint("Now simplify the "+(isConst ? "constant" : "variable")+" term on the "+eSide+" side."));
-			assert(new Hint("What does "+termStr+" evaluate to?"));
+			assert(new Hint("What does "+divTermStr+" evaluate to?"));
 			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
 			backtrack();
 		} else {
@@ -537,6 +601,7 @@ rule CombineLikeTerms {   // terms don't cancel
 			modify(ci, "simplification", null);
 			assert(new Skill("combine-like-"+(isConst ? "const" : "var"), "simplification"));
 		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
 			var term1 = termStr(t1),
 				term2 = termStr(t2);
 			assert(new Hint("You have two "+(isConst ? "constant" : "variable")+" terms on the "+eSide+" side that you can add together"));
@@ -597,6 +662,7 @@ rule CancelTerms {
 			modify(ci, "simplification", null);
 			assert(new Skill("cancel-"+(isConst ? "const" : "var"), "simplification"));
 		} else if (eSide === s || ci.otherSideFree) {
+			setChainPriority(1);
 			var term1 = termStr(t1),
 				term2 = termStr(t2);
 			assert(new Hint("On the "+eSide+" side, you have the terms "+term1+" and "+term2+". These terms cancel each other out."));
