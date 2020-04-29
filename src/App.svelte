@@ -31,6 +31,7 @@
 
     if ($lastCorrect === $history.current) {
       error.set(null);
+      alienState.set(null);
     }
   }
 </script>

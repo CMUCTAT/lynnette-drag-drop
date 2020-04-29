@@ -2624,6 +2624,7 @@ var app = (function () {
      */
 
     var finishDraft = immer.finishDraft.bind(immer);
+    //# sourceMappingURL=immer.module.js.map
 
     function createHistory() {
       const initial = { past: [], current: null, index: -1, future: [], all: [] };
@@ -2683,10 +2684,10 @@ var app = (function () {
     const dragdropData = createDragdropData();
     const parse$1 = new CTATAlgebraParser();
     window.parse = parse$1;
-    window.setEqn = (newEqn) => {
-      history.reset();
-      history.push(window.parse.algParse(newEqn));
-    };
+    // window.setEqn = (newEqn) => {
+    //   history.reset();
+    //   history.push(window.parse.algParse(newEqn));
+    // };
 
     const initial = null;
 
@@ -11316,7 +11317,7 @@ var app = (function () {
 
     const file$d = "src\\App.svelte";
 
-    // (190:6) {#if true}
+    // (191:6) {#if true}
     function create_if_block_2$4(ctx) {
     	let current;
     	const history_1 = new History({ $$inline: true });
@@ -11347,14 +11348,14 @@ var app = (function () {
     		block,
     		id: create_if_block_2$4.name,
     		type: "if",
-    		source: "(190:6) {#if true}",
+    		source: "(191:6) {#if true}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (217:4) {#if $history.current}
+    // (218:4) {#if $history.current}
     function create_if_block$9(ctx) {
     	let div;
     	let t;
@@ -11378,7 +11379,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "equation svelte-vqibtc");
     			toggle_class(div, "disable", /*$error*/ ctx[4]);
-    			add_location(div, file$d, 217, 6, 5232);
+    			add_location(div, file$d, 218, 6, 5261);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11442,14 +11443,14 @@ var app = (function () {
     		block,
     		id: create_if_block$9.name,
     		type: "if",
-    		source: "(217:4) {#if $history.current}",
+    		source: "(218:4) {#if $history.current}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (220:8) {#if $dragdropData.drop}
+    // (221:8) {#if $dragdropData.drop}
     function create_if_block_1$6(ctx) {
     	let div;
     	let current;
@@ -11466,7 +11467,7 @@ var app = (function () {
     			div = element("div");
     			create_component(equation.$$.fragment);
     			attr_dev(div, "class", "draft-equation svelte-vqibtc");
-    			add_location(div, file$d, 220, 10, 5402);
+    			add_location(div, file$d, 221, 10, 5431);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11497,7 +11498,7 @@ var app = (function () {
     		block,
     		id: create_if_block_1$6.name,
     		type: "if",
-    		source: "(220:8) {#if $dragdropData.drop}",
+    		source: "(221:8) {#if $dragdropData.drop}",
     		ctx
     	});
 
@@ -11610,44 +11611,44 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "🕨";
     			attr_dev(h1, "class", "svelte-vqibtc");
-    			add_location(h1, file$d, 187, 4, 4183);
+    			add_location(h1, file$d, 188, 4, 4212);
     			attr_dev(div0, "class", "history svelte-vqibtc");
-    			add_location(div0, file$d, 188, 4, 4203);
+    			add_location(div0, file$d, 189, 4, 4232);
     			attr_dev(div1, "class", "steps svelte-vqibtc");
-    			add_location(div1, file$d, 186, 2, 4158);
+    			add_location(div1, file$d, 187, 2, 4187);
     			set_style(path0, "fill", "#FF6E52");
     			attr_dev(path0, "d", "M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z");
     			attr_dev(path0, "class", "svelte-vqibtc");
-    			add_location(path0, file$d, 196, 6, 4405);
+    			add_location(path0, file$d, 197, 6, 4434);
     			set_style(path1, "fill", "#FFC33E");
     			attr_dev(path1, "d", "M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z");
     			attr_dev(path1, "class", "svelte-vqibtc");
-    			add_location(path1, file$d, 199, 6, 4516);
+    			add_location(path1, file$d, 200, 6, 4545);
     			set_style(path2, "fill", "#f5f4f3");
     			attr_dev(path2, "d", "M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z");
     			attr_dev(path2, "class", "svelte-vqibtc");
-    			add_location(path2, file$d, 202, 6, 4628);
+    			add_location(path2, file$d, 203, 6, 4657);
     			attr_dev(svg, "viewBox", "0 0 302 269");
     			set_style(svg, "enable-background", "new 0 0 302 269");
     			attr_dev(svg, "class", "svelte-vqibtc");
-    			add_location(svg, file$d, 195, 4, 4327);
+    			add_location(svg, file$d, 196, 4, 4356);
     			attr_dev(div2, "id", "hintwindow");
     			attr_dev(div2, "class", "CTATHintWindow svelte-vqibtc");
     			toggle_class(div2, "visible", /*$showMessages*/ ctx[3]);
-    			add_location(div2, file$d, 207, 4, 4784);
+    			add_location(div2, file$d, 208, 4, 4813);
     			attr_dev(div3, "class", "alien svelte-vqibtc");
-    			add_location(div3, file$d, 194, 2, 4302);
+    			add_location(div3, file$d, 195, 2, 4331);
     			attr_dev(div4, "class", "operators svelte-vqibtc");
-    			add_location(div4, file$d, 209, 2, 4874);
+    			add_location(div4, file$d, 210, 2, 4903);
     			attr_dev(div5, "class", "main svelte-vqibtc");
-    			add_location(div5, file$d, 215, 2, 5178);
+    			add_location(div5, file$d, 216, 2, 5207);
     			attr_dev(button, "class", "mute svelte-vqibtc");
     			toggle_class(button, "muted", /*muted*/ ctx[0]);
-    			add_location(button, file$d, 230, 4, 5638);
+    			add_location(button, file$d, 231, 4, 5667);
     			attr_dev(div6, "class", "buttons svelte-vqibtc");
-    			add_location(div6, file$d, 227, 2, 5568);
+    			add_location(div6, file$d, 228, 2, 5597);
     			attr_dev(div7, "class", "app svelte-vqibtc");
-    			add_location(div7, file$d, 185, 0, 4137);
+    			add_location(div7, file$d, 186, 0, 4166);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -11807,6 +11808,7 @@ var app = (function () {
 
     		if ($lastCorrect === $history.current) {
     			error.set(null);
+    			alienState.set(null);
     		}
     	}
 
@@ -11917,15 +11919,21 @@ var app = (function () {
     function handleInCorrectAction(evt, msg) {
       var sai = msg.getSAI();
       if (sai.getSelection() != "done") {
-        showMessages.set(true);
         error.set(sai.getSelection());
-        alienState.set("error");
-        soundEffects.play("hmm");
+        if (alienState !== "error") {
+          showMessages.set(false);
+          soundEffects.play("hmm");
+          alienState.set("error");
+        }
       }
     }
 
     function handleBuggyMessage(evt, msg) {
       showMessages.set(true);
+      if (alienState !== "error") {
+        soundEffects.play("hmm");
+        alienState.set("error");
+      }
     }
 
     function handleSuccessMessage(evt, msg) {
@@ -11948,6 +11956,8 @@ var app = (function () {
     }
 
     function handleShowHintsMessage(evt, msg) {
+      console.log(msg.getXMLString());
+
       showMessages.set(true);
       alienState.set("hint");
     }
@@ -12141,7 +12151,7 @@ var app = (function () {
         });
         CTATCommShell.commShell.addGlobalEventListener({
           processCommShellEvent: (evt, msg) => {
-            // console.log(evt, msg);
+            console.log(evt, msg);
             switch (evt) {
               case "BuggyMessage":
                 handleBuggyMessage();
@@ -12159,10 +12169,14 @@ var app = (function () {
                 handleBuggyMessage();
                 break;
               case "ShowHintsMessage":
-                handleShowHintsMessage();
+                handleShowHintsMessage(evt, msg);
                 break;
               case "SuccessMessage":
                 handleSuccessMessage();
+                break;
+              case "AssociatedRules":
+                console.log(msg.getXMLString());
+
                 break;
             }
           },

@@ -189,7 +189,7 @@ if (window.jQuery) {
     });
     CTATCommShell.commShell.addGlobalEventListener({
       processCommShellEvent: (evt, msg) => {
-        // console.log(evt, msg);
+        console.log(evt, msg);
         switch (evt) {
           case "BuggyMessage":
             commHandlers.handleBuggyMessage(evt, msg);
@@ -211,6 +211,10 @@ if (window.jQuery) {
             break;
           case "SuccessMessage":
             commHandlers.handleSuccessMessage(evt, msg);
+            break;
+          case "AssociatedRules":
+            console.log(msg.getXMLString());
+
             break;
           default:
             break;

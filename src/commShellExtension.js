@@ -31,14 +31,18 @@ export function handleCorrectAction(evt, msg) {
 export function handleInCorrectAction(evt, msg) {
   var sai = msg.getSAI();
   if (sai.getSelection() != "done") {
-    showMessages.set(true);
     error.set(sai.getSelection());
-    alienState.set("error");
-    soundEffects.play("hmm");
+    if (alienState !== "error") {
+      showMessages.set(false);
+      soundEffects.play("hmm");
+      alienState.set("error");
+    }
   }
 }
 
-export function handleHighlightMsg(evt, msg) {}
+export function handleHighlightMsg(evt, msg) {
+  console.log(1);
+}
 
 export function handleUnHighlightMsg(evt, msg) {}
 
@@ -50,6 +54,10 @@ export function handleAssociatedRules(evt, msg) {}
 
 export function handleBuggyMessage(evt, msg) {
   showMessages.set(true);
+  if (alienState !== "error") {
+    soundEffects.play("hmm");
+    alienState.set("error");
+  }
 }
 
 export function handleSuccessMessage(evt, msg) {
@@ -72,6 +80,8 @@ export function handleInterfaceAction(evt, msg) {
 }
 
 export function handleShowHintsMessage(evt, msg) {
+  console.log(msg.getXMLString());
+
   showMessages.set(true);
   alienState.set("hint");
 }

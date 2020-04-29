@@ -24,10 +24,10 @@ function createDragdropData() {
 export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
-window.setEqn = (newEqn) => {
-  history.reset();
-  history.push(window.parse.algParse(newEqn));
-};
+// window.setEqn = (newEqn) => {
+//   history.reset();
+//   history.push(window.parse.algParse(newEqn));
+// };
 
 const initial = null;
 
