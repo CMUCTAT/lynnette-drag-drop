@@ -195,7 +195,7 @@ function genPartialTransformation(e1, e2, operation, operand, ci) {
 
 function applyPartialTransformation(exp, pt, inclOperand) {
 	var expStr = eqStr(exp.terms),
-		operandStr = inclOperand ? simpleTermStr({var: pt.operand.var, coeff: Math.abs(pt.operand.coeff)}) : "?" ;
+		operandStr = inclOperand ? simpleTermStr({var: pt.operand.var, coeff: pt.operand.coeff}) : "?" ;
 	switch(pt.operator) {
 		case 'addition': 
 			expStr += " + "+operandStr;
@@ -284,12 +284,14 @@ function addTermToExp(probFact, exp, termCoeff, termVar, side, cancelTerm) {
 function applyTransformation(probFact, pt) {
 	var e1 = pt.exp1,
 		e2 = pt.exp2,
-		operand = pt.operand;
+		operand = pt.operand,
+		coeff = operand.coeff;
 	switch(pt.operator) {
-		case 'addition':
 		case 'subtraction':
-			addTermToExp(probFact, e1, -1*operand.coeff, operand.var, e1.side, (e1.terms.indexOf(operand) >= 0 ? operand : null));
-			addTermToExp(probFact, e2, -1*operand.coeff, operand.var, e2.side, (e2.terms.indexOf(operand) >= 0 ? operand : null));
+			coeff = -1*coeff;
+		case 'addition':
+			addTermToExp(probFact, e1, coeff, operand.var, e1.side, (e1.terms.indexOf(operand) >= 0 ? operand : null));
+			addTermToExp(probFact, e2, coeff, operand.var, e2.side, (e2.terms.indexOf(operand) >= 0 ? operand : null));
 		break;
 		case 'division': 
 			divideExpBy(e1, operand, e1.side, probFact);
@@ -300,4 +302,26 @@ function applyTransformation(probFact, pt) {
 			multiplyExpBy(e2, operand, e2.side);
 		break;
 	}
+}
+
+function copyTerm(term) {
+	var copy = null;
+	if (term.type === "simpleTerm") {
+		copy = new simpleTerm(term.coeff, term.var, term.side);
+	} else {
+		var newFactors = [];
+		term.factors.forEach((factor) => {
+			let newTerms = [];
+			factor.terms.forEach((term) => {
+				newTerms.push(assert(new simpleTerm(term.coeff, term.var, term.side)));
+			});
+			newFactors.push(assert(new Expr(factor.side, newTerms, factor.topLevel)));
+		});
+		if (term.type === "divTerm") {
+			copy = new divTerm(newFactors, term.side);
+		} else {
+			copy = new productTerm(newFactors, term.side);
+		}
+	}
+	return copy;
 }

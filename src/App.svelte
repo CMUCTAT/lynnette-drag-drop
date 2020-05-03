@@ -11,7 +11,7 @@
   import Buttons from "./components/menu/Buttons.svelte";
   import Alien from "./components/menu/Alien.svelte";
 
-  let muted = false;
+  let muted = document.cookie.split("muted=")[1] === "true";
 
   import {
     PlusOperator,
@@ -235,6 +235,7 @@
       on:click={() => {
         soundEffects.mute(!soundEffects._muted);
         muted = !muted;
+        document.cookie = 'muted=' + muted;
       }}>
       🕨
     </button>

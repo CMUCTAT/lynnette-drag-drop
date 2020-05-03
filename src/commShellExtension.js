@@ -32,7 +32,7 @@ export function handleInCorrectAction(evt, msg) {
   var sai = msg.getSAI();
   if (sai.getSelection() != "done") {
     error.set(sai.getSelection());
-    if (alienState !== "error") {
+    if (get(alienState) !== "error") {
       showMessages.set(false);
       soundEffects.play("hmm");
       alienState.set("error");
@@ -54,7 +54,7 @@ export function handleAssociatedRules(evt, msg) {}
 
 export function handleBuggyMessage(evt, msg) {
   showMessages.set(true);
-  if (alienState !== "error") {
+  if (get(alienState) !== "error") {
     soundEffects.play("hmm");
     alienState.set("error");
   }

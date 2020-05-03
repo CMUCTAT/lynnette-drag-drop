@@ -6,7 +6,9 @@ rule DistributeMultiplication{
 		pt: productTerm;
 		factorExpr1: Expr (factorExpr1 === pt.factors[0] || factorExpr1 === pt.factors[1]) && factorExpr1.terms.length > 1;
 		factorExpr2: Expr (factorExpr2 === pt.factors[1] || factorExpr2 === pt.factors[0]) && factorExpr2 !== factorExpr1;
-		e: Expr pt in e.terms && e.topLevel && e.side === s;
+		e: Expr pt in e.terms && (e.side === s || s === "full");
+		topLevelE: Expr topLevelE.topLevel && (topLevelE.side === s || s === "full");
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}then {
 	/*	
 		var pt = simpData.pt,
@@ -34,16 +36,15 @@ rule DistributeMultiplication{
 					resultTerms.push(newSimpleTerm);
 				} else {
 					//create new factors and productTerm
-					var newFactorTerm1 = new simpleTerm(factorTerm1.coeff, factorTerm1.var, factorTerm1.side);
-					var newFactorTerm2 = new simpleTerm(factorTerm2.coeff, factorTerm2.var, factorTerm2.side);
-					var newFactorExpr1 = new Expr(pt.side,[newFactorTerm1],false);
-					var newFactorExpr2 = new Expr(pt.side,[newFactorTerm2],false);
-					var newProductTerm = new productTerm([newFactorExpr1,newFactorExpr2],pt.side);
-					assert(newFactorTerm1);
-					assert(newFactorTerm2);
-					assert(newFactorExpr1);
-					assert(newFactorExpr2);
+					var newFactorExprs = [factorTerm1, factorTerm2].map((ft) => {
+						var newFactorTerm = copyTerm(ft);
+						assert(newFactorTerm);
+						var newFactorExpr = assert(new Expr(pt.side,[newFactorTerm],false));
+						return newFactorExpr;
+					});
+					var newProductTerm = new productTerm(newFactorExprs,pt.side);
 					assert(newProductTerm);
+					
 					resultTerms.push(newProductTerm);
 				}
 			}
@@ -67,9 +68,10 @@ rule DistributeMultiplication{
 		//tree duplication
 		modify(ci, "distributedMult",true);
 
-		var input = eqStr(newTerms), 
+		var input = eqStr(topLevelE.terms), 
 			expSide = e.side;
-			
+		var fullExp = (s === "left" ? eqStr(topLevelE.terms, otherE.terms) : eqStr(otherE.terms, topLEvelE.terms));
+		setCTNodeData(fullExp);	
 		if(ci.selection === "hint") {
 			setChainPriority(1);
 			assert(new Hint("You can simplify the "+s+" side by distributing the multiplication"));
@@ -98,7 +100,8 @@ rule DistributeDivision{
 		topExpr: Expr topExpr === dtFactors[0] && topExpr.terms.length !== 1 {terms: topExprTerms};
 		bottomExpr: Expr bottomExpr === dtFactors[1] && bottomExpr.terms.length === 1 {terms: bottomExprTerms};
 		coeffTerm: simpleTerm coeffTerm === bottomExprTerms[0];
-		e: Expr dt in e.terms && e.topLevel && e.side === s {terms: eTerms};
+		e: Expr dt in e.terms && e.topLevel && (e.side === s || s === "full") {terms: eTerms};
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}then {
 	/*
 		var dt = simpData.dt,
@@ -179,6 +182,8 @@ rule DistributeDivision{
 			modify(ri, "modified", true);
 
 			var input = eqStr(newTerms);
+			var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
+			setCTNodeData(fullExp);
 			if (inputRepeated(input, eSide)) {
 				backtrack();
 			} else if (ci.selection !== "hint") {
@@ -213,7 +218,8 @@ rule CancelDivision {
 		dtDenomExp: Expr dtDenomExp === dt.factors[1] && dtDenomExp.terms.length === 1;
 		btmCancelTerm: simpleTerm btmCancelTerm === dtDenomExp.terms[0] {coeff: btmCancelCoeff, var: btmCancelVar};
 		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar; 
-		e: Expr pt in e.terms && e.topLevel && e.side === s {terms: eTerms, side: eSide};
+		e: Expr pt in e.terms && e.topLevel && (e.side === s || s === "full") {terms: eTerms, side: eSide};
+		otherE: Expr otherE.topLevel && otherE.side !== s
 	} then {
 		modify(ci,"opStr", ci.opStr+'s');
 		modify(ri, "modified", true);
@@ -235,6 +241,8 @@ rule CancelDivision {
 		var cancelTermStr = btmCancelCoeff+(btmCancelVar ? btmCancelVar : '');
 		
 		var input = eqStr(dtNumerExpTerms);
+		var fullExp = (s === "left" ? eqStr(dtNumerExpTerms, otherE.terms) : eqStr(otherE.terms, dtNumerExpTerms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -260,7 +268,8 @@ rule CombineDivTerms {
 //		currTrans: transformation currTrans === ct;
 		ci: cycleInfo !ci.copyOK  && !ci.simplification {focus : s};
 		ri: rowInfo;
-		e: Expr e.side === s {terms: eTerms};
+		e: Expr (e.side === s || s === "full") {terms: eTerms};
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 		divTerm1: divTerm divTerm1 in eTerms && divTerm1 notIn distributed {factors: dt1Factors, factNr: dt1FactNr};
 		divTerm2: divTerm divTerm2 in eTerms && divTerm2.factNr > dt1FactNr && divTerm2 notIn distributed {factors: dt2Factors, factNr: dt2FactNr};
 		topExpr1: Expr topExpr1 === dt1Factors[0] && topExpr1.terms.length === 1 {terms: topExpr1Terms};
@@ -313,6 +322,8 @@ rule CombineDivTerms {
 		modify(ri, "modified", true);
 
 		var input = eqStr(newETerms);
+		var fullExp = (s === "left" ? eqStr(newETerms, otherE.terms) : eqStr(otherE.terms, newETerms));
+		setCTNodeData(fullExp);
 		if (ci.selection === "hint") {
 			
 			backtrack();
@@ -336,7 +347,8 @@ rule Multiply{
         factorExpr2: Expr factorExpr2 === ptFactors[1] && factorExpr2.terms.length === 1 {terms: fe2Terms};
 		factorTerm1: simpleTerm factorTerm1 === fe1Terms[0];
 		factorTerm2: simpleTerm factorTerm2 === fe2Terms[0];
-		e: Expr e.topLevel && pt in e.terms && e.side === s;
+		e: Expr e.topLevel && pt in e.terms && (e.side === s || s === "full");
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}
 	then {		
 		var	eSide = e.side;
@@ -367,6 +379,8 @@ rule Multiply{
 		retract(factorTerm1);
 		retract(factorTerm2);
 		var input = eqStr(newTerms);
+		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
+		setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -399,7 +413,8 @@ rule DivideProductTerm{
 		divisor: simpleTerm divisor === divisorTerms[0];
 		factor1: Expr factor1 === dividendFactors[0];
 		factor2: Expr factor2 === dividendFactors[1];
-		e: Expr e.topLevel && dt in e.terms && e.side === s;
+		e: Expr e.topLevel && dt in e.terms && (e.side === s || s === "full");
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel
 		var	eSide = e.side;
@@ -445,6 +460,8 @@ rule DivideProductTerm{
 		modify(ci, "divided", true);
 
 		var input = eqStr(newTerms);
+		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
+		setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -467,7 +484,8 @@ rule Divide{
 		divisorExpr: Expr divisorExpr === dtFactors[1] && divisorExpr.terms.length === 1 {terms: divisorTerms};
 		dividend: simpleTerm dividend === dividendTerms[0];
 		divisor: simpleTerm divisor === divisorTerms[0];
-		e: Expr e.topLevel && dt in e.terms && e.side === s;
+		e: Expr e.topLevel && dt in e.terms && (e.side === s || s === "full");
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel		
 		var divTermStr = termStr(dt);
@@ -509,7 +527,8 @@ rule Divide{
 		modify(ci, "divided", true);
 
 		var input = eqStr(newTerms);
-		
+		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -542,8 +561,9 @@ rule CombineLikeTerms {   // terms don't cancel
         					&& (c1+t2.coeff !== 0) //not cancelTerm
         					&& ((divCombineExpr == null) || ((t2 notIn divCombineExpr.terms)))  //avoid duplication in tree
         						{coeff: c2};
-		e: Expr t1 in e.terms && t2 in e.terms && e.side === s;     // e is the side where we are combining like terms
-        not (t3: simpleTerm (t3 in e.terms) && (t3.var === v) && (((t3.coeff+c1 === 0) || (t3.coeff+c2 === 0)) && (t3.coeff != 0))); //no cancelTerm
+		e: Expr t1 in e.terms && t2 in e.terms && (e.side === s || s === "full");     // e is the side where we are combining like terms
+        otherE: Expr otherE.topLevel && otherE.side !== s;
+		not (t3: simpleTerm (t3 in e.terms) && (t3.var === v) && (((t3.coeff+c1 === 0) || (t3.coeff+c2 === 0)) && (t3.coeff != 0))); //no cancelTerm
 	}
 	then {
 	/*
@@ -594,6 +614,10 @@ rule CombineLikeTerms {   // terms don't cancel
 		//modify(ci,"cancelCombineNum",t1.factNr);
 		var input = eqStr(newTerms),
 			isConst = !v;
+			
+		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
+		setCTNodeData(fullExp);
+		
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -626,7 +650,8 @@ rule CancelTerms {
         t2: simpleTerm (t2.var === v) && (t2.factNr > t1.factNr) // avoid duplication in matching
         				&& (c1 + t2.coeff === 0) 
         				&& ( (divCancelExpr == null) || (t2 notIn divCancelExpr.terms) ) {coeff: c2};
-		e: Expr t1 in e.terms && t2 in e.terms && e.side === s {terms: allTerms}; 
+		e: Expr t1 in e.terms && t2 in e.terms && (e.side === s || s === "full") {terms: allTerms}; 
+		otherE: Expr otherE.topLevel && otherE.side !== s;
 	}
 	then {
 	/*
@@ -655,6 +680,8 @@ rule CancelTerms {
 		var topLevelExpr = getTopLevelExpression(s);
 		var input = eqStr(topLevelExpr.terms),
 			isConst = !v;
+		var fullExp = (s === "left" ? eqStr(topLevelExpr.terms, otherE.terms) : eqStr(otherE.terms, topLevelExpr.terms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {

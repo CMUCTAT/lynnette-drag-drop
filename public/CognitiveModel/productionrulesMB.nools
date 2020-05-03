@@ -31,7 +31,8 @@ rule bootstrap {
 			dragNDrop: false,
 			forceSimplify: false,
 			pregenConflictTree: false,
-			operatorsFirst: false
+			operatorsFirst: false,
+			allowNonStrategic: false
 		};
 		//set up problem config
 		//amt of step skipping allowed
@@ -46,7 +47,8 @@ rule bootstrap {
 		
 		//whether this interface uses diagrams 
 		try {
-			config.useDiagrams = useDiagrams;
+			//config.useDiagrams = useDiagrams;
+			config.useDiagrams = (getInterfaceType() === "diagrams");
 		} catch(e) {}
 		
 		//whether negative terms are allowed to be created by transformations
@@ -56,7 +58,8 @@ rule bootstrap {
 		
 		//whether this interface uses drag n' drop
 		try {
-			config.dragNDrop = dragNDrop; 
+			//config.dragNDrop = dragNDrop; 
+			config.dragNDrop = (getInterfaceType() === "dragndrop");
 		} catch (e) {}
 		if (config.dragNDrop) {
 			config.shallowSearch = true;
@@ -65,7 +68,7 @@ rule bootstrap {
 		
 		//whether equation must be fully simplified before starting new transformation
 		try {
-			config.forceSimplify = true; //forceSimplify;
+			config.forceSimplify = forceSimplify;
 		} catch (e) {}
 		
 		//whether to pregen conflict tree
@@ -78,11 +81,15 @@ rule bootstrap {
 			config.operatorsFirst = operatorsFirst;
 		} catch (e) {}
 		
-		//setting up interface
+		try {
+			config.allowNonStrategic = allowNonStrategic;
+		} catch (e) {}
+		
+		//setting up interface (two inputs)
 		var initLName = "startLeft";
 		var initRName = "startRight";
-		assert(new interfaceElement(initLName, initLeft));
-		assert(new interfaceElement(initRName, initRight));
+		assert(new interfaceElement(initLName, initLeft, "left"));
+		assert(new interfaceElement(initRName, initRight, "right"));
 		assert(new interfaceRow("row0", initLName, initRName));
 		var rowNames = [];
 		if (config.dragNDrop) {
@@ -130,8 +137,9 @@ rule bootstrap {
 		addPregenSAI({selection: "done"});
 		
 		//TPAs to set up initial expression
+		var initStr = initLeft+' = '+initRight;
 		if (config.dragNDrop) {
-			assert(new TPA('_root', "setEqn", initLeft+' = '+initRight));
+			assert(new TPA("left", "start-state", initStr));
 		} else {
 			assert(new TPA(initLName, "UpdateTextField", initLeft));
 			assert(new TPA(initRName, "UpdateTextField", initRight));
@@ -368,7 +376,9 @@ rule write {
 	}
 	then {
 		var rowNum = parseInt(/\d+$/.exec(rows[0])[0], 10);
-		var input = eqStr((f === 'left' ? allTerms : allTerms2), (f === 'left' ? allTerms2 : allTerms));
+		var input = eqStr(allTerms); //one side
+		var inputOtherSide = eqStr(allTerms2); //other side
+	//	var input = f === "left" ? eqStr(allTerms, allTerms2) : eqStr(allTerms2, allTerms); //both sides
 		var nTrans = os.split('t').length - 1;
 		var nSimp = os.split('s').length - 1;
 		writeInput(input);
@@ -389,7 +399,22 @@ rule write {
 				break;
 		}
 		var isBug = ci.inputIsBug || skippedTooManySteps || needToSimplify;
-		if(checkSAI({selection: s, action: "UpdateTextField", input: input}, SAIeq, isBug)) {
+		
+		var compFunc = function(sai1, sai2) {
+			var match = (sai1.selection === sai2.selection && sai1.action === sai2.action);
+			if (match) {
+				var studentInput = sai1.input;
+				if (checkEqualEquation(studentInput, input)) {
+					return true;
+				} else if (checkEqualEquation(studentInput, inputOtherSide)) {
+					modify(e, "side", f === "left" ? "right" : "left");
+					modify(e2, "side", f === "left" ? "left" : "right");
+					return true;
+				}
+			}
+		};
+		
+		if(checkSAI({selection: s, action: "UpdateTextField", input: input}, compFunc, isBug)) {
 			if(isBug){
 				console.log("bug match");
 				var message;

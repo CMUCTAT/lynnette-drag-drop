@@ -23,6 +23,7 @@ define Problem {     // do we need this at all? mostly used for accessing the so
 		this.divisorToBeDeleted = [];
 		this.combinedDivTerms = [];
 		this.distributedDivTerms = [];
+		this.dividedBy = null;
 		this.swapped = false;
 		this.numTran = 10;
 		this.numSim = 10;
@@ -32,7 +33,9 @@ define Problem {     // do we need this at all? mostly used for accessing the so
 		this.allowNegativeTerms = config.allowNegativeTerms || false;
 		this.dragNDrop = config.dragNDrop;
 		this.forceSimplify = config.forceSimplify;
-		this.showNextRow = config.showNextRow
+		this.showNextRow = config.showNextRow;
+		this.operatorsFirst = config.operatorsFirst;
+		this.allowNonStrategic = config.allowNonStrategic;
 	}
 }
 
@@ -108,6 +111,7 @@ define PartialTransformation {
 	exp2: null,
 	operator: null,
 	operand: null,
+	operator2Selected: false,
 	constructor: function(e1, e2, operator, operand) {
 		this.exp1 = e1;
 		this.exp2 = e2;

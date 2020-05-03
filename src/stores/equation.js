@@ -222,15 +222,20 @@ function tokenToToken(src, dest, eqn) {
  */
 function tokenToExpression(src, dest, eqn) {
   dragOperation = { from: "Token", to: "Expression", side: dest.path[0] };
+  console.log("TOKEN TO EXPRESSION", src, dest);
+
   if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
     let parent = Object.path(eqn, src.path.slice(0, -2));
     let i0 = parseInt(src.path.slice(-1)[0]);
     let i1 = parseInt(dest.path.slice(-1)[0]);
-    return parse.algReplaceExpression(
+    console.log(parent, i0, i1);
+    let next = parse.algReplaceExpression(
       eqn,
       parent,
       parse.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
     );
+    console.log(next);
+    return next;
   } else {
     return eqn;
   }

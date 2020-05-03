@@ -1,8 +1,7 @@
 <script>
   export let error;
-  export let hint;
+  export let hint = false;
   export let size;
-  export let divide;
 </script>
 
 <style>
@@ -33,11 +32,7 @@
   }
 </style>
 
-<div
-  class="Flaggable"
-  class:error
-  class:hint
-  style={divide ? 'width: 100%' : ''}>
+<div class="Flaggable" class:error class:hint style={'width: 100%'}>
   <div
     class="highlight"
     style={`

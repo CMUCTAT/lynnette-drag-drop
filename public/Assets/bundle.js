@@ -2624,6 +2624,7 @@ var app = (function () {
      */
 
     var finishDraft = immer.finishDraft.bind(immer);
+    //# sourceMappingURL=immer.module.js.map
 
     function createHistory() {
       const initial = { past: [], current: null, index: -1, future: [], all: [] };
@@ -2881,15 +2882,20 @@ var app = (function () {
      */
     function tokenToExpression(src, dest, eqn) {
       dragOperation = { from: "Token", to: "Expression", side: dest.path[0] };
+      console.log("TOKEN TO EXPRESSION", src, dest);
+
       if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
         let parent = Object.path(eqn, src.path.slice(0, -2));
         let i0 = parseInt(src.path.slice(-1)[0]);
         let i1 = parseInt(dest.path.slice(-1)[0]);
-        return parse$1.algReplaceExpression(
+        console.log(parent, i0, i1);
+        let next = parse$1.algReplaceExpression(
           eqn,
           parent,
           parse$1.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
         );
+        console.log(next);
+        return next;
       } else {
         return eqn;
       }
@@ -8271,8 +8277,8 @@ var app = (function () {
     	let t;
     	let div1_style_value;
     	let current;
-    	const default_slot_template = /*$$slots*/ ctx[5].default;
-    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[4], null);
+    	const default_slot_template = /*$$slots*/ ctx[4].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[3], null);
 
     	const block = {
     		c: function create() {
@@ -8294,12 +8300,12 @@ var app = (function () {
 			: 60}%;
         `);
 
-    			add_location(div0, file$4, 40, 2, 757);
+    			add_location(div0, file$4, 35, 2, 717);
     			attr_dev(div1, "class", "Flaggable svelte-17mfnby");
-    			attr_dev(div1, "style", div1_style_value = /*divide*/ ctx[3] ? "width: 100%" : "");
+    			attr_dev(div1, "style", div1_style_value = "width: 100%");
     			toggle_class(div1, "error", /*error*/ ctx[0]);
     			toggle_class(div1, "hint", /*hint*/ ctx[1]);
-    			add_location(div1, file$4, 35, 0, 659);
+    			add_location(div1, file$4, 34, 0, 645);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -8331,13 +8337,9 @@ var app = (function () {
     			}
 
     			if (default_slot) {
-    				if (default_slot.p && dirty & /*$$scope*/ 16) {
-    					default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[4], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[4], dirty, null));
+    				if (default_slot.p && dirty & /*$$scope*/ 8) {
+    					default_slot.p(get_slot_context(default_slot_template, ctx, /*$$scope*/ ctx[3], null), get_slot_changes(default_slot_template, /*$$scope*/ ctx[3], dirty, null));
     				}
-    			}
-
-    			if (!current || dirty & /*divide*/ 8 && div1_style_value !== (div1_style_value = /*divide*/ ctx[3] ? "width: 100%" : "")) {
-    				attr_dev(div1, "style", div1_style_value);
     			}
 
     			if (dirty & /*error*/ 1) {
@@ -8376,10 +8378,9 @@ var app = (function () {
 
     function instance$4($$self, $$props, $$invalidate) {
     	let { error } = $$props;
-    	let { hint } = $$props;
+    	let { hint = false } = $$props;
     	let { size } = $$props;
-    	let { divide } = $$props;
-    	const writable_props = ["error", "hint", "size", "divide"];
+    	const writable_props = ["error", "hint", "size"];
 
     	Object.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Flaggable> was created with unknown prop '${key}'`);
@@ -8392,30 +8393,28 @@ var app = (function () {
     		if ("error" in $$props) $$invalidate(0, error = $$props.error);
     		if ("hint" in $$props) $$invalidate(1, hint = $$props.hint);
     		if ("size" in $$props) $$invalidate(2, size = $$props.size);
-    		if ("divide" in $$props) $$invalidate(3, divide = $$props.divide);
-    		if ("$$scope" in $$props) $$invalidate(4, $$scope = $$props.$$scope);
+    		if ("$$scope" in $$props) $$invalidate(3, $$scope = $$props.$$scope);
     	};
 
-    	$$self.$capture_state = () => ({ error, hint, size, divide });
+    	$$self.$capture_state = () => ({ error, hint, size });
 
     	$$self.$inject_state = $$props => {
     		if ("error" in $$props) $$invalidate(0, error = $$props.error);
     		if ("hint" in $$props) $$invalidate(1, hint = $$props.hint);
     		if ("size" in $$props) $$invalidate(2, size = $$props.size);
-    		if ("divide" in $$props) $$invalidate(3, divide = $$props.divide);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [error, hint, size, divide, $$scope, $$slots];
+    	return [error, hint, size, $$scope, $$slots];
     }
 
     class Flaggable extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$4, create_fragment$4, safe_not_equal, { error: 0, hint: 1, size: 2, divide: 3 });
+    		init(this, options, instance$4, create_fragment$4, safe_not_equal, { error: 0, hint: 1, size: 2 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -8431,16 +8430,8 @@ var app = (function () {
     			console.warn("<Flaggable> was created without expected prop 'error'");
     		}
 
-    		if (/*hint*/ ctx[1] === undefined && !("hint" in props)) {
-    			console.warn("<Flaggable> was created without expected prop 'hint'");
-    		}
-
     		if (/*size*/ ctx[2] === undefined && !("size" in props)) {
     			console.warn("<Flaggable> was created without expected prop 'size'");
-    		}
-
-    		if (/*divide*/ ctx[3] === undefined && !("divide" in props)) {
-    			console.warn("<Flaggable> was created without expected prop 'divide'");
     		}
     	}
 
@@ -8465,14 +8456,6 @@ var app = (function () {
     	}
 
     	set size(value) {
-    		throw new Error("<Flaggable>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get divide() {
-    		throw new Error("<Flaggable>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set divide(value) {
     		throw new Error("<Flaggable>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
@@ -10243,15 +10226,12 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (23:44) 
+    // (66:49) 
     function create_if_block_5$1(ctx) {
     	let current;
 
     	const tokendisplay = new TokenDisplay({
-    			props: {
-    				token: /*item*/ ctx[4].left,
-    				path: "left"
-    			},
+    			props: { token: /*item*/ ctx[4].left },
     			$$inline: true
     		});
 
@@ -10286,23 +10266,19 @@ var app = (function () {
     		block,
     		id: create_if_block_5$1.name,
     		type: "if",
-    		source: "(23:44) ",
+    		source: "(66:49) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (21:49) 
+    // (64:54) 
     function create_if_block_4$1(ctx) {
     	let current;
 
     	const expressiondisplay = new ExpressionDisplay({
-    			props: {
-    				expression: /*item*/ ctx[4].left,
-    				path: "left",
-    				parentDivide: false
-    			},
+    			props: { expression: /*item*/ ctx[4].left },
     			$$inline: true
     		});
 
@@ -10337,22 +10313,19 @@ var app = (function () {
     		block,
     		id: create_if_block_4$1.name,
     		type: "if",
-    		source: "(21:49) ",
+    		source: "(64:54) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (19:7) {#if item.left instanceof Operator}
+    // (62:12) {#if item.left instanceof Operator}
     function create_if_block_3$1(ctx) {
     	let current;
 
     	const operatordisplay = new OperatorDisplay({
-    			props: {
-    				operator: /*item*/ ctx[4].left,
-    				path: "left"
-    			},
+    			props: { operator: /*item*/ ctx[4].left },
     			$$inline: true
     		});
 
@@ -10387,22 +10360,19 @@ var app = (function () {
     		block,
     		id: create_if_block_3$1.name,
     		type: "if",
-    		source: "(19:7) {#if item.left instanceof Operator}",
+    		source: "(62:12) {#if item.left instanceof Operator}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (33:45) 
+    // (78:50) 
     function create_if_block_2$3(ctx) {
     	let current;
 
     	const tokendisplay = new TokenDisplay({
-    			props: {
-    				token: /*item*/ ctx[4].right,
-    				path: "right"
-    			},
+    			props: { token: /*item*/ ctx[4].right },
     			$$inline: true
     		});
 
@@ -10437,23 +10407,19 @@ var app = (function () {
     		block,
     		id: create_if_block_2$3.name,
     		type: "if",
-    		source: "(33:45) ",
+    		source: "(78:50) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (31:50) 
+    // (76:55) 
     function create_if_block_1$5(ctx) {
     	let current;
 
     	const expressiondisplay = new ExpressionDisplay({
-    			props: {
-    				expression: /*item*/ ctx[4].right,
-    				path: "right",
-    				parentDivide: false
-    			},
+    			props: { expression: /*item*/ ctx[4].right },
     			$$inline: true
     		});
 
@@ -10488,22 +10454,19 @@ var app = (function () {
     		block,
     		id: create_if_block_1$5.name,
     		type: "if",
-    		source: "(31:50) ",
+    		source: "(76:55) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (29:7) {#if item.right instanceof Operator}
+    // (74:12) {#if item.right instanceof Operator}
     function create_if_block$7(ctx) {
     	let current;
 
     	const operatordisplay = new OperatorDisplay({
-    			props: {
-    				operator: /*item*/ ctx[4].right,
-    				path: "right"
-    			},
+    			props: { operator: /*item*/ ctx[4].right },
     			$$inline: true
     		});
 
@@ -10538,14 +10501,14 @@ var app = (function () {
     		block,
     		id: create_if_block$7.name,
     		type: "if",
-    		source: "(29:7) {#if item.right instanceof Operator}",
+    		source: "(74:12) {#if item.right instanceof Operator}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (15:3) {#each parsedHistory as item, i}
+    // (58:4) {#each parsedHistory as item, i}
     function create_each_block$2(ctx) {
     	let div5;
     	let div4;
@@ -10603,19 +10566,19 @@ var app = (function () {
     			div3 = element("div");
     			if (if_block1) if_block1.c();
     			t3 = space();
-    			attr_dev(div0, "class", "left svelte-17ube68");
-    			add_location(div0, file$a, 17, 6, 670);
-    			attr_dev(div1, "class", "svelte-17ube68");
-    			add_location(div1, file$a, 26, 26, 1096);
-    			attr_dev(div2, "class", "equals svelte-17ube68");
-    			add_location(div2, file$a, 26, 6, 1076);
-    			attr_dev(div3, "class", "right svelte-17ube68");
-    			add_location(div3, file$a, 27, 6, 1122);
-    			attr_dev(div4, "class", "equation svelte-17ube68");
-    			add_location(div4, file$a, 16, 5, 640);
-    			attr_dev(div5, "class", "equation-display svelte-17ube68");
+    			attr_dev(div0, "class", "left svelte-qtw04b");
+    			add_location(div0, file$a, 60, 10, 1520);
+    			attr_dev(div1, "class", "svelte-qtw04b");
+    			add_location(div1, file$a, 70, 12, 1943);
+    			attr_dev(div2, "class", "equals svelte-qtw04b");
+    			add_location(div2, file$a, 69, 10, 1909);
+    			attr_dev(div3, "class", "right svelte-qtw04b");
+    			add_location(div3, file$a, 72, 10, 1985);
+    			attr_dev(div4, "class", "equation svelte-qtw04b");
+    			add_location(div4, file$a, 59, 8, 1486);
+    			attr_dev(div5, "class", "equation-display svelte-qtw04b");
     			toggle_class(div5, "current", /*i*/ ctx[6] === /*$history*/ ctx[2].index);
-    			add_location(div5, file$a, 15, 4, 568);
+    			add_location(div5, file$a, 58, 6, 1409);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div5, anchor);
@@ -10738,7 +10701,7 @@ var app = (function () {
     		block,
     		id: create_each_block$2.name,
     		type: "each",
-    		source: "(15:3) {#each parsedHistory as item, i}",
+    		source: "(58:4) {#each parsedHistory as item, i}",
     		ctx
     	});
 
@@ -10770,10 +10733,10 @@ var app = (function () {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div0, "class", "stack svelte-17ube68");
-    			add_location(div0, file$a, 13, 4, 490);
-    			attr_dev(div1, "class", "History svelte-17ube68");
-    			add_location(div1, file$a, 12, 0, 463);
+    			attr_dev(div0, "class", "stack svelte-qtw04b");
+    			add_location(div0, file$a, 56, 2, 1328);
+    			attr_dev(div1, "class", "History svelte-qtw04b");
+    			add_location(div1, file$a, 55, 0, 1303);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -11383,7 +11346,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "equation svelte-vqibtc");
     			toggle_class(div, "disable", /*$error*/ ctx[4]);
-    			add_location(div, file$d, 218, 6, 5261);
+    			add_location(div, file$d, 218, 6, 5301);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11471,7 +11434,7 @@ var app = (function () {
     			div = element("div");
     			create_component(equation.$$.fragment);
     			attr_dev(div, "class", "draft-equation svelte-vqibtc");
-    			add_location(div, file$d, 221, 10, 5431);
+    			add_location(div, file$d, 221, 10, 5471);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11615,44 +11578,44 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "🕨";
     			attr_dev(h1, "class", "svelte-vqibtc");
-    			add_location(h1, file$d, 188, 4, 4212);
+    			add_location(h1, file$d, 188, 4, 4252);
     			attr_dev(div0, "class", "history svelte-vqibtc");
-    			add_location(div0, file$d, 189, 4, 4232);
+    			add_location(div0, file$d, 189, 4, 4272);
     			attr_dev(div1, "class", "steps svelte-vqibtc");
-    			add_location(div1, file$d, 187, 2, 4187);
+    			add_location(div1, file$d, 187, 2, 4227);
     			set_style(path0, "fill", "#FF6E52");
     			attr_dev(path0, "d", "M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z");
     			attr_dev(path0, "class", "svelte-vqibtc");
-    			add_location(path0, file$d, 197, 6, 4434);
+    			add_location(path0, file$d, 197, 6, 4474);
     			set_style(path1, "fill", "#FFC33E");
     			attr_dev(path1, "d", "M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z");
     			attr_dev(path1, "class", "svelte-vqibtc");
-    			add_location(path1, file$d, 200, 6, 4545);
+    			add_location(path1, file$d, 200, 6, 4585);
     			set_style(path2, "fill", "#f5f4f3");
     			attr_dev(path2, "d", "M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z");
     			attr_dev(path2, "class", "svelte-vqibtc");
-    			add_location(path2, file$d, 203, 6, 4657);
+    			add_location(path2, file$d, 203, 6, 4697);
     			attr_dev(svg, "viewBox", "0 0 302 269");
     			set_style(svg, "enable-background", "new 0 0 302 269");
     			attr_dev(svg, "class", "svelte-vqibtc");
-    			add_location(svg, file$d, 196, 4, 4356);
+    			add_location(svg, file$d, 196, 4, 4396);
     			attr_dev(div2, "id", "hintwindow");
     			attr_dev(div2, "class", "CTATHintWindow svelte-vqibtc");
     			toggle_class(div2, "visible", /*$showMessages*/ ctx[3]);
-    			add_location(div2, file$d, 208, 4, 4813);
+    			add_location(div2, file$d, 208, 4, 4853);
     			attr_dev(div3, "class", "alien svelte-vqibtc");
-    			add_location(div3, file$d, 195, 2, 4331);
+    			add_location(div3, file$d, 195, 2, 4371);
     			attr_dev(div4, "class", "operators svelte-vqibtc");
-    			add_location(div4, file$d, 210, 2, 4903);
+    			add_location(div4, file$d, 210, 2, 4943);
     			attr_dev(div5, "class", "main svelte-vqibtc");
-    			add_location(div5, file$d, 216, 2, 5207);
+    			add_location(div5, file$d, 216, 2, 5247);
     			attr_dev(button, "class", "mute svelte-vqibtc");
     			toggle_class(button, "muted", /*muted*/ ctx[0]);
-    			add_location(button, file$d, 231, 4, 5667);
+    			add_location(button, file$d, 231, 4, 5707);
     			attr_dev(div6, "class", "buttons svelte-vqibtc");
-    			add_location(div6, file$d, 228, 2, 5597);
+    			add_location(div6, file$d, 228, 2, 5637);
     			attr_dev(div7, "class", "app svelte-vqibtc");
-    			add_location(div7, file$d, 186, 0, 4166);
+    			add_location(div7, file$d, 186, 0, 4206);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -11805,7 +11768,7 @@ var app = (function () {
     	component_subscribe($$self, dragdropData, $$value => $$invalidate(5, $dragdropData = $$value));
     	validate_store(draftEquation, "draftEquation");
     	component_subscribe($$self, draftEquation, $$value => $$invalidate(6, $draftEquation = $$value));
-    	let muted = false;
+    	let muted = document.cookie.split("muted=")[1] === "true";
 
     	function onUndo() {
     		history.undo();
@@ -11828,6 +11791,7 @@ var app = (function () {
     	const click_handler = () => {
     		soundEffects.mute(!soundEffects._muted);
     		$$invalidate(0, muted = !muted);
+    		document.cookie = "muted=" + muted;
     	};
 
     	$$self.$capture_state = () => ({
@@ -11924,7 +11888,7 @@ var app = (function () {
       var sai = msg.getSAI();
       if (sai.getSelection() != "done") {
         error.set(sai.getSelection());
-        if (alienState !== "error") {
+        if (get_store_value(alienState) !== "error") {
           showMessages.set(false);
           soundEffects.play("hmm");
           alienState.set("error");
@@ -11934,7 +11898,7 @@ var app = (function () {
 
     function handleBuggyMessage(evt, msg) {
       showMessages.set(true);
-      if (alienState !== "error") {
+      if (get_store_value(alienState) !== "error") {
         soundEffects.play("hmm");
         alienState.set("error");
       }

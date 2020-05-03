@@ -9,6 +9,7 @@ rule DistributeMultiplicationOtherSide{
 		factorExpr1: Expr (factorExpr1 === pt.factors[0] || factorExpr1 === pt.factors[1]) && factorExpr1.terms.length > 1;
 		factorExpr2: Expr (factorExpr2 === pt.factors[1] || factorExpr2 === pt.factors[0]) && factorExpr2 !== factorExpr1;
 		e: Expr pt in e.terms && e.topLevel && e.side !== s;
+		otherE: Expr otherE.topLevel && e.side === s;
 	}then{
 	/*
 		var pt = simpData.pt,
@@ -72,6 +73,9 @@ rule DistributeMultiplicationOtherSide{
 		var input = eqStr(newTerms), 
 			expSide = e.side;
 			
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+		setCTNodeData(fullExp);
+		
 		if(ci.selection === "hint") {
 			backtrack();
 		}else if(inputRepeated(input, expSide)){
@@ -100,6 +104,7 @@ rule DistributeDivisionOtherSide {
 		bottomExpr: Expr bottomExpr === dtFactors[1] && bottomExpr.terms.length === 1 {terms: bottomExprTerms};
 		coeffTerm: simpleTerm coeffTerm === bottomExprTerms[0];
 		e: Expr dt in e.terms && e.topLevel && e.side !== s {terms: eTerms};
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	}then{
 	/*
 		var dt = simpData.dt,
@@ -160,6 +165,9 @@ rule DistributeDivisionOtherSide {
 			modify(ri, "modified", true);
 
 			var input = eqStr(newTerms);
+			var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+			setCTNodeData(fullExp);
+			
 			if (inputRepeated(input, eSide)) {
 				backtrack();
 			} else if (ci.selection !== "hint") {
@@ -192,6 +200,7 @@ rule CancelDivisionOtherSide {
 		btmCancelTerm: simpleTerm btmCancelTerm === dtDenomExp.terms[0] {coeff: btmCancelCoeff, var: btmCancelVar};
 		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar; 
 		e: Expr pt in e.terms && e.topLevel && e.side === !s {terms: eTerms, side: eSide};
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	} then {
 		modify(ci,"opStr", ci.opStr+'s');
 		modify(ri, "modified", true);
@@ -213,6 +222,9 @@ rule CancelDivisionOtherSide {
 		var cancelTermStr = btmCancelCoeff+(btmCancelVar ? btmCancelVar : '');
 		
 		var input = eqStr(dtNumerExpTerms);
+		var fullExp = (s === "left" ? eqStr(otherE.terms, dtNumerExpTerms) : eqStr(dtNumerExpTerms, otherE.terms));
+		setCTNodeData(fullExp);
+		
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -239,6 +251,7 @@ rule CombineDivTermsOtherSide {
 		ci: cycleInfo !ci.copyOK  && !ci.simplification {focus : s};
 		ri: rowInfo;
 		e: Expr e.side !== s {terms: eTerms};
+		otherE: Expr otherE.side === s;
 		divTerm1: divTerm divTerm1 in eTerms && divTerm1 notIn distributed {factors: dt1Factors, factNr: dt1FactNr};
 		divTerm2: divTerm divTerm2 in eTerms && divTerm2.factNr > dt1FactNr && divTerm2 notIn distributed {factors: dt2Factors, factNr: dt2FactNr};
 		topExpr1: Expr topExpr1 === dt1Factors[0] && topExpr1.terms.length === 1 {terms: topExpr1Terms};
@@ -291,6 +304,8 @@ rule CombineDivTermsOtherSide {
 		modify(ri, "modified", true);
 
 		var input = eqStr(newETerms);
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newETerms) : eqStr(newETerms, otherE.terms));
+		setCTNodeData(fullExp);
 		if (ci.selection === "hint") {
 			
 			backtrack();
@@ -319,6 +334,7 @@ rule MultiplyOtherSide{
 		factorTerm1: simpleTerm factorTerm1 === fe1Terms[0];
 		factorTerm2: simpleTerm factorTerm2 === fe2Terms[0];
 		e: Expr e.topLevel && pt in e.terms && e.side !== s;
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {
 	/*
@@ -362,6 +378,8 @@ rule MultiplyOtherSide{
 		retract(factorTerm1);
 		retract(factorTerm2);
 		var input = eqStr(newTerms);
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+		setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -390,6 +408,7 @@ rule DivideProductTermOtherSide{
 		factor1: Expr factor1 === dividendFactors[0];
 		factor2: Expr factor2 === dividendFactors[1];
 		e: Expr e.topLevel && dt in e.terms && e.side !== s;
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel
 	/*	
@@ -448,6 +467,8 @@ rule DivideProductTermOtherSide{
 		modify(ci, "divided", true);
 
 		var input = eqStr(newTerms);
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+		setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -474,6 +495,7 @@ rule DivideOtherSide {
 		dividend: simpleTerm dividend === dividendTerms[0];
 		divisor: simpleTerm divisor === divisorTerms[0];
 		e: Expr e.topLevel && dt in e.terms && e.side !== s;
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel
 	/*
@@ -527,7 +549,8 @@ rule DivideOtherSide {
 		modify(ci, "divided", true);
 
 		var input = eqStr(newTerms);
-		
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -546,7 +569,7 @@ rule DivideOtherSide {
 rule CombineLikeTermsOtherSide {   // terms don't cancel
 	salience : 1;
 	when {
-		p : Problem !p.dragNDrop && p.hasAThingThatDontExist {currTransformation : currTrans};
+		p : Problem !p.dragNDrop  {currTransformation : currTrans};
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCombineTerm : divCombineExpr, cancelCombineNum : cancelCombine};
         t1: simpleTerm ((divCombineExpr == null) || ((t1 notIn divCombineExpr.terms)))  //avoid duplication in tree
@@ -557,7 +580,8 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
         					&& ((divCombineExpr == null) || ((t2 notIn divCombineExpr.terms)))  //avoid duplication in tree
         						{coeff: c2};
 		e: Expr t1 in e.terms && t2 in e.terms && e.side !== s;     // e is the side where we are combining like terms
-        not (t3: simpleTerm (t3 in e.terms) && (t3.var === v) && (((t3.coeff+c1 === 0) || (t3.coeff+c2 === 0)) && (t3.coeff != 0))); //no cancelTerm
+        otherE: Expr otherE.topLevel && otherE.side === s;
+		not (t3: simpleTerm (t3 in e.terms) && (t3.var === v) && (((t3.coeff+c1 === 0) || (t3.coeff+c2 === 0)) && (t3.coeff != 0))); //no cancelTerm
 	}
 	then {
 	/*
@@ -609,6 +633,8 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 		//modify(ci,"cancelCombineNum",t1.factNr);
 		var input = eqStr(newTerms),
 			isConst = !v;
+		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -627,7 +653,7 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 rule CancelTermsOtherSide {
 	salience : 2;
 	when {
-		p: Problem !p.dragNDrop && p.hasAThingThatDontExist {termToBeCanceled : termCancel, movedSimpleTerms : movedTerms, currTransformation : ct};
+		p: Problem !p.dragNDrop  {termToBeCanceled : termCancel, movedSimpleTerms : movedTerms, currTransformation : ct};
 //      currTrans: transformation currTrans === ct;
 		ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.simplification {focus: s, divEarlyCancelTerm : divCancelExpr, cancelCombineNum : cancelCombine};
@@ -637,6 +663,7 @@ rule CancelTermsOtherSide {
         				&& (c1 + t2.coeff === 0) 
         				&& ( (divCancelExpr == null) || (t2 notIn divCancelExpr.terms) ) {coeff: c2};
 		e: Expr t1 in e.terms && t2 in e.terms && e.side !== s {terms: allTerms}; 
+		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {
 	/*
@@ -665,6 +692,8 @@ rule CancelTermsOtherSide {
 		var topLevelExpr = getTopLevelExpression(s);
 		var input = eqStr(topLevelExpr.terms),
 			isConst = !v;
+		var fullExp = (s === "left" ? eqStr(otherE.terms, topLevelExpr.terms) : eqStr(topLevelExpr.terms, otherE.terms));
+		setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
