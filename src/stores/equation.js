@@ -192,7 +192,12 @@ function tokenToToken(src, dest, eqn) {
     let next = parse.algReplaceExpression(
       eqn,
       parent,
-      parse.algApplyRulesSelectively(parent, ["combineSimilar"], false, ...indices)
+      parse.algApplyRulesSelectively(
+        parent,
+        ["computeConstants", "combineSimilar"],
+        false,
+        ...indices
+      )
     );
     console.log(parse.algStringify(next));
 

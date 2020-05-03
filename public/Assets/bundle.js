@@ -2624,7 +2624,6 @@ var app = (function () {
      */
 
     var finishDraft = immer.finishDraft.bind(immer);
-    //# sourceMappingURL=immer.module.js.map
 
     function createHistory() {
       const initial = { past: [], current: null, index: -1, future: [], all: [] };
@@ -2852,7 +2851,12 @@ var app = (function () {
         let next = parse$1.algReplaceExpression(
           eqn,
           parent,
-          parse$1.algApplyRulesSelectively(parent, ["combineSimilar"], false, ...indices)
+          parse$1.algApplyRulesSelectively(
+            parent,
+            ["computeConstants", "combineSimilar"],
+            false,
+            ...indices
+          )
         );
         console.log(parse$1.algStringify(next));
 
