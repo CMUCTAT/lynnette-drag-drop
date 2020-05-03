@@ -31,11 +31,7 @@ export class Token extends EquationNode {
     return this.value();
   }
   value() {
-    const constant = !(this.variable && this.constant === 1)
-      ? this.constant === -1
-        ? "-"
-        : this.constant
-      : "";
+    const constant = this.variable ? this.constant.toString().replace("1", "") : this.constant;
     const variable = this.variable || "";
     return constant + variable;
   }
@@ -49,10 +45,11 @@ export class UnknownToken extends Token {
 }
 
 export class Expression extends EquationNode {
-  constructor(parent, path, nodes, parens = false) {
+  constructor(parent, path, nodes, parens = false, ...indices) {
     super(parent, path);
     this.nodes = nodes;
     this.parens = parens;
+    this.indices = indices;
   }
   stringify() {
     return "(" + this.nodes.map((item) => item.stringify()).join(" ") + ")";
