@@ -16,34 +16,42 @@ export class Equation extends EquationNode {
   }
 
   stringify() {
-    return this.left.stringify() + " = " + this.right.stringify();
+    return this.left.stringify() + ' = ' + this.right.stringify();
   }
 }
 
+// const values = this.nodes.map(
+//       (node) =>
+//         node.value * (this.hideSign ? 1 : node.sign) ||
+//         node.variable ||
+//         -node.base.value ||
+//         '-' + node.base.variable,
+//     );
+//     if (values.length === 1) {
+//       return values[0];
+//     } else {
+//       if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, '$1');
+//       else values[0] = values[0].toString().replace(/(^-?)1$/, '$1');
+//       return values.join('');
+//     }
+
 export class Token extends EquationNode {
-  constructor(parent, nodes, indices) {
+  constructor(parent, nodes, indices, hideSign = false) {
     super(parent, nodes[0]);
     this.nodes = nodes;
     this.indices = indices;
+    this.hideSign = hideSign;
   }
+
   stringify() {
-    return this.value();
+    return this.value;
   }
   value() {
-    const values = this.nodes.map(
-      (node) =>
-        node.value * node.sign || node.variable || -node.base.value || "-" + node.base.variable
+    let sign = this.nodes.reduce((sign, node) => (sign *= node.sign), 1);
+    return (
+      (this.hideSign ? '' : sign.toString().replace('1', '')) +
+      this.nodes.map((node) => node.value || node.variable || -node.base.value).join('')
     );
-    if (values.length === 1) {
-      return values[0];
-    } else {
-      if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, "$1");
-      else values[0] = values[0].toString().replace(/(^-?)1$/, "$1");
-      return values.join("");
-    }
-    // const constant = this.variable ? this.constant.toString().replace(/^-?1$/, "") : this.constant;
-    // const variable = this.variable || "";
-    // return constant + variable;
   }
 }
 
@@ -53,7 +61,7 @@ export class UnknownToken extends Token {
     this.unknown = true;
   }
   value() {
-    return "□"; //?
+    return '□';
   }
 }
 
@@ -63,13 +71,13 @@ export class Expression extends EquationNode {
     this.items = items;
   }
   stringify() {
-    return "(" + this.items.map((item) => item.stringify()).join(" ") + ")";
+    return '(' + this.items.map((item) => item.stringify()).join(' ') + ')';
   }
 }
 
 export const Operators = {
-  PLUS: "+",
-  MINUS: "-",
-  TIMES: "×",
-  DIVIDE: "÷",
+  PLUS: '+',
+  MINUS: '-',
+  TIMES: '×',
+  DIVIDE: '÷',
 };

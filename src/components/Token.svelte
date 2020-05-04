@@ -1,6 +1,6 @@
 <script>
-  import { draftEquation, dragdropData } from "../stores/equation.js";
-  import DragDrop from "./DragDrop.svelte";
+  import { draftEquation, dragdropData } from '../stores/equation.js';
+  import DragDrop from './DragDrop.svelte';
 
   export let token;
 
@@ -25,9 +25,6 @@
     draftEquation.updateToken(token, e.target.value);
   }
   $: value = token.value();
-  // $: if (token) {
-  //   console.log(token.value());
-  // }
 </script>
 
 <style>
@@ -98,35 +95,15 @@
 </style>
 
 <div class="token" class:unknown={token.unknown}>
-  <DragDrop
-    let:dragging
-    let:hovering
-    let:fade
-    let:draghovering
-    canDrag={!token.unknown}
-    dragStart={handleDragStart}
-    dropReceive={handleDropReceive}
-    dragLeave={handleDragLeave}
-    dragHover={handleDragHover}>
-    <div
-      slot="dropzone"
-      class="token-inner no-highlight dropzone"
-      class:dragging
-      class:hovering
-      class:draghovering>
+  <DragDrop let:dragging let:hovering let:fade let:draghovering canDrag={!token.unknown} dragStart={handleDragStart} dropReceive={handleDropReceive} dragLeave={handleDragLeave} dragHover={handleDragHover}>
+    <div slot="dropzone" class="token-inner no-highlight dropzone" class:dragging class:hovering class:draghovering>
       {#if token.unknown}
         <input size={1} on:change={handleUpdateToken} />
       {:else}
         <div>{value}</div>
       {/if}
     </div>
-    <div
-      slot="mover"
-      class="token-inner no-highlight mover"
-      class:dragging
-      class:hovering
-      class:draghovering
-      class:fade>
+    <div slot="mover" class="token-inner no-highlight mover" class:dragging class:hovering class:draghovering class:fade>
       {#if token.unknown}
         <div />
       {:else}

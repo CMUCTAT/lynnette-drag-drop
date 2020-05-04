@@ -1,7 +1,7 @@
-import { writable, get } from "svelte/store";
+import { writable, get } from 'svelte/store';
 // import { history } from './history.js';
-import { Equation, Token, Expression, UnknownToken, Operators } from "../classes.js";
-import { history } from "./history";
+import { Equation, Token, Expression, UnknownToken, Operators } from '../classes.js';
+import { history } from './history';
 
 function createDragdropData() {
   const { subscribe, set, update } = writable({ drag: null, drop: null });
@@ -19,8 +19,9 @@ window.parse = parse;
 //   history.push(window.parse.algParse(newEqn));
 // };
 
-const initial = parse.algParse("4(1+x) = (x+1)/4");
-history.push(initial);
+const initial = null;
+// const initial = parse.algParse("4(1+x) = (x+1)/4");
+// history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
 let dragOperation = {
@@ -64,7 +65,7 @@ function createDraftEquation() {
       } else if (Object.keys(Operators).includes(dest)) {
         return tokenToOperator(src, dest, eqn);
       } else {
-        throw new TypeError("Drag destination is not a proper item type");
+        throw new TypeError('Drag destination is not a proper item type');
       }
     } else if (src instanceof Expression) {
       if (dest instanceof Token) {
@@ -74,7 +75,7 @@ function createDraftEquation() {
       } else if (Object.keys(Operators).includes(dest)) {
         return expressionToOperator(src, dest, eqn);
       } else {
-        throw new TypeError("Drag destination is not a proper item type");
+        throw new TypeError('Drag destination is not a proper item type');
       }
     } else if (Object.keys(Operators).includes(src)) {
       if (dest instanceof Token) {
@@ -84,10 +85,10 @@ function createDraftEquation() {
       } else if (Object.keys(Operators).includes(dest)) {
         return operatorToOperator(src, dest, eqn);
       } else {
-        throw new TypeError("Drag destination is not a proper item type");
+        throw new TypeError('Drag destination is not a proper item type');
       }
     } else {
-      throw new TypeError("Drag source is not a proper item type");
+      throw new TypeError('Drag source is not a proper item type');
     }
   }
 
@@ -100,10 +101,10 @@ function createDraftEquation() {
   function apply(eqn) {
     let sai = new CTATSAI(
       dragOperation.side,
-      dragOperation.from + "To" + dragOperation.to,
-      parse.algStringify(eqn)
+      dragOperation.from + 'To' + dragOperation.to,
+      parse.algStringify(eqn),
     );
-    console.log(`%c${sai.toXMLString()}`, "color: #15f");
+    console.log(`%c${sai.toXMLString()}`, 'color: #15f');
 
     if (CTATCommShell.commShell) {
       CTATCommShell.commShell.processComponentAction(sai);
@@ -129,11 +130,17 @@ function createDraftEquation() {
   function updateToken(eqn, token, value) {
     eqn = get(history).current;
     let path = flattenPath(token.node.path);
-    dragOperation = { from: "Update", to: "Token", side: path[0] };
+    dragOperation = { from: 'Update', to: 'Token', side: path[0] };
     let target = Object.path(eqn, path);
+    console.log(target);
+
     let newToken = parse.algParse(value);
+    console.log(newToken);
+
     newToken.sign = target.sign;
     newToken.exp = target.exp;
+    console.log(newToken);
+
     let next = parse.algReplaceExpression(eqn, target, newToken);
     return apply(next);
   }
@@ -157,7 +164,7 @@ export const draftEquation = createDraftEquation();
 Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x] ? xs[x] : null), o);
 
 function flattenPath(path) {
-  return path.join(",").split(",");
+  return path.join(',').split(',');
 }
 
 /**
@@ -170,7 +177,11 @@ function flattenPath(path) {
  * @param {CTATAlgebraTreeNode} eqn the current equation
  */
 function tokenToToken(src, dest, eqn) {
-  dragOperation = { from: "Token", to: "Token", side: flattenPath(dest.node.path)[0] };
+  let srcPath = flattenPath(src.node.path);
+  let destPath = flattenPath(dest.node.path);
+  console.log(srcPath, destPath);
+
+  dragOperation = { from: 'Token', to: 'Token', side: destPath[0] };
   if (dest instanceof UnknownToken) {
     let d = Object.path(eqn, flattenPath(dest.node.path));
     let s = parse.algParse(src.value());
@@ -178,25 +189,33 @@ function tokenToToken(src, dest, eqn) {
     s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
     return parse.algReplaceExpression(eqn, d, s);
   } else if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
-    let parentPath = flattenPath(src.node.path).slice(0, -2);
+    let parentPath = srcPath.slice(0, -2);
     let parent = Object.path(eqn, parentPath);
+    console.log(src.indices, dest.indices);
+
     let indices = src.indices.concat(dest.indices);
+    console.log(indices);
+
     indices.sort();
+    console.log(eqn);
+
     let next = parse.algReplaceExpression(
       eqn,
       parent,
       parse.algApplyRulesSelectively(
         parent,
-        ["computeConstants", "combineSimilar"],
+        ['computeConstants', 'combineSimilar'],
         false,
-        ...indices
-      )
+        ...indices,
+      ),
     );
+    console.log(next);
+
     parent = Object.path(next, parentPath);
     return parse.algReplaceExpression(
       next,
       parent,
-      parse.algApplyRules(parent, ["removeIdentity"])
+      parse.algApplyRules(parent, ['removeIdentity']),
     );
   } else {
     return eqn;
@@ -214,7 +233,7 @@ function tokenToToken(src, dest, eqn) {
 function tokenToExpression(src, dest, eqn) {
   let srcPath = flattenPath(src.node.path);
   let destPath = flattenPath(dest.node.path);
-  dragOperation = { from: "Token", to: "Expression", side: destPath[0] };
+  dragOperation = { from: 'Token', to: 'Expression', side: destPath[0] };
   // console.log("TOKEN TO EXPRESSION", src, dest);
 
   if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
@@ -226,7 +245,7 @@ function tokenToExpression(src, dest, eqn) {
     let next = parse.algReplaceExpression(
       eqn,
       parent,
-      parse.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
+      parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, i0, i1),
     );
     //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negativ exponent), it only happens with 1/k; this is because of removeIdentity
     return parse.algParse(parse.algStringify(next));
@@ -242,16 +261,16 @@ function tokenToExpression(src, dest, eqn) {
  * @param {CTATAlgebraTreeNode} eqn the current equation
  */
 function tokenToOperator(src, dest, eqn) {
-  dragOperation = { from: "Token", to: "Operator", side: flattenPath(dest.node.path)[0] };
+  dragOperation = { from: 'Token', to: 'Operator', side: flattenPath(dest.node.path)[0] };
   return eqn;
 }
 
 function expressionToToken(src, dest, eqn) {
-  dragOperation = { from: "Expression", to: "Token", side: flattenPath(dest.node.path)[0] };
+  dragOperation = { from: 'Expression', to: 'Token', side: flattenPath(dest.node.path)[0] };
 }
 
 function expressionToExpression(src, dest, eqn) {
-  dragOperation = { from: "Expression", to: "Expression", side: flattenPath(dest.node.path)[0] };
+  dragOperation = { from: 'Expression', to: 'Expression', side: flattenPath(dest.node.path)[0] };
 }
 
 /**
@@ -261,17 +280,17 @@ function expressionToExpression(src, dest, eqn) {
  * @param {CTATAlgebraTreeNode} eqn the current equation
  */
 function expressionToOperator(src, dest, eqn) {
-  dragOperation = { from: "Expression", to: "Operator", side: flattenPath(dest.node.path)[0] };
+  dragOperation = { from: 'Expression', to: 'Operator', side: flattenPath(dest.node.path)[0] };
   return eqn;
 }
 
 function operatorToToken(src, dest, eqn) {
   let destPath = flattenPath(dest.node.path);
-  dragOperation = { from: "Operator", to: "Token", side: destPath[0] };
+  dragOperation = { from: 'Operator', to: 'Token', side: destPath[0] };
 
   let subexp;
   let indices = dest.indices;
-  if (indices > 1) {
+  if (indices.length > 1) {
     indices.sort();
     let parent = Object.path(eqn, destPath.slice(0, -2));
     subexp = parse.algGetExpression(parent, ...indices);
@@ -281,21 +300,21 @@ function operatorToToken(src, dest, eqn) {
   let next = parse.algReplaceExpression(
     parse.algParse(parse.algStringify(eqn)),
     subexp,
-    parse.algCreateExpression(src, subexp, "?")
+    parse.algCreateExpression(src, subexp, '?'),
   );
-  //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
+  //TODO: unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
   return next;
 }
 
 function operatorToExpression(src, dest, eqn) {
   let destPath = flattenPath(dest.node.path);
-  dragOperation = { from: "Operator", to: "Expression", side: destPath[0] };
+  dragOperation = { from: 'Operator', to: 'Expression', side: destPath[0] };
   // eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this;
   // console.log(eqn);
 
   // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
   let d = Object.path(eqn, destPath);
-  let next = parse.algReplaceExpression(eqn, d, parse.algCreateExpression(src, d, "?"));
+  let next = parse.algReplaceExpression(eqn, d, parse.algCreateExpression(src, d, '?'));
   return parse.algParse(parse.algStringify(next)); //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
 }
 
@@ -307,6 +326,6 @@ function operatorToExpression(src, dest, eqn) {
  */
 function operatorToOperator(src, dest, eqn) {
   //TODO this should be technically feasible to code, but it's probably not necessary to implement
-  dragOperation = { from: "Operator", to: "Operator", side: flattenPath(dest.node.path)[0] };
+  dragOperation = { from: 'Operator', to: 'Operator', side: flattenPath(dest.node.path)[0] };
   return eqn;
 }

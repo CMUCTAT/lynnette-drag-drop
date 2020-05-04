@@ -1,5 +1,5 @@
 <script>
-  import { Token } from "../../classes.js";
+  import { Token } from '../../classes.js';
   export let token;
 </script>
 

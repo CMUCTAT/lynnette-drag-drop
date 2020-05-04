@@ -1,40 +1,30 @@
 <script>
-  import { afterUpdate, beforeUpdate } from "svelte";
+  import { afterUpdate, beforeUpdate } from 'svelte';
 
-  import { Token, Expression } from "../classes.js";
-  import ExpressionComponent from "./Expression.svelte";
-  import Operator from "./Operator.svelte";
-  import TokenComponent from "./Token.svelte";
-  import DragDrop from "./DragDrop.svelte";
-  import { draftEquation, dragdropData } from "../stores/equation.js";
+  import { Token, Expression } from '../classes.js';
+  import ExpressionComponent from './Expression.svelte';
+  import Operator from './Operator.svelte';
+  import TokenComponent from './Token.svelte';
+  import DragDrop from './DragDrop.svelte';
+  import { draftEquation, dragdropData } from '../stores/equation.js';
 
   export let expression;
-  let isAdd = expression.node.operator === "PLUS";
+  let isAdd = expression.node.operator === 'PLUS';
   let top = expression.items;
   let bottom = [];
+
+  function insertOperators(items, isAdd = true) {
+    if (isAdd)
+      return items.reduce((a, c, i) => {
+        return i === 0 ? [c] : a.concat([c.node.sign > 0 ? 'PLUS' : 'MINUS', c]);
+      }, []);
+    else return items.reduce((a, c, i) => (i === 0 ? [c] : a.concat(['TIMES', c])), []);
+  }
+
   $: if (expression) {
-    isAdd = expression.node.operator === "PLUS";
-    top = (isAdd
-      ? expression.items
-      : expression.items.filter(item => item.node.exp > 0)
-    ).reduce(
-      (acc, cur, i) =>
-        acc.concat(
-          i === 0
-            ? [cur]
-            : [isAdd ? (cur.node.sign > 0 ? "PLUS" : "MINUS") : "TIMES", cur]
-        ),
-      []
-    );
-    bottom = isAdd
-      ? []
-      : expression.items
-          .filter(item => item.node.exp < 0)
-          .reduce(
-            (acc, cur, i) =>
-              acc.concat(i === 0 ? [cur] : [isAdd ? "PLUS" : "TIMES", cur]),
-            []
-          );
+    isAdd = expression.node.operator === 'PLUS';
+    top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd);
+    bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
   }
 </script>
 
@@ -50,7 +40,7 @@
     transition: all 0.25s ease;
   }
   .parens:after {
-    content: "";
+    content: '';
     position: absolute;
     left: 0px;
     top: 0;
@@ -60,7 +50,7 @@
     border-radius: 50%;
   }
   .parens:before {
-    content: "";
+    content: '';
     position: absolute;
     right: 0px;
     top: 0;
@@ -105,16 +95,9 @@
     dragdropData.setDrop(expression);
     draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
   }}>
-  <div
-    slot="dropzone"
-    class="expression no-highlight dropzone"
-    class:dragging
-    class:hovering
-    class:draghovering
-    class:divide={bottom.length > 0}
-    class:parens={expression.node.parens}>
+  <div slot="dropzone" class="expression no-highlight dropzone" class:dragging class:hovering class:draghovering class:divide={bottom.length > 0} class:parens={expression.node.parens}>
     <div class="item-display top">
-      {#each top as item, i (item.id)}
+      {#each top as item, i (item.id || item + i)}
         {#if item instanceof Expression}
           <svelte:self expression={item} />
         {:else if item instanceof Token}
@@ -127,15 +110,13 @@
     {#if bottom.length > 0}
       <div class="vinculum" />
       <div class="item-display bottom">
-        {#each bottom as item, i (item.id)}
+        {#each bottom as item, i (item.id || item + i)}
           {#if item instanceof Expression}
             <svelte:self expression={item} />
           {:else if item instanceof Token}
             <TokenComponent token={item} />
           {:else}
-            <Operator
-              operator={item}
-              siblings={[bottom[i - 1], bottom[i + 1]]} />
+            <Operator operator={item} siblings={[bottom[i - 1], bottom[i + 1]]} />
           {/if}
         {/each}
       </div>

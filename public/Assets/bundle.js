@@ -597,34 +597,42 @@ var app = (function () {
       }
 
       stringify() {
-        return this.left.stringify() + " = " + this.right.stringify();
+        return this.left.stringify() + ' = ' + this.right.stringify();
       }
     }
 
+    // const values = this.nodes.map(
+    //       (node) =>
+    //         node.value * (this.hideSign ? 1 : node.sign) ||
+    //         node.variable ||
+    //         -node.base.value ||
+    //         '-' + node.base.variable,
+    //     );
+    //     if (values.length === 1) {
+    //       return values[0];
+    //     } else {
+    //       if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, '$1');
+    //       else values[0] = values[0].toString().replace(/(^-?)1$/, '$1');
+    //       return values.join('');
+    //     }
+
     class Token extends EquationNode {
-      constructor(parent, nodes, indices) {
+      constructor(parent, nodes, indices, hideSign = false) {
         super(parent, nodes[0]);
         this.nodes = nodes;
         this.indices = indices;
+        this.hideSign = hideSign;
       }
+
       stringify() {
-        return this.value();
+        return this.value;
       }
       value() {
-        const values = this.nodes.map(
-          (node) =>
-            node.value * node.sign || node.variable || -node.base.value || "-" + node.base.variable
+        let sign = this.nodes.reduce((sign, node) => (sign *= node.sign), 1);
+        return (
+          (this.hideSign ? '' : sign.toString().replace('1', '')) +
+          this.nodes.map((node) => node.value || node.variable || -node.base.value).join('')
         );
-        if (values.length === 1) {
-          return values[0];
-        } else {
-          if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, "$1");
-          else values[0] = values[0].toString().replace(/(^-?)1$/, "$1");
-          return values.join("");
-        }
-        // const constant = this.variable ? this.constant.toString().replace(/^-?1$/, "") : this.constant;
-        // const variable = this.variable || "";
-        // return constant + variable;
       }
     }
 
@@ -634,7 +642,7 @@ var app = (function () {
         this.unknown = true;
       }
       value() {
-        return "□"; //?
+        return '□';
       }
     }
 
@@ -644,43 +652,66 @@ var app = (function () {
         this.items = items;
       }
       stringify() {
-        return "(" + this.items.map((item) => item.stringify()).join(" ") + ")";
+        return '(' + this.items.map((item) => item.stringify()).join(' ') + ')';
       }
     }
 
     const Operators = {
-      PLUS: "+",
-      MINUS: "-",
-      TIMES: "×",
-      DIVIDE: "÷",
+      PLUS: '+',
+      MINUS: '-',
+      TIMES: '×',
+      DIVIDE: '÷',
     };
 
     function parseGrammar(expression, parent = null, parentIndex = null) {
       //return different things depending on what the node's operator is
-      if (expression.operator === "EQUAL") {
+      if (expression.operator === 'EQUAL') {
         let operands = parse.algGetOperands(expression);
         let eqn = new Equation(null); //null equation has to be made first to pass it in as a parent
         eqn.left = parseGrammar(operands[0], eqn);
         eqn.right = parseGrammar(operands[1], eqn);
         return eqn;
-      } else if (expression.operator === "CONST") {
+      } else if (expression.operator === 'CONST') {
+        return new Token(
+          parent,
+          [expression],
+          [parentIndex],
+          parent.node && parent.node.operator === 'PLUS' && parentIndex > 0,
+        );
+      } else if (expression.operator === 'VAR') {
         return new Token(parent, [expression], [parentIndex]);
-      } else if (expression.operator === "VAR") {
-        return new Token(parent, [expression], [parentIndex]);
-      } else if (expression.operator === "UMINUS") {
-        return new Token(parent, [expression], [parentIndex]);
-      } else if (expression.operator === "UNKNOWN") {
+      } else if (expression.operator === 'UMINUS') {
+        return new Token(
+          parent,
+          [expression],
+          [parentIndex],
+          parent.node && parent.node.operator === 'PLUS' && parentIndex > 0,
+        );
+      } else if (expression.operator === 'UNKNOWN') {
         return new UnknownToken(parent, expression, [parentIndex]);
-      } else if (expression.operator === "PLUS") {
+      } else if (expression.operator === 'PLUS') {
         let operands = parse.algGetOperands(expression);
         let exp = new Expression(parent, expression, []);
         exp.items = operands.map((node, i) => parseGrammar(node, exp, i));
         return exp;
-      } else if (expression.operator === "TIMES") {
+      } else if (expression.operator === 'TIMES') {
         let operands = parse.algGetOperands(expression);
         let exp = new Expression(parent, expression, []);
         let items = groupNodes(exp, operands);
-        if (items.length === 1) return items[0];
+        if (items.length === 1) {
+          let token = items[0];
+          token.node = token.nodes[0] = {
+            ...token.node,
+            sign: token.node.sign * expression.sign,
+            path: token.node.path.slice(0, -1),
+          };
+          token.indices = [parentIndex];
+          token.parent = parent;
+          console.log(token.value(), parent.node.operator === 'PLUS', parentIndex > 0);
+
+          token.hideSign = parent.node && parent.node.operator === 'PLUS' && parentIndex > 0;
+          return items[0];
+        }
         exp.items = items;
         return exp;
       } else {
@@ -695,7 +726,7 @@ var app = (function () {
       for (let i = 0; i < nodes.length; i++) {
         let node = nodes[i];
         if (
-          node.operator === "VAR" &&
+          node.operator === 'VAR' &&
           groups.length > 0 &&
           groups[groups.length - 1][0].exp === node.exp
         ) {
@@ -704,19 +735,15 @@ var app = (function () {
           groups.push([node]);
         }
       }
-      return groups.map((group) => {
-        if (group.length === 1)
-          return parseGrammar(
-            group[0],
-            parent,
-            group.map((n) => nodes.indexOf(n))
-          );
-        else
+      return groups.map((group, i) => {
+        if (group.length === 1) return parseGrammar(group[0], parent, nodes.indexOf(group[0]));
+        else {
           return new Token(
             parent,
             group,
-            group.map((n) => nodes.indexOf(n))
+            group.map((n) => nodes.indexOf(n)),
           );
+        }
       });
     }
 
@@ -2668,8 +2695,9 @@ var app = (function () {
     //   history.push(window.parse.algParse(newEqn));
     // };
 
-    const initial = parse$1.algParse("4(1+x) = (x+1)/4");
-    history.push(initial);
+    const initial = null;
+    // const initial = parse.algParse("4(1+x) = (x+1)/4");
+    // history.push(initial);
 
     // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
     let dragOperation = {
@@ -2713,7 +2741,7 @@ var app = (function () {
           } else if (Object.keys(Operators).includes(dest)) {
             return tokenToOperator(src, dest, eqn);
           } else {
-            throw new TypeError("Drag destination is not a proper item type");
+            throw new TypeError('Drag destination is not a proper item type');
           }
         } else if (src instanceof Expression) {
           if (dest instanceof Token) {
@@ -2723,7 +2751,7 @@ var app = (function () {
           } else if (Object.keys(Operators).includes(dest)) {
             return expressionToOperator(src, dest, eqn);
           } else {
-            throw new TypeError("Drag destination is not a proper item type");
+            throw new TypeError('Drag destination is not a proper item type');
           }
         } else if (Object.keys(Operators).includes(src)) {
           if (dest instanceof Token) {
@@ -2733,10 +2761,10 @@ var app = (function () {
           } else if (Object.keys(Operators).includes(dest)) {
             return operatorToOperator(src, dest, eqn);
           } else {
-            throw new TypeError("Drag destination is not a proper item type");
+            throw new TypeError('Drag destination is not a proper item type');
           }
         } else {
-          throw new TypeError("Drag source is not a proper item type");
+          throw new TypeError('Drag source is not a proper item type');
         }
       }
 
@@ -2749,10 +2777,10 @@ var app = (function () {
       function apply(eqn) {
         let sai = new CTATSAI(
           dragOperation.side,
-          dragOperation.from + "To" + dragOperation.to,
-          parse$1.algStringify(eqn)
+          dragOperation.from + 'To' + dragOperation.to,
+          parse$1.algStringify(eqn),
         );
-        console.log(`%c${sai.toXMLString()}`, "color: #15f");
+        console.log(`%c${sai.toXMLString()}`, 'color: #15f');
 
         if (CTATCommShell.commShell) {
           CTATCommShell.commShell.processComponentAction(sai);
@@ -2778,11 +2806,17 @@ var app = (function () {
       function updateToken(eqn, token, value) {
         eqn = get_store_value(history).current;
         let path = flattenPath(token.node.path);
-        dragOperation = { from: "Update", to: "Token", side: path[0] };
+        dragOperation = { from: 'Update', to: 'Token', side: path[0] };
         let target = Object.path(eqn, path);
+        console.log(target);
+
         let newToken = parse$1.algParse(value);
+        console.log(newToken);
+
         newToken.sign = target.sign;
         newToken.exp = target.exp;
+        console.log(newToken);
+
         let next = parse$1.algReplaceExpression(eqn, target, newToken);
         return apply(next);
       }
@@ -2806,7 +2840,7 @@ var app = (function () {
     Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x] ? xs[x] : null), o);
 
     function flattenPath(path) {
-      return path.join(",").split(",");
+      return path.join(',').split(',');
     }
 
     /**
@@ -2819,7 +2853,11 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function tokenToToken(src, dest, eqn) {
-      dragOperation = { from: "Token", to: "Token", side: flattenPath(dest.node.path)[0] };
+      let srcPath = flattenPath(src.node.path);
+      let destPath = flattenPath(dest.node.path);
+      console.log(srcPath, destPath);
+
+      dragOperation = { from: 'Token', to: 'Token', side: destPath[0] };
       if (dest instanceof UnknownToken) {
         let d = Object.path(eqn, flattenPath(dest.node.path));
         let s = parse$1.algParse(src.value());
@@ -2827,25 +2865,33 @@ var app = (function () {
         s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
         return parse$1.algReplaceExpression(eqn, d, s);
       } else if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
-        let parentPath = flattenPath(src.node.path).slice(0, -2);
+        let parentPath = srcPath.slice(0, -2);
         let parent = Object.path(eqn, parentPath);
+        console.log(src.indices, dest.indices);
+
         let indices = src.indices.concat(dest.indices);
+        console.log(indices);
+
         indices.sort();
+        console.log(eqn);
+
         let next = parse$1.algReplaceExpression(
           eqn,
           parent,
           parse$1.algApplyRulesSelectively(
             parent,
-            ["computeConstants", "combineSimilar"],
+            ['computeConstants', 'combineSimilar'],
             false,
-            ...indices
-          )
+            ...indices,
+          ),
         );
+        console.log(next);
+
         parent = Object.path(next, parentPath);
         return parse$1.algReplaceExpression(
           next,
           parent,
-          parse$1.algApplyRules(parent, ["removeIdentity"])
+          parse$1.algApplyRules(parent, ['removeIdentity']),
         );
       } else {
         return eqn;
@@ -2863,7 +2909,7 @@ var app = (function () {
     function tokenToExpression(src, dest, eqn) {
       let srcPath = flattenPath(src.node.path);
       let destPath = flattenPath(dest.node.path);
-      dragOperation = { from: "Token", to: "Expression", side: destPath[0] };
+      dragOperation = { from: 'Token', to: 'Expression', side: destPath[0] };
       // console.log("TOKEN TO EXPRESSION", src, dest);
 
       if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
@@ -2875,7 +2921,7 @@ var app = (function () {
         let next = parse$1.algReplaceExpression(
           eqn,
           parent,
-          parse$1.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
+          parse$1.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, i0, i1),
         );
         //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negativ exponent), it only happens with 1/k; this is because of removeIdentity
         return parse$1.algParse(parse$1.algStringify(next));
@@ -2891,16 +2937,16 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function tokenToOperator(src, dest, eqn) {
-      dragOperation = { from: "Token", to: "Operator", side: flattenPath(dest.node.path)[0] };
+      dragOperation = { from: 'Token', to: 'Operator', side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
     function expressionToToken(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Token", side: flattenPath(dest.node.path)[0] };
+      dragOperation = { from: 'Expression', to: 'Token', side: flattenPath(dest.node.path)[0] };
     }
 
     function expressionToExpression(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Expression", side: flattenPath(dest.node.path)[0] };
+      dragOperation = { from: 'Expression', to: 'Expression', side: flattenPath(dest.node.path)[0] };
     }
 
     /**
@@ -2910,17 +2956,17 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function expressionToOperator(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Operator", side: flattenPath(dest.node.path)[0] };
+      dragOperation = { from: 'Expression', to: 'Operator', side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
     function operatorToToken(src, dest, eqn) {
       let destPath = flattenPath(dest.node.path);
-      dragOperation = { from: "Operator", to: "Token", side: destPath[0] };
+      dragOperation = { from: 'Operator', to: 'Token', side: destPath[0] };
 
       let subexp;
       let indices = dest.indices;
-      if (indices > 1) {
+      if (indices.length > 1) {
         indices.sort();
         let parent = Object.path(eqn, destPath.slice(0, -2));
         subexp = parse$1.algGetExpression(parent, ...indices);
@@ -2930,21 +2976,21 @@ var app = (function () {
       let next = parse$1.algReplaceExpression(
         parse$1.algParse(parse$1.algStringify(eqn)),
         subexp,
-        parse$1.algCreateExpression(src, subexp, "?")
+        parse$1.algCreateExpression(src, subexp, '?'),
       );
-      //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
+      //TODO: unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
       return next;
     }
 
     function operatorToExpression(src, dest, eqn) {
       let destPath = flattenPath(dest.node.path);
-      dragOperation = { from: "Operator", to: "Expression", side: destPath[0] };
+      dragOperation = { from: 'Operator', to: 'Expression', side: destPath[0] };
       // eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this;
       // console.log(eqn);
 
       // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
       let d = Object.path(eqn, destPath);
-      let next = parse$1.algReplaceExpression(eqn, d, parse$1.algCreateExpression(src, d, "?"));
+      let next = parse$1.algReplaceExpression(eqn, d, parse$1.algCreateExpression(src, d, '?'));
       return parse$1.algParse(parse$1.algStringify(next)); //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
     }
 
@@ -2956,7 +3002,7 @@ var app = (function () {
      */
     function operatorToOperator(src, dest, eqn) {
       //TODO this should be technically feasible to code, but it's probably not necessary to implement
-      dragOperation = { from: "Operator", to: "Operator", side: flattenPath(dest.node.path)[0] };
+      dragOperation = { from: 'Operator', to: 'Operator', side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
@@ -7192,7 +7238,7 @@ var app = (function () {
     /* src\components\Token.svelte generated by Svelte v3.21.0 */
     const file$2 = "src\\components\\Token.svelte";
 
-    // (119:6) {:else}
+    // (102:6) {:else}
     function create_else_block_1(ctx) {
     	let div;
     	let t;
@@ -7201,7 +7247,7 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			t = text(/*value*/ ctx[1]);
-    			add_location(div, file$2, 119, 8, 2674);
+    			add_location(div, file$2, 102, 8, 2528);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7219,14 +7265,14 @@ var app = (function () {
     		block,
     		id: create_else_block_1.name,
     		type: "else",
-    		source: "(119:6) {:else}",
+    		source: "(102:6) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (117:6) {#if token.unknown}
+    // (100:6) {#if token.unknown}
     function create_if_block_1(ctx) {
     	let input;
     	let input_size_value;
@@ -7237,7 +7283,7 @@ var app = (function () {
     			input = element("input");
     			attr_dev(input, "size", input_size_value = 1);
     			attr_dev(input, "class", "svelte-lbinij");
-    			add_location(input, file$2, 117, 8, 2601);
+    			add_location(input, file$2, 100, 8, 2455);
     		},
     		m: function mount(target, anchor, remount) {
     			insert_dev(target, input, anchor);
@@ -7255,14 +7301,14 @@ var app = (function () {
     		block,
     		id: create_if_block_1.name,
     		type: "if",
-    		source: "(117:6) {#if token.unknown}",
+    		source: "(100:6) {#if token.unknown}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (111:4) <div        slot="dropzone"        class="token-inner no-highlight dropzone"        class:dragging        class:hovering        class:draghovering>
+    // (99:4) <div slot="dropzone" class="token-inner no-highlight dropzone" class:dragging class:hovering class:draghovering>
     function create_dropzone_slot(ctx) {
     	let div;
 
@@ -7283,7 +7329,7 @@ var app = (function () {
     			toggle_class(div, "dragging", /*dragging*/ ctx[6]);
     			toggle_class(div, "hovering", /*hovering*/ ctx[7]);
     			toggle_class(div, "draghovering", /*draghovering*/ ctx[9]);
-    			add_location(div, file$2, 110, 4, 2417);
+    			add_location(div, file$2, 98, 4, 2306);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7324,14 +7370,14 @@ var app = (function () {
     		block,
     		id: create_dropzone_slot.name,
     		type: "slot",
-    		source: "(111:4) <div        slot=\\\"dropzone\\\"        class=\\\"token-inner no-highlight dropzone\\\"        class:dragging        class:hovering        class:draghovering>",
+    		source: "(99:4) <div slot=\\\"dropzone\\\" class=\\\"token-inner no-highlight dropzone\\\" class:dragging class:hovering class:draghovering>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (132:6) {:else}
+    // (109:6) {:else}
     function create_else_block(ctx) {
     	let div;
     	let t;
@@ -7340,7 +7386,7 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			t = text(/*value*/ ctx[1]);
-    			add_location(div, file$2, 132, 8, 2951);
+    			add_location(div, file$2, 109, 8, 2763);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7358,21 +7404,21 @@ var app = (function () {
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(132:6) {:else}",
+    		source: "(109:6) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (130:6) {#if token.unknown}
+    // (107:6) {#if token.unknown}
     function create_if_block$1(ctx) {
     	let div;
 
     	const block = {
     		c: function create() {
     			div = element("div");
-    			add_location(div, file$2, 130, 8, 2919);
+    			add_location(div, file$2, 107, 8, 2731);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7387,14 +7433,14 @@ var app = (function () {
     		block,
     		id: create_if_block$1.name,
     		type: "if",
-    		source: "(130:6) {#if token.unknown}",
+    		source: "(107:6) {#if token.unknown}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (123:4) <div        slot="mover"        class="token-inner no-highlight mover"        class:dragging        class:hovering        class:draghovering        class:fade>
+    // (106:4) <div slot="mover" class="token-inner no-highlight mover" class:dragging class:hovering class:draghovering class:fade>
     function create_mover_slot(ctx) {
     	let div;
 
@@ -7416,7 +7462,7 @@ var app = (function () {
     			toggle_class(div, "hovering", /*hovering*/ ctx[7]);
     			toggle_class(div, "draghovering", /*draghovering*/ ctx[9]);
     			toggle_class(div, "fade", /*fade*/ ctx[8]);
-    			add_location(div, file$2, 122, 4, 2723);
+    			add_location(div, file$2, 105, 4, 2577);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -7461,14 +7507,14 @@ var app = (function () {
     		block,
     		id: create_mover_slot.name,
     		type: "slot",
-    		source: "(123:4) <div        slot=\\\"mover\\\"        class=\\\"token-inner no-highlight mover\\\"        class:dragging        class:hovering        class:draghovering        class:fade>",
+    		source: "(106:4) <div slot=\\\"mover\\\" class=\\\"token-inner no-highlight mover\\\" class:dragging class:hovering class:draghovering class:fade>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (101:2) <DragDrop      let:dragging      let:hovering      let:fade      let:draghovering      canDrag={!token.unknown}      dragStart={handleDragStart}      dropReceive={handleDropReceive}      dragLeave={handleDragLeave}      dragHover={handleDragHover}>
+    // (98:2) <DragDrop let:dragging let:hovering let:fade let:draghovering canDrag={!token.unknown} dragStart={handleDragStart} dropReceive={handleDropReceive} dragLeave={handleDragLeave} dragHover={handleDragHover}>
     function create_default_slot(ctx) {
     	let t;
 
@@ -7489,7 +7535,7 @@ var app = (function () {
     		block,
     		id: create_default_slot.name,
     		type: "slot",
-    		source: "(101:2) <DragDrop      let:dragging      let:hovering      let:fade      let:draghovering      canDrag={!token.unknown}      dragStart={handleDragStart}      dropReceive={handleDropReceive}      dragLeave={handleDragLeave}      dragHover={handleDragHover}>",
+    		source: "(98:2) <DragDrop let:dragging let:hovering let:fade let:draghovering canDrag={!token.unknown} dragStart={handleDragStart} dropReceive={handleDropReceive} dragLeave={handleDragLeave} dragHover={handleDragHover}>",
     		ctx
     	});
 
@@ -7550,7 +7596,7 @@ var app = (function () {
     			create_component(dragdrop.$$.fragment);
     			attr_dev(div, "class", "token svelte-lbinij");
     			toggle_class(div, "unknown", /*token*/ ctx[0].unknown);
-    			add_location(div, file$2, 99, 0, 2110);
+    			add_location(div, file$2, 96, 0, 2044);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -7720,7 +7766,7 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (122:8) {:else}
+    // (105:8) {:else}
     function create_else_block_1$1(ctx) {
     	let current;
 
@@ -7764,14 +7810,14 @@ var app = (function () {
     		block,
     		id: create_else_block_1$1.name,
     		type: "else",
-    		source: "(122:8) {:else}",
+    		source: "(105:8) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (120:40) 
+    // (103:40) 
     function create_if_block_4(ctx) {
     	let current;
 
@@ -7811,14 +7857,14 @@ var app = (function () {
     		block,
     		id: create_if_block_4.name,
     		type: "if",
-    		source: "(120:40) ",
+    		source: "(103:40) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (118:8) {#if item instanceof Expression}
+    // (101:8) {#if item instanceof Expression}
     function create_if_block_3(ctx) {
     	let current;
 
@@ -7858,14 +7904,14 @@ var app = (function () {
     		block,
     		id: create_if_block_3.name,
     		type: "if",
-    		source: "(118:8) {#if item instanceof Expression}",
+    		source: "(101:8) {#if item instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (117:6) {#each top as item, i (item.id)}
+    // (100:6) {#each top as item, i (item.id || item + i)}
     function create_each_block_1(key_1, ctx) {
     	let first;
     	let current_block_type_index;
@@ -7944,14 +7990,14 @@ var app = (function () {
     		block,
     		id: create_each_block_1.name,
     		type: "each",
-    		source: "(117:6) {#each top as item, i (item.id)}",
+    		source: "(100:6) {#each top as item, i (item.id || item + i)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (127:4) {#if bottom.length > 0}
+    // (110:4) {#if bottom.length > 0}
     function create_if_block$2(ctx) {
     	let div0;
     	let t;
@@ -7961,7 +8007,7 @@ var app = (function () {
     	let current;
     	let each_value = /*bottom*/ ctx[2];
     	validate_each_argument(each_value);
-    	const get_key = ctx => /*item*/ ctx[11].id;
+    	const get_key = ctx => /*item*/ ctx[11].id || /*item*/ ctx[11] + /*i*/ ctx[13];
     	validate_each_keys(ctx, each_value, get_each_context, get_key);
 
     	for (let i = 0; i < each_value.length; i += 1) {
@@ -7980,10 +8026,10 @@ var app = (function () {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div0, "class", "vinculum svelte-199nscd");
-    			add_location(div0, file$3, 127, 6, 3201);
-    			attr_dev(div1, "class", "item-display bottom svelte-199nscd");
-    			add_location(div1, file$3, 128, 6, 3233);
+    			attr_dev(div0, "class", "vinculum svelte-1mqoswh");
+    			add_location(div0, file$3, 110, 6, 3119);
+    			attr_dev(div1, "class", "item-display bottom svelte-1mqoswh");
+    			add_location(div1, file$3, 111, 6, 3151);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -8037,14 +8083,14 @@ var app = (function () {
     		block,
     		id: create_if_block$2.name,
     		type: "if",
-    		source: "(127:4) {#if bottom.length > 0}",
+    		source: "(110:4) {#if bottom.length > 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (135:10) {:else}
+    // (118:10) {:else}
     function create_else_block$1(ctx) {
     	let current;
 
@@ -8091,14 +8137,14 @@ var app = (function () {
     		block,
     		id: create_else_block$1.name,
     		type: "else",
-    		source: "(135:10) {:else}",
+    		source: "(118:10) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (133:42) 
+    // (116:42) 
     function create_if_block_2(ctx) {
     	let current;
 
@@ -8138,14 +8184,14 @@ var app = (function () {
     		block,
     		id: create_if_block_2.name,
     		type: "if",
-    		source: "(133:42) ",
+    		source: "(116:42) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (131:10) {#if item instanceof Expression}
+    // (114:10) {#if item instanceof Expression}
     function create_if_block_1$1(ctx) {
     	let current;
 
@@ -8185,14 +8231,14 @@ var app = (function () {
     		block,
     		id: create_if_block_1$1.name,
     		type: "if",
-    		source: "(131:10) {#if item instanceof Expression}",
+    		source: "(114:10) {#if item instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (130:8) {#each bottom as item, i (item.id)}
+    // (113:8) {#each bottom as item, i (item.id || item + i)}
     function create_each_block(key_1, ctx) {
     	let first;
     	let current_block_type_index;
@@ -8271,14 +8317,14 @@ var app = (function () {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(130:8) {#each bottom as item, i (item.id)}",
+    		source: "(113:8) {#each bottom as item, i (item.id || item + i)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (108:2) <div      slot="dropzone"      class="expression no-highlight dropzone"      class:dragging      class:hovering      class:draghovering      class:divide={bottom.length > 0}      class:parens={expression.node.parens}>
+    // (98:2) <div slot="dropzone" class="expression no-highlight dropzone" class:dragging class:hovering class:draghovering class:divide={bottom.length > 0} class:parens={expression.node.parens}>
     function create_dropzone_slot$1(ctx) {
     	let div0;
     	let div1;
@@ -8288,7 +8334,7 @@ var app = (function () {
     	let current;
     	let each_value_1 = /*top*/ ctx[1];
     	validate_each_argument(each_value_1);
-    	const get_key = ctx => /*item*/ ctx[11].id;
+    	const get_key = ctx => /*item*/ ctx[11].id || /*item*/ ctx[11] + /*i*/ ctx[13];
     	validate_each_keys(ctx, each_value_1, get_each_context_1, get_key);
 
     	for (let i = 0; i < each_value_1.length; i += 1) {
@@ -8310,16 +8356,16 @@ var app = (function () {
 
     			t = space();
     			if (if_block) if_block.c();
-    			attr_dev(div1, "class", "item-display top svelte-199nscd");
-    			add_location(div1, file$3, 115, 4, 2787);
+    			attr_dev(div1, "class", "item-display top svelte-1mqoswh");
+    			add_location(div1, file$3, 98, 4, 2693);
     			attr_dev(div0, "slot", "dropzone");
-    			attr_dev(div0, "class", "expression no-highlight dropzone svelte-199nscd");
+    			attr_dev(div0, "class", "expression no-highlight dropzone svelte-1mqoswh");
     			toggle_class(div0, "dragging", /*dragging*/ ctx[8]);
     			toggle_class(div0, "hovering", /*hovering*/ ctx[9]);
     			toggle_class(div0, "draghovering", /*draghovering*/ ctx[10]);
     			toggle_class(div0, "divide", /*bottom*/ ctx[2].length > 0);
     			toggle_class(div0, "parens", /*expression*/ ctx[0].node.parens);
-    			add_location(div0, file$3, 107, 2, 2564);
+    			add_location(div0, file$3, 97, 2, 2505);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -8419,7 +8465,7 @@ var app = (function () {
     		block,
     		id: create_dropzone_slot$1.name,
     		type: "slot",
-    		source: "(108:2) <div      slot=\\\"dropzone\\\"      class=\\\"expression no-highlight dropzone\\\"      class:dragging      class:hovering      class:draghovering      class:divide={bottom.length > 0}      class:parens={expression.node.parens}>",
+    		source: "(98:2) <div slot=\\\"dropzone\\\" class=\\\"expression no-highlight dropzone\\\" class:dragging class:hovering class:draghovering class:divide={bottom.length > 0} class:parens={expression.node.parens}>",
     		ctx
     	});
 
@@ -8497,6 +8543,17 @@ var app = (function () {
     	return block;
     }
 
+    function insertOperators(items, isAdd = true) {
+    	if (isAdd) return items.reduce(
+    		(a, c, i) => {
+    			return i === 0
+    			? [c]
+    			: a.concat([c.node.sign > 0 ? "PLUS" : "MINUS", c]);
+    		},
+    		[]
+    	); else return items.reduce((a, c, i) => i === 0 ? [c] : a.concat(["TIMES", c]), []);
+    }
+
     function instance$3($$self, $$props, $$invalidate) {
     	let $dragdropData;
     	validate_store(dragdropData, "dragdropData");
@@ -8543,6 +8600,7 @@ var app = (function () {
     		isAdd,
     		top,
     		bottom,
+    		insertOperators,
     		$dragdropData
     	});
 
@@ -8562,18 +8620,16 @@ var app = (function () {
     			 if (expression) {
     				$$invalidate(4, isAdd = expression.node.operator === "PLUS");
 
-    				$$invalidate(1, top = (isAdd
-    				? expression.items
-    				: expression.items.filter(item => item.node.exp > 0)).reduce(
-    					(acc, cur, i) => acc.concat(i === 0
-    					? [cur]
-    					: [isAdd ? cur.node.sign > 0 ? "PLUS" : "MINUS" : "TIMES", cur]),
-    					[]
+    				$$invalidate(1, top = insertOperators(
+    					isAdd
+    					? expression.items
+    					: expression.items.filter(item => item.node.exp > 0),
+    					isAdd
     				));
 
     				$$invalidate(2, bottom = isAdd
     				? []
-    				: expression.items.filter(item => item.node.exp < 0).reduce((acc, cur, i) => acc.concat(i === 0 ? [cur] : [isAdd ? "PLUS" : "TIMES", cur]), []));
+    				: insertOperators(expression.items.filter(item => item.node.exp < 0)));
     			}
     		}
     	};
@@ -10037,7 +10093,7 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (88:6) {:else}
+    // (84:6) {:else}
     function create_else_block_1$2(ctx) {
     	let current;
 
@@ -10077,14 +10133,14 @@ var app = (function () {
     		block,
     		id: create_else_block_1$2.name,
     		type: "else",
-    		source: "(88:6) {:else}",
+    		source: "(84:6) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (86:38) 
+    // (82:38) 
     function create_if_block_4$1(ctx) {
     	let current;
 
@@ -10124,14 +10180,14 @@ var app = (function () {
     		block,
     		id: create_if_block_4$1.name,
     		type: "if",
-    		source: "(86:38) ",
+    		source: "(82:38) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (84:6) {#if item instanceof Expression}
+    // (80:6) {#if item instanceof Expression}
     function create_if_block_3$2(ctx) {
     	let current;
 
@@ -10171,14 +10227,14 @@ var app = (function () {
     		block,
     		id: create_if_block_3$2.name,
     		type: "if",
-    		source: "(84:6) {#if item instanceof Expression}",
+    		source: "(80:6) {#if item instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (83:4) {#each top as item, i}
+    // (79:4) {#each top as item, i}
     function create_each_block_1$1(ctx) {
     	let current_block_type_index;
     	let if_block;
@@ -10250,14 +10306,14 @@ var app = (function () {
     		block,
     		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(83:4) {#each top as item, i}",
+    		source: "(79:4) {#each top as item, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (93:2) {#if bottom.length > 0}
+    // (89:2) {#if bottom.length > 0}
     function create_if_block$6(ctx) {
     	let div0;
     	let t;
@@ -10285,10 +10341,10 @@ var app = (function () {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div0, "class", "vinculum svelte-jabheg");
-    			add_location(div0, file$9, 93, 4, 2204);
-    			attr_dev(div1, "class", "item-display bottom svelte-jabheg");
-    			add_location(div1, file$9, 94, 4, 2234);
+    			attr_dev(div0, "class", "vinculum svelte-1xew6lk");
+    			add_location(div0, file$9, 89, 4, 2353);
+    			attr_dev(div1, "class", "item-display bottom svelte-1xew6lk");
+    			add_location(div1, file$9, 90, 4, 2383);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -10360,14 +10416,14 @@ var app = (function () {
     		block,
     		id: create_if_block$6.name,
     		type: "if",
-    		source: "(93:2) {#if bottom.length > 0}",
+    		source: "(89:2) {#if bottom.length > 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (101:8) {:else}
+    // (97:8) {:else}
     function create_else_block$2(ctx) {
     	let current;
 
@@ -10407,14 +10463,14 @@ var app = (function () {
     		block,
     		id: create_else_block$2.name,
     		type: "else",
-    		source: "(101:8) {:else}",
+    		source: "(97:8) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (99:40) 
+    // (95:40) 
     function create_if_block_2$2(ctx) {
     	let current;
 
@@ -10454,14 +10510,14 @@ var app = (function () {
     		block,
     		id: create_if_block_2$2.name,
     		type: "if",
-    		source: "(99:40) ",
+    		source: "(95:40) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (97:8) {#if item instanceof Expression}
+    // (93:8) {#if item instanceof Expression}
     function create_if_block_1$4(ctx) {
     	let current;
 
@@ -10501,14 +10557,14 @@ var app = (function () {
     		block,
     		id: create_if_block_1$4.name,
     		type: "if",
-    		source: "(97:8) {#if item instanceof Expression}",
+    		source: "(93:8) {#if item instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (96:6) {#each bottom as item, i}
+    // (92:6) {#each bottom as item, i}
     function create_each_block$1(ctx) {
     	let current_block_type_index;
     	let if_block;
@@ -10580,7 +10636,7 @@ var app = (function () {
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(96:6) {#each bottom as item, i}",
+    		source: "(92:6) {#each bottom as item, i}",
     		ctx
     	});
 
@@ -10617,12 +10673,12 @@ var app = (function () {
 
     			t = space();
     			if (if_block) if_block.c();
-    			attr_dev(div0, "class", "item-display top svelte-jabheg");
-    			add_location(div0, file$9, 81, 2, 1855);
-    			attr_dev(div1, "class", "expression-display svelte-jabheg");
+    			attr_dev(div0, "class", "item-display top svelte-1xew6lk");
+    			add_location(div0, file$9, 77, 2, 2004);
+    			attr_dev(div1, "class", "expression-display svelte-1xew6lk");
     			toggle_class(div1, "divide", /*bottom*/ ctx[2].length > 0);
     			toggle_class(div1, "parens", /*expression*/ ctx[0].parens);
-    			add_location(div1, file$9, 77, 0, 1744);
+    			add_location(div1, file$9, 76, 0, 1902);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10737,32 +10793,22 @@ var app = (function () {
     	return block;
     }
 
+    function insertOperators$1(items, isAdd = true) {
+    	if (isAdd) return items.reduce(
+    		(a, c, i) => {
+    			return i === 0
+    			? [c]
+    			: a.concat([c.node.sign > 0 ? "PLUS" : "MINUS", c]);
+    		},
+    		[]
+    	); else return items.reduce((a, c, i) => i === 0 ? [c] : a.concat(["TIMES", c]), []);
+    }
+
     function instance$9($$self, $$props, $$invalidate) {
     	let { expression } = $$props;
     	let isAdd = expression.node.operator === "PLUS";
-
-    	let top = isAdd
-    	? expression.items
-    	: expression.items.filter(item => item.node.exp > 0);
-
-    	top = top.reduce(
-    		(acc, cur, i) => acc.concat(i < top.length - 1
-    		? [cur, isAdd ? "PLUS" : "TIMES"]
-    		: [cur]),
-    		[]
-    	);
-
-    	let bottom = isAdd
-    	? []
-    	: expression.items.filter(item => item.node.exp < 0);
-
-    	bottom = bottom.reduce(
-    		(acc, cur, i) => acc.concat(i < bottom.length - 1
-    		? [cur, isAdd ? "PLUS" : "TIMES"]
-    		: [cur]),
-    		[]
-    	);
-
+    	let top = expression.items;
+    	let bottom = [];
     	const writable_props = ["expression"];
 
     	Object.keys($$props).forEach(key => {
@@ -10784,12 +10830,13 @@ var app = (function () {
     		expression,
     		isAdd,
     		top,
-    		bottom
+    		bottom,
+    		insertOperators: insertOperators$1
     	});
 
     	$$self.$inject_state = $$props => {
     		if ("expression" in $$props) $$invalidate(0, expression = $$props.expression);
-    		if ("isAdd" in $$props) isAdd = $$props.isAdd;
+    		if ("isAdd" in $$props) $$invalidate(3, isAdd = $$props.isAdd);
     		if ("top" in $$props) $$invalidate(1, top = $$props.top);
     		if ("bottom" in $$props) $$invalidate(2, bottom = $$props.bottom);
     	};
@@ -10797,6 +10844,25 @@ var app = (function () {
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*expression, isAdd*/ 9) {
+    			 if (expression) {
+    				$$invalidate(3, isAdd = expression.node.operator === "PLUS");
+
+    				$$invalidate(1, top = insertOperators$1(
+    					isAdd
+    					? expression.items
+    					: expression.items.filter(item => item.node.exp > 0),
+    					isAdd
+    				));
+
+    				$$invalidate(2, bottom = isAdd
+    				? []
+    				: insertOperators$1(expression.items.filter(item => item.node.exp < 0)));
+    			}
+    		}
+    	};
 
     	return [expression, top, bottom];
     }
@@ -11803,7 +11869,7 @@ var app = (function () {
 
     const file$d = "src\\App.svelte";
 
-    // (186:6) {#if true}
+    // (187:6) {#if true}
     function create_if_block_2$4(ctx) {
     	let current;
     	const history_1 = new History({ $$inline: true });
@@ -11834,14 +11900,14 @@ var app = (function () {
     		block,
     		id: create_if_block_2$4.name,
     		type: "if",
-    		source: "(186:6) {#if true}",
+    		source: "(187:6) {#if true}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (213:4) {#if $history.current}
+    // (208:4) {#if $history.current}
     function create_if_block$9(ctx) {
     	let div;
     	let t;
@@ -11849,13 +11915,13 @@ var app = (function () {
 
     	const equation = new Equation$1({
     			props: {
-    				error: /*$error*/ ctx[4],
-    				equation: parseGrammar(/*$history*/ ctx[1].current)
+    				error: /*$error*/ ctx[5],
+    				equation: parseGrammar(/*$history*/ ctx[2].current)
     			},
     			$$inline: true
     		});
 
-    	let if_block = /*$dragdropData*/ ctx[5].drop && create_if_block_1$6(ctx);
+    	let if_block = /*$dragdropData*/ ctx[6].drop && create_if_block_1$6(ctx);
 
     	const block = {
     		c: function create() {
@@ -11863,9 +11929,9 @@ var app = (function () {
     			create_component(equation.$$.fragment);
     			t = space();
     			if (if_block) if_block.c();
-    			attr_dev(div, "class", "equation svelte-1wsf8wk");
-    			toggle_class(div, "disable", /*$error*/ ctx[4]);
-    			add_location(div, file$d, 213, 6, 5152);
+    			attr_dev(div, "class", "equation svelte-1jqqf7o");
+    			toggle_class(div, "disable", /*$error*/ ctx[5]);
+    			add_location(div, file$d, 208, 6, 5302);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11876,15 +11942,15 @@ var app = (function () {
     		},
     		p: function update(ctx, dirty) {
     			const equation_changes = {};
-    			if (dirty & /*$error*/ 16) equation_changes.error = /*$error*/ ctx[4];
-    			if (dirty & /*$history*/ 2) equation_changes.equation = parseGrammar(/*$history*/ ctx[1].current);
+    			if (dirty & /*$error*/ 32) equation_changes.error = /*$error*/ ctx[5];
+    			if (dirty & /*$history*/ 4) equation_changes.equation = parseGrammar(/*$history*/ ctx[2].current);
     			equation.$set(equation_changes);
 
-    			if (/*$dragdropData*/ ctx[5].drop) {
+    			if (/*$dragdropData*/ ctx[6].drop) {
     				if (if_block) {
     					if_block.p(ctx, dirty);
 
-    					if (dirty & /*$dragdropData*/ 32) {
+    					if (dirty & /*$dragdropData*/ 64) {
     						transition_in(if_block, 1);
     					}
     				} else {
@@ -11903,8 +11969,8 @@ var app = (function () {
     				check_outros();
     			}
 
-    			if (dirty & /*$error*/ 16) {
-    				toggle_class(div, "disable", /*$error*/ ctx[4]);
+    			if (dirty & /*$error*/ 32) {
+    				toggle_class(div, "disable", /*$error*/ ctx[5]);
     			}
     		},
     		i: function intro(local) {
@@ -11929,21 +11995,21 @@ var app = (function () {
     		block,
     		id: create_if_block$9.name,
     		type: "if",
-    		source: "(213:4) {#if $history.current}",
+    		source: "(208:4) {#if $history.current}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (216:8) {#if $dragdropData.drop}
+    // (211:8) {#if $dragdropData.drop}
     function create_if_block_1$6(ctx) {
     	let div;
     	let current;
 
     	const equation = new Equation$1({
     			props: {
-    				equation: parseGrammar(/*$draftEquation*/ ctx[6])
+    				equation: parseGrammar(/*$draftEquation*/ ctx[7])
     			},
     			$$inline: true
     		});
@@ -11952,8 +12018,8 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			create_component(equation.$$.fragment);
-    			attr_dev(div, "class", "draft-equation svelte-1wsf8wk");
-    			add_location(div, file$d, 216, 10, 5322);
+    			attr_dev(div, "class", "draft-equation svelte-1jqqf7o");
+    			add_location(div, file$d, 211, 10, 5472);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11962,7 +12028,7 @@ var app = (function () {
     		},
     		p: function update(ctx, dirty) {
     			const equation_changes = {};
-    			if (dirty & /*$draftEquation*/ 64) equation_changes.equation = parseGrammar(/*$draftEquation*/ ctx[6]);
+    			if (dirty & /*$draftEquation*/ 128) equation_changes.equation = parseGrammar(/*$draftEquation*/ ctx[7]);
     			equation.$set(equation_changes);
     		},
     		i: function intro(local) {
@@ -11984,7 +12050,7 @@ var app = (function () {
     		block,
     		id: create_if_block_1$6.name,
     		type: "if",
-    		source: "(216:8) {#if $dragdropData.drop}",
+    		source: "(211:8) {#if $dragdropData.drop}",
     		ctx
     	});
 
@@ -11993,36 +12059,39 @@ var app = (function () {
 
     function create_fragment$d(ctx) {
     	let div7;
+    	let t0_value = (/*$history*/ ctx[2].current && console.log(/*$history*/ ctx[2].current, parseGrammar(/*$history*/ ctx[2].current))) + "";
+    	let t0;
+    	let t1;
     	let div1;
     	let h1;
-    	let t1;
+    	let t3;
     	let div0;
-    	let t2;
+    	let t4;
     	let div3;
     	let svg;
     	let path0;
     	let path1;
     	let path2;
-    	let t3;
-    	let t4;
-    	let div2;
     	let t5;
-    	let div4;
     	let t6;
+    	let div2;
     	let t7;
+    	let div4;
     	let t8;
     	let t9;
-    	let div5;
     	let t10;
-    	let div6;
     	let t11;
+    	let div5;
+    	let t12;
+    	let div6;
+    	let t13;
     	let button;
     	let current;
     	let dispose;
     	let if_block0 =  create_if_block_2$4(ctx);
 
     	const alien = new Alien({
-    			props: { state: /*$alienState*/ ctx[2] },
+    			props: { state: /*$alienState*/ ctx[3] },
     			$$inline: true
     		});
 
@@ -12046,12 +12115,12 @@ var app = (function () {
     			$$inline: true
     		});
 
-    	let if_block1 = /*$history*/ ctx[1].current && create_if_block$9(ctx);
+    	let if_block1 = /*$history*/ ctx[2].current && create_if_block$9(ctx);
 
     	const buttons = new Buttons({
     			props: {
-    				error: /*$error*/ ctx[4],
-    				onUndo: /*onUndo*/ ctx[7]
+    				error: /*$error*/ ctx[5],
+    				onUndo: /*onUndo*/ ctx[8]
     			},
     			$$inline: true
     		});
@@ -12059,135 +12128,141 @@ var app = (function () {
     	const block = {
     		c: function create() {
     			div7 = element("div");
+    			t0 = text(t0_value);
+    			t1 = space();
     			div1 = element("div");
     			h1 = element("h1");
     			h1.textContent = "Steps";
-    			t1 = space();
+    			t3 = space();
     			div0 = element("div");
     			if (if_block0) if_block0.c();
-    			t2 = space();
+    			t4 = space();
     			div3 = element("div");
     			svg = svg_element("svg");
     			path0 = svg_element("path");
     			path1 = svg_element("path");
     			path2 = svg_element("path");
-    			t3 = space();
-    			create_component(alien.$$.fragment);
-    			t4 = space();
-    			div2 = element("div");
     			t5 = space();
+    			create_component(alien.$$.fragment);
+    			t6 = space();
+    			div2 = element("div");
+    			t7 = space();
     			div4 = element("div");
     			create_component(draggableoperator0.$$.fragment);
-    			t6 = space();
-    			create_component(draggableoperator1.$$.fragment);
-    			t7 = space();
-    			create_component(draggableoperator2.$$.fragment);
     			t8 = space();
-    			create_component(draggableoperator3.$$.fragment);
+    			create_component(draggableoperator1.$$.fragment);
     			t9 = space();
+    			create_component(draggableoperator2.$$.fragment);
+    			t10 = space();
+    			create_component(draggableoperator3.$$.fragment);
+    			t11 = space();
     			div5 = element("div");
     			if (if_block1) if_block1.c();
-    			t10 = space();
+    			t12 = space();
     			div6 = element("div");
     			create_component(buttons.$$.fragment);
-    			t11 = space();
+    			t13 = space();
     			button = element("button");
     			button.textContent = "🕨";
-    			attr_dev(h1, "class", "svelte-1wsf8wk");
-    			add_location(h1, file$d, 183, 4, 4175);
-    			attr_dev(div0, "class", "history svelte-1wsf8wk");
-    			add_location(div0, file$d, 184, 4, 4195);
-    			attr_dev(div1, "class", "steps svelte-1wsf8wk");
-    			add_location(div1, file$d, 182, 2, 4150);
+    			attr_dev(h1, "class", "svelte-1jqqf7o");
+    			add_location(h1, file$d, 184, 4, 4353);
+    			attr_dev(div0, "class", "history svelte-1jqqf7o");
+    			add_location(div0, file$d, 185, 4, 4373);
+    			attr_dev(div1, "class", "steps svelte-1jqqf7o");
+    			add_location(div1, file$d, 183, 2, 4328);
     			set_style(path0, "fill", "#FF6E52");
     			attr_dev(path0, "d", "M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z");
-    			attr_dev(path0, "class", "svelte-1wsf8wk");
-    			add_location(path0, file$d, 192, 6, 4397);
+    			attr_dev(path0, "class", "svelte-1jqqf7o");
+    			add_location(path0, file$d, 193, 6, 4601);
     			set_style(path1, "fill", "#FFC33E");
     			attr_dev(path1, "d", "M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z");
-    			attr_dev(path1, "class", "svelte-1wsf8wk");
-    			add_location(path1, file$d, 195, 6, 4508);
+    			attr_dev(path1, "class", "svelte-1jqqf7o");
+    			add_location(path1, file$d, 194, 6, 4694);
     			set_style(path2, "fill", "#f5f4f3");
     			attr_dev(path2, "d", "M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z");
-    			attr_dev(path2, "class", "svelte-1wsf8wk");
-    			add_location(path2, file$d, 198, 6, 4620);
+    			attr_dev(path2, "class", "svelte-1jqqf7o");
+    			add_location(path2, file$d, 195, 6, 4788);
     			attr_dev(svg, "viewBox", "0 0 302 269");
     			set_style(svg, "enable-background", "new 0 0 302 269");
-    			attr_dev(svg, "class", "svelte-1wsf8wk");
-    			add_location(svg, file$d, 191, 4, 4319);
+    			attr_dev(svg, "class", "svelte-1jqqf7o");
+    			add_location(svg, file$d, 192, 4, 4523);
     			attr_dev(div2, "id", "hintwindow");
-    			attr_dev(div2, "class", "CTATHintWindow svelte-1wsf8wk");
-    			toggle_class(div2, "visible", /*$showMessages*/ ctx[3]);
-    			add_location(div2, file$d, 203, 4, 4776);
-    			attr_dev(div3, "class", "alien svelte-1wsf8wk");
-    			add_location(div3, file$d, 190, 2, 4294);
-    			attr_dev(div4, "class", "operators svelte-1wsf8wk");
-    			add_location(div4, file$d, 205, 2, 4866);
-    			attr_dev(div5, "class", "main svelte-1wsf8wk");
-    			add_location(div5, file$d, 211, 2, 5098);
-    			attr_dev(button, "class", "mute svelte-1wsf8wk");
+    			attr_dev(div2, "class", "CTATHintWindow svelte-1jqqf7o");
+    			toggle_class(div2, "visible", /*$showMessages*/ ctx[4]);
+    			add_location(div2, file$d, 198, 4, 4926);
+    			attr_dev(div3, "class", "alien svelte-1jqqf7o");
+    			add_location(div3, file$d, 191, 2, 4498);
+    			attr_dev(div4, "class", "operators svelte-1jqqf7o");
+    			add_location(div4, file$d, 200, 2, 5016);
+    			attr_dev(div5, "class", "main svelte-1jqqf7o");
+    			add_location(div5, file$d, 206, 2, 5248);
+    			attr_dev(button, "class", "mute svelte-1jqqf7o");
     			toggle_class(button, "muted", /*muted*/ ctx[0]);
-    			add_location(button, file$d, 226, 4, 5558);
-    			attr_dev(div6, "class", "buttons svelte-1wsf8wk");
-    			add_location(div6, file$d, 223, 2, 5488);
-    			attr_dev(div7, "class", "app svelte-1wsf8wk");
-    			add_location(div7, file$d, 181, 0, 4129);
+    			add_location(button, file$d, 221, 4, 5708);
+    			attr_dev(div6, "class", "buttons svelte-1jqqf7o");
+    			add_location(div6, file$d, 218, 2, 5638);
+    			attr_dev(div7, "class", "app svelte-1jqqf7o");
+    			add_location(div7, file$d, 181, 0, 4220);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor, remount) {
     			insert_dev(target, div7, anchor);
+    			append_dev(div7, t0);
+    			append_dev(div7, t1);
     			append_dev(div7, div1);
     			append_dev(div1, h1);
-    			append_dev(div1, t1);
+    			append_dev(div1, t3);
     			append_dev(div1, div0);
     			if (if_block0) if_block0.m(div0, null);
-    			append_dev(div7, t2);
+    			/*div0_binding*/ ctx[10](div0);
+    			append_dev(div7, t4);
     			append_dev(div7, div3);
     			append_dev(div3, svg);
     			append_dev(svg, path0);
     			append_dev(svg, path1);
     			append_dev(svg, path2);
-    			append_dev(div3, t3);
+    			append_dev(div3, t5);
     			mount_component(alien, div3, null);
-    			append_dev(div3, t4);
+    			append_dev(div3, t6);
     			append_dev(div3, div2);
-    			append_dev(div7, t5);
+    			append_dev(div7, t7);
     			append_dev(div7, div4);
     			mount_component(draggableoperator0, div4, null);
-    			append_dev(div4, t6);
-    			mount_component(draggableoperator1, div4, null);
-    			append_dev(div4, t7);
-    			mount_component(draggableoperator2, div4, null);
     			append_dev(div4, t8);
+    			mount_component(draggableoperator1, div4, null);
+    			append_dev(div4, t9);
+    			mount_component(draggableoperator2, div4, null);
+    			append_dev(div4, t10);
     			mount_component(draggableoperator3, div4, null);
-    			append_dev(div7, t9);
+    			append_dev(div7, t11);
     			append_dev(div7, div5);
     			if (if_block1) if_block1.m(div5, null);
-    			append_dev(div7, t10);
+    			append_dev(div7, t12);
     			append_dev(div7, div6);
     			mount_component(buttons, div6, null);
-    			append_dev(div6, t11);
+    			append_dev(div6, t13);
     			append_dev(div6, button);
     			current = true;
     			if (remount) dispose();
-    			dispose = listen_dev(button, "click", /*click_handler*/ ctx[9], false, false, false);
+    			dispose = listen_dev(button, "click", /*click_handler*/ ctx[11], false, false, false);
     		},
     		p: function update(ctx, [dirty]) {
+    			if ((!current || dirty & /*$history*/ 4) && t0_value !== (t0_value = (/*$history*/ ctx[2].current && console.log(/*$history*/ ctx[2].current, parseGrammar(/*$history*/ ctx[2].current))) + "")) set_data_dev(t0, t0_value);
     			const alien_changes = {};
-    			if (dirty & /*$alienState*/ 4) alien_changes.state = /*$alienState*/ ctx[2];
+    			if (dirty & /*$alienState*/ 8) alien_changes.state = /*$alienState*/ ctx[3];
     			alien.$set(alien_changes);
 
-    			if (dirty & /*$showMessages*/ 8) {
-    				toggle_class(div2, "visible", /*$showMessages*/ ctx[3]);
+    			if (dirty & /*$showMessages*/ 16) {
+    				toggle_class(div2, "visible", /*$showMessages*/ ctx[4]);
     			}
 
-    			if (/*$history*/ ctx[1].current) {
+    			if (/*$history*/ ctx[2].current) {
     				if (if_block1) {
     					if_block1.p(ctx, dirty);
 
-    					if (dirty & /*$history*/ 2) {
+    					if (dirty & /*$history*/ 4) {
     						transition_in(if_block1, 1);
     					}
     				} else {
@@ -12207,7 +12282,7 @@ var app = (function () {
     			}
 
     			const buttons_changes = {};
-    			if (dirty & /*$error*/ 16) buttons_changes.error = /*$error*/ ctx[4];
+    			if (dirty & /*$error*/ 32) buttons_changes.error = /*$error*/ ctx[5];
     			buttons.$set(buttons_changes);
 
     			if (dirty & /*muted*/ 1) {
@@ -12240,6 +12315,7 @@ var app = (function () {
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div7);
     			if (if_block0) if_block0.d();
+    			/*div0_binding*/ ctx[10](null);
     			destroy_component(alien);
     			destroy_component(draggableoperator0);
     			destroy_component(draggableoperator1);
@@ -12271,19 +12347,19 @@ var app = (function () {
     	let $dragdropData;
     	let $draftEquation;
     	validate_store(lastCorrect, "lastCorrect");
-    	component_subscribe($$self, lastCorrect, $$value => $$invalidate(8, $lastCorrect = $$value));
+    	component_subscribe($$self, lastCorrect, $$value => $$invalidate(9, $lastCorrect = $$value));
     	validate_store(history, "history");
-    	component_subscribe($$self, history, $$value => $$invalidate(1, $history = $$value));
+    	component_subscribe($$self, history, $$value => $$invalidate(2, $history = $$value));
     	validate_store(alienState, "alienState");
-    	component_subscribe($$self, alienState, $$value => $$invalidate(2, $alienState = $$value));
+    	component_subscribe($$self, alienState, $$value => $$invalidate(3, $alienState = $$value));
     	validate_store(showMessages, "showMessages");
-    	component_subscribe($$self, showMessages, $$value => $$invalidate(3, $showMessages = $$value));
+    	component_subscribe($$self, showMessages, $$value => $$invalidate(4, $showMessages = $$value));
     	validate_store(error, "error");
-    	component_subscribe($$self, error, $$value => $$invalidate(4, $error = $$value));
+    	component_subscribe($$self, error, $$value => $$invalidate(5, $error = $$value));
     	validate_store(dragdropData, "dragdropData");
-    	component_subscribe($$self, dragdropData, $$value => $$invalidate(5, $dragdropData = $$value));
+    	component_subscribe($$self, dragdropData, $$value => $$invalidate(6, $dragdropData = $$value));
     	validate_store(draftEquation, "draftEquation");
-    	component_subscribe($$self, draftEquation, $$value => $$invalidate(6, $draftEquation = $$value));
+    	component_subscribe($$self, draftEquation, $$value => $$invalidate(7, $draftEquation = $$value));
     	let muted = document.cookie.split("muted=")[1] === "true";
 
     	function onUndo() {
@@ -12295,7 +12371,12 @@ var app = (function () {
     		}
     	}
 
-    	console.log($history.current);
+    	let historyScroll;
+
+    	afterUpdate(() => {
+    		$$invalidate(1, historyScroll.scrollTop = historyScroll.scrollHeight, historyScroll);
+    	});
+
     	const writable_props = [];
 
     	Object.keys($$props).forEach(key => {
@@ -12305,6 +12386,12 @@ var app = (function () {
     	let { $$slots = {}, $$scope } = $$props;
     	validate_slots("App", $$slots, []);
 
+    	function div0_binding($$value) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			$$invalidate(1, historyScroll = $$value);
+    		});
+    	}
+
     	const click_handler = () => {
     		soundEffects.mute(!soundEffects._muted);
     		$$invalidate(0, muted = !muted);
@@ -12312,6 +12399,7 @@ var app = (function () {
     	};
 
     	$$self.$capture_state = () => ({
+    		afterUpdate,
     		parseGrammar,
     		draftEquation,
     		dragdropData,
@@ -12328,6 +12416,7 @@ var app = (function () {
     		error,
     		alienState,
     		onUndo,
+    		historyScroll,
     		$lastCorrect,
     		$history,
     		$alienState,
@@ -12339,6 +12428,7 @@ var app = (function () {
 
     	$$self.$inject_state = $$props => {
     		if ("muted" in $$props) $$invalidate(0, muted = $$props.muted);
+    		if ("historyScroll" in $$props) $$invalidate(1, historyScroll = $$props.historyScroll);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -12347,6 +12437,7 @@ var app = (function () {
 
     	return [
     		muted,
+    		historyScroll,
     		$history,
     		$alienState,
     		$showMessages,
@@ -12355,6 +12446,7 @@ var app = (function () {
     		$draftEquation,
     		onUndo,
     		$lastCorrect,
+    		div0_binding,
     		click_handler
     	];
     }

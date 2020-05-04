@@ -7,7 +7,7 @@ global pName = "testfile";
 global initLeft = "4x+2";
 
 //initial right side of the equation
-global initRight = "2x";
+global initRight = "2x-3x";
 
 global forceSimplify = false;
 

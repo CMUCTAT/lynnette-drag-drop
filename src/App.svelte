@@ -1,24 +1,20 @@
 <script>
-  import { parseGrammar } from "./grammarParser.js";
-  import { draftEquation, dragdropData } from "./stores/equation.js";
-  import { history } from "./stores/history.js";
-  import soundEffects from "./soundEffect.js";
-  import Equation from "./components/Equation.svelte";
-  import DraggableOperator from "./components/DraggableOperator.svelte";
-  import History from "./components/History.svelte";
+  import { afterUpdate } from 'svelte';
+  import { parseGrammar } from './grammarParser.js';
+  import { draftEquation, dragdropData } from './stores/equation.js';
+  import { history } from './stores/history.js';
+  import soundEffects from './soundEffect.js';
+  import Equation from './components/Equation.svelte';
+  import DraggableOperator from './components/DraggableOperator.svelte';
+  import History from './components/History.svelte';
 
   // menu elements
-  import Buttons from "./components/menu/Buttons.svelte";
-  import Alien from "./components/menu/Alien.svelte";
+  import Buttons from './components/menu/Buttons.svelte';
+  import Alien from './components/menu/Alien.svelte';
 
-  let muted = document.cookie.split("muted=")[1] === "true";
+  let muted = document.cookie.split('muted=')[1] === 'true';
 
-  import {
-    showMessages,
-    lastCorrect,
-    error,
-    alienState
-  } from "./stores/messageManager.js";
+  import { showMessages, lastCorrect, error, alienState } from './stores/messageManager.js';
 
   function onUndo() {
     history.undo();
@@ -28,7 +24,11 @@
     }
   }
 
-  console.log($history.current);
+  let historyScroll;
+
+  afterUpdate(() => {
+    historyScroll.scrollTop = historyScroll.scrollHeight;
+  });
 </script>
 
 <style>
@@ -37,13 +37,13 @@
     width: 100%;
     display: grid;
     grid-template-areas:
-      "steps operators buttons"
-      "steps main buttons"
-      "alien main buttons";
+      'steps operators buttons'
+      'steps main buttons'
+      'alien main buttons';
     grid-template-columns: 1fr 3fr 1fr;
     grid-template-rows: 200px 1fr 30%;
     row-gap: 50px;
-    background: center / cover no-repeat url("./images/lynnette-sapce-bg.png");
+    background: center / cover no-repeat url('./images/lynnette-sapce-bg.png');
   }
   .steps {
     grid-area: steps;
@@ -132,14 +132,14 @@
   #hintwindow :global(.CTATHintWindow--hint-button-area) {
     text-align: right;
   }
-  /* :global(.ctatpageoverlay) {
+  :global(.ctatpageoverlay) {
     position: fixed;
     padding: 30px;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     background: #f5f4f3;
-  } */
+  }
   :global(.CTATHintWindow--button) {
     border: none;
     cursor: pointer;
@@ -168,7 +168,7 @@
     position: relative;
   }
   .mute.muted:after {
-    content: "";
+    content: '';
     position: absolute;
     top: 6px;
     left: 50%;
@@ -180,9 +180,10 @@
 </style>
 
 <div class="app">
+  {$history.current && console.log($history.current, parseGrammar($history.current))}
   <div class="steps">
     <h1>Steps</h1>
-    <div class="history">
+    <div bind:this={historyScroll} class="history">
       {#if true}
         <History />
       {/if}
@@ -190,15 +191,9 @@
   </div>
   <div class="alien">
     <svg viewBox="0 0 302 269" style="enable-background:new 0 0 302 269;">
-      <path
-        style="fill:#FF6E52;"
-        d="M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z" />
-      <path
-        style="fill:#FFC33E;"
-        d="M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z" />
-      <path
-        style="fill:#f5f4f3;"
-        d="M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z" />
+      <path style="fill:#FF6E52;" d="M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z" />
+      <path style="fill:#FFC33E;" d="M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z" />
+      <path style="fill:#f5f4f3;" d="M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z" />
     </svg>
     <Alien state={$alienState} />
     <div id="hintwindow" class="CTATHintWindow" class:visible={$showMessages} />

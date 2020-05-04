@@ -1,27 +1,26 @@
 <script>
-  import TokenDisplay from "./TokenDisplay.svelte";
-  import OperatorDisplay from "./OperatorDisplay.svelte";
-  import { Token, Expression } from "../../classes.js";
+  import TokenDisplay from './TokenDisplay.svelte';
+  import OperatorDisplay from './OperatorDisplay.svelte';
+  import { Token, Expression } from '../../classes.js';
 
   export let expression;
-  let isAdd = expression.node.operator === "PLUS";
+  let isAdd = expression.node.operator === 'PLUS';
+  let top = expression.items;
+  let bottom = [];
 
-  let top = isAdd
-    ? expression.items
-    : expression.items.filter(item => item.node.exp > 0);
-  top = top.reduce(
-    (acc, cur, i) =>
-      acc.concat(i < top.length - 1 ? [cur, isAdd ? "PLUS" : "TIMES"] : [cur]),
-    []
-  );
-  let bottom = isAdd ? [] : expression.items.filter(item => item.node.exp < 0);
-  bottom = bottom.reduce(
-    (acc, cur, i) =>
-      acc.concat(
-        i < bottom.length - 1 ? [cur, isAdd ? "PLUS" : "TIMES"] : [cur]
-      ),
-    []
-  );
+  function insertOperators(items, isAdd = true) {
+    if (isAdd)
+      return items.reduce((a, c, i) => {
+        return i === 0 ? [c] : a.concat([c.node.sign > 0 ? 'PLUS' : 'MINUS', c]);
+      }, []);
+    else return items.reduce((a, c, i) => (i === 0 ? [c] : a.concat(['TIMES', c])), []);
+  }
+
+  $: if (expression) {
+    isAdd = expression.node.operator === 'PLUS';
+    top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd);
+    bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
+  }
 </script>
 
 <style>
@@ -39,7 +38,7 @@
     padding: 0 2px;
   }
   .expression-display.parens:after {
-    content: "";
+    content: '';
     position: absolute;
     left: -4px;
     top: 0;
@@ -49,7 +48,7 @@
     border-radius: 50%;
   }
   .expression-display.parens:before {
-    content: "";
+    content: '';
     position: absolute;
     right: -4px;
     top: 0;
@@ -75,10 +74,7 @@
   }
 </style>
 
-<div
-  class="expression-display"
-  class:divide={bottom.length > 0}
-  class:parens={expression.parens}>
+<div class="expression-display" class:divide={bottom.length > 0} class:parens={expression.parens}>
   <div class="item-display top">
     {#each top as item, i}
       {#if item instanceof Expression}
