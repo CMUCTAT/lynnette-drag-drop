@@ -1,18 +1,14 @@
 <script>
-  import { DivideOperator } from "../classes.js";
+  import { Operators } from "../classes.js";
   import { draftEquation } from "../stores/equation.js";
 
   export let operator;
   export let siblings = null;
 
-  $: divide = operator instanceof DivideOperator;
+  $: divide = operator === "DIVIDE";
 
   function handleDoubleCLick(e) {
-    console.log(siblings);
-    let index = siblings.indexOf(operator);
-    console.log(index);
-
-    draftEquation.draftOperation(siblings[index - 1], siblings[index + 1]);
+    draftEquation.draftOperation(siblings[0], siblings[1]);
     draftEquation.apply();
   }
 </script>
@@ -36,5 +32,5 @@
 </style>
 
 <div class="operator no-highlight" class:divide on:dblclick={handleDoubleCLick}>
-  {#if !divide}{operator.symbol}{/if}
+  {#if !divide}{Operators[operator]}{/if}
 </div>

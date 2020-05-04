@@ -1,16 +1,16 @@
 const generateID = () => Math.random().toString(36).substr(2, 9);
 
 class EquationNode {
-  constructor(parent, path) {
+  constructor(parent, node) {
     this.parent = parent;
-    this.path = path;
+    this.node = node;
     this.id = generateID();
   }
 }
 
 export class Equation extends EquationNode {
-  constructor(left, right) {
-    super(null, null);
+  constructor(eqn, left, right) {
+    super(null, eqn);
     this.left = left;
     this.right = right;
   }
@@ -21,78 +21,55 @@ export class Equation extends EquationNode {
 }
 
 export class Token extends EquationNode {
-  constructor(parent, path, constant, variable, ...indices) {
-    super(parent, path);
-    this.constant = constant;
-    this.variable = variable;
+  constructor(parent, nodes, indices) {
+    super(parent, nodes[0]);
+    this.nodes = nodes;
     this.indices = indices;
   }
   stringify() {
     return this.value();
   }
   value() {
-    const constant = this.variable ? this.constant.toString().replace("1", "") : this.constant;
-    const variable = this.variable || "";
-    return constant + variable;
+    const values = this.nodes.map(
+      (node) =>
+        node.value * node.sign || node.variable || -node.base.value || "-" + node.base.variable
+    );
+    if (values.length === 1) {
+      return values[0];
+    } else {
+      if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, "$1");
+      else values[0] = values[0].toString().replace(/(^-?)1$/, "$1");
+      return values.join("");
+    }
+    // const constant = this.variable ? this.constant.toString().replace(/^-?1$/, "") : this.constant;
+    // const variable = this.variable || "";
+    // return constant + variable;
   }
 }
 
 export class UnknownToken extends Token {
-  constructor(parent, path, startIndex = null) {
-    super(parent, path, null, null, startIndex, null);
+  constructor(parent, node, indices) {
+    super(parent, [node], indices);
     this.unknown = true;
+  }
+  value() {
+    return "□"; //?
   }
 }
 
 export class Expression extends EquationNode {
-  constructor(parent, path, nodes, parens = false, ...indices) {
-    super(parent, path);
-    this.nodes = nodes;
-    this.parens = parens;
-    this.indices = indices;
+  constructor(parent, node, items) {
+    super(parent, node);
+    this.items = items;
   }
   stringify() {
-    return "(" + this.nodes.map((item) => item.stringify()).join(" ") + ")";
+    return "(" + this.items.map((item) => item.stringify()).join(" ") + ")";
   }
 }
 
-const Operations = { PLUS: "+", MINUS: "-", TIMES: "×", DIVIDE: "÷" };
-export class Operator extends EquationNode {
-  constructor(parent, path, symbol, operation) {
-    super(parent, path);
-    this.symbol = symbol;
-    this.operation = operation;
-  }
-  equals(other) {
-    return typeof other === "string" || other instanceof String
-      ? this.symbol === other
-      : other instanceof Operator && other.symbol === this.symbol;
-  }
-  stringify() {
-    return this.symbol;
-  }
-}
-
-export class PlusOperator extends Operator {
-  constructor(parent, path) {
-    super(parent, path, Operations.PLUS, "PLUS");
-  }
-}
-
-export class MinusOperator extends Operator {
-  constructor(parent, path) {
-    super(parent, path, Operations.MINUS, "MINUS");
-  }
-}
-
-export class TimesOperator extends Operator {
-  constructor(parent, path) {
-    super(parent, path, Operations.TIMES, "TIMES");
-  }
-}
-
-export class DivideOperator extends Operator {
-  constructor(parent, path) {
-    super(parent, path, Operations.DIVIDE, "DIVIDE");
-  }
-}
+export const Operators = {
+  PLUS: "+",
+  MINUS: "-",
+  TIMES: "×",
+  DIVIDE: "÷",
+};

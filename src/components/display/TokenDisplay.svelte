@@ -1,15 +1,15 @@
-<div class="token-display">
-    <span class="content">{token.constant == null ? "□" : token.value()}</span>
-</div>
-
 <script>
-    export let token;
+  import { Token } from "../../classes.js";
+  export let token;
 </script>
 
-
 <style>
-	.token-display {
-        text-align: center;
-        vertical-align: middle;
-    }
+  .token-display {
+    text-align: center;
+    vertical-align: middle;
+  }
 </style>
+
+<div class="token-display">
+  <span class="content">{token.value()}</span>
+</div>

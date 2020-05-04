@@ -1,15 +1,41 @@
 <script>
   import { afterUpdate, beforeUpdate } from "svelte";
 
-  import { Token, Expression, Operator, DivideOperator } from "../classes.js";
+  import { Token, Expression } from "../classes.js";
   import ExpressionComponent from "./Expression.svelte";
-  import OperatorComponent from "./Operator.svelte";
+  import Operator from "./Operator.svelte";
   import TokenComponent from "./Token.svelte";
   import DragDrop from "./DragDrop.svelte";
   import { draftEquation, dragdropData } from "../stores/equation.js";
 
   export let expression;
-  $: divide = expression.nodes[1] instanceof DivideOperator;
+  let isAdd = expression.node.operator === "PLUS";
+  let top = expression.items;
+  let bottom = [];
+  $: if (expression) {
+    isAdd = expression.node.operator === "PLUS";
+    top = (isAdd
+      ? expression.items
+      : expression.items.filter(item => item.node.exp > 0)
+    ).reduce(
+      (acc, cur, i) =>
+        acc.concat(
+          i === 0
+            ? [cur]
+            : [isAdd ? (cur.node.sign > 0 ? "PLUS" : "MINUS") : "TIMES", cur]
+        ),
+      []
+    );
+    bottom = isAdd
+      ? []
+      : expression.items
+          .filter(item => item.node.exp < 0)
+          .reduce(
+            (acc, cur, i) =>
+              acc.concat(i === 0 ? [cur] : [isAdd ? "PLUS" : "TIMES", cur]),
+            []
+          );
+  }
 </script>
 
 <style>
@@ -22,9 +48,6 @@
     border-radius: 5px;
     border: #fff0 3px solid;
     transition: all 0.25s ease;
-  }
-  .divide {
-    flex-direction: column;
   }
   .parens:after {
     content: "";
@@ -52,6 +75,21 @@
   .draghovering.dropzone {
     border: var(--drag-highlight-color) 3px solid;
   }
+  .item-display {
+    display: flex;
+    align-items: center;
+    justify-items: center;
+  }
+  .divide {
+    flex-direction: column;
+  }
+  .vinculum {
+    width: 100%;
+    height: 3px;
+    border-radius: 3px;
+    background: #fff;
+    margin: 5px 0;
+  }
 </style>
 
 <DragDrop
@@ -73,19 +111,34 @@
     class:dragging
     class:hovering
     class:draghovering
-    class:divide
-    class:parens={expression.parens}>
-    {#each expression.nodes as item, i}
-      {#if item instanceof Operator}
-        <OperatorComponent operator={item} siblings={expression.nodes} />
-      {:else if item instanceof Expression}
-        <svelte:self expression={item} />
-      {:else if item instanceof Token}
-        <TokenComponent token={item} />
-      {/if}
-    {/each}
+    class:divide={bottom.length > 0}
+    class:parens={expression.node.parens}>
+    <div class="item-display top">
+      {#each top as item, i (item.id)}
+        {#if item instanceof Expression}
+          <svelte:self expression={item} />
+        {:else if item instanceof Token}
+          <TokenComponent token={item} />
+        {:else}
+          <Operator operator={item} siblings={[top[i - 1], top[i + 1]]} />
+        {/if}
+      {/each}
+    </div>
+    {#if bottom.length > 0}
+      <div class="vinculum" />
+      <div class="item-display bottom">
+        {#each bottom as item, i (item.id)}
+          {#if item instanceof Expression}
+            <svelte:self expression={item} />
+          {:else if item instanceof Token}
+            <TokenComponent token={item} />
+          {:else}
+            <Operator
+              operator={item}
+              siblings={[bottom[i - 1], bottom[i + 1]]} />
+          {/if}
+        {/each}
+      </div>
+    {/if}
   </div>
-  <!-- <div slot="mover"></div> -->
 </DragDrop>
-
-<!-- <div class="expression no-highlight" class:divide={expression.nodes[1] instanceof DivideOperator} class:parens={expression.parens}></div> -->

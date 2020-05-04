@@ -3,7 +3,7 @@
   import ExpressionDisplay from "./display/ExpressionDisplay.svelte";
   import OperatorDisplay from "./display/OperatorDisplay.svelte";
   import TokenDisplay from "./display/TokenDisplay.svelte";
-  import { Operator, Expression, Token } from "../classes.js";
+  import { Expression, Token } from "../classes.js";
   import { parseGrammar } from "../grammarParser.js";
   let ref;
 
@@ -59,9 +59,7 @@
       <div class="equation-display" class:current={i === $history.index}>
         <div class="equation">
           <div class="left">
-            {#if item.left instanceof Operator}
-              <OperatorDisplay operator={item.left} />
-            {:else if item.left instanceof Expression}
+            {#if item.left instanceof Expression}
               <ExpressionDisplay expression={item.left} />
             {:else if item.left instanceof Token}
               <TokenDisplay token={item.left} />
@@ -71,9 +69,7 @@
             <div>=</div>
           </div>
           <div class="right">
-            {#if item.right instanceof Operator}
-              <OperatorDisplay operator={item.right} />
-            {:else if item.right instanceof Expression}
+            {#if item.right instanceof Expression}
               <ExpressionDisplay expression={item.right} />
             {:else if item.right instanceof Token}
               <TokenDisplay token={item.right} />

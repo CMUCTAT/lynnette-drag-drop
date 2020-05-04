@@ -297,6 +297,96 @@ var app = (function () {
         : typeof globalThis !== 'undefined'
             ? globalThis
             : global);
+    function outro_and_destroy_block(block, lookup) {
+        transition_out(block, 1, 1, () => {
+            lookup.delete(block.key);
+        });
+    }
+    function update_keyed_each(old_blocks, dirty, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block, next, get_context) {
+        let o = old_blocks.length;
+        let n = list.length;
+        let i = o;
+        const old_indexes = {};
+        while (i--)
+            old_indexes[old_blocks[i].key] = i;
+        const new_blocks = [];
+        const new_lookup = new Map();
+        const deltas = new Map();
+        i = n;
+        while (i--) {
+            const child_ctx = get_context(ctx, list, i);
+            const key = get_key(child_ctx);
+            let block = lookup.get(key);
+            if (!block) {
+                block = create_each_block(key, child_ctx);
+                block.c();
+            }
+            else if (dynamic) {
+                block.p(child_ctx, dirty);
+            }
+            new_lookup.set(key, new_blocks[i] = block);
+            if (key in old_indexes)
+                deltas.set(key, Math.abs(i - old_indexes[key]));
+        }
+        const will_move = new Set();
+        const did_move = new Set();
+        function insert(block) {
+            transition_in(block, 1);
+            block.m(node, next, lookup.has(block.key));
+            lookup.set(block.key, block);
+            next = block.first;
+            n--;
+        }
+        while (o && n) {
+            const new_block = new_blocks[n - 1];
+            const old_block = old_blocks[o - 1];
+            const new_key = new_block.key;
+            const old_key = old_block.key;
+            if (new_block === old_block) {
+                // do nothing
+                next = new_block.first;
+                o--;
+                n--;
+            }
+            else if (!new_lookup.has(old_key)) {
+                // remove old block
+                destroy(old_block, lookup);
+                o--;
+            }
+            else if (!lookup.has(new_key) || will_move.has(new_key)) {
+                insert(new_block);
+            }
+            else if (did_move.has(old_key)) {
+                o--;
+            }
+            else if (deltas.get(new_key) > deltas.get(old_key)) {
+                did_move.add(new_key);
+                insert(new_block);
+            }
+            else {
+                will_move.add(old_key);
+                o--;
+            }
+        }
+        while (o--) {
+            const old_block = old_blocks[o];
+            if (!new_lookup.has(old_block.key))
+                destroy(old_block, lookup);
+        }
+        while (n)
+            insert(new_blocks[n - 1]);
+        return new_blocks;
+    }
+    function validate_each_keys(ctx, list, get_context, get_key) {
+        const keys = new Set();
+        for (let i = 0; i < list.length; i++) {
+            const key = get_key(get_context(ctx, list, i));
+            if (keys.has(key)) {
+                throw new Error(`Cannot have duplicate keys in a keyed each`);
+            }
+            keys.add(key);
+        }
+    }
     function create_component(block) {
         block && block.c();
     }
@@ -492,16 +582,16 @@ var app = (function () {
     const generateID = () => Math.random().toString(36).substr(2, 9);
 
     class EquationNode {
-      constructor(parent, path) {
+      constructor(parent, node) {
         this.parent = parent;
-        this.path = path;
+        this.node = node;
         this.id = generateID();
       }
     }
 
     class Equation extends EquationNode {
-      constructor(left, right) {
-        super(null, null);
+      constructor(eqn, left, right) {
+        super(null, eqn);
         this.left = left;
         this.right = right;
       }
@@ -512,99 +602,60 @@ var app = (function () {
     }
 
     class Token extends EquationNode {
-      constructor(parent, path, constant, variable, ...indices) {
-        super(parent, path);
-        this.constant = constant;
-        this.variable = variable;
+      constructor(parent, nodes, indices) {
+        super(parent, nodes[0]);
+        this.nodes = nodes;
         this.indices = indices;
       }
       stringify() {
         return this.value();
       }
       value() {
-        const constant = !(this.variable && this.constant === 1)
-          ? this.constant === -1
-            ? "-"
-            : this.constant
-          : "";
-        const variable = this.variable || "";
-        return constant + variable;
+        const values = this.nodes.map(
+          (node) =>
+            node.value * node.sign || node.variable || -node.base.value || "-" + node.base.variable
+        );
+        if (values.length === 1) {
+          return values[0];
+        } else {
+          if (values[0].base) values[0] = values[0].base.toString().replace(/(^-?)1$/, "$1");
+          else values[0] = values[0].toString().replace(/(^-?)1$/, "$1");
+          return values.join("");
+        }
+        // const constant = this.variable ? this.constant.toString().replace(/^-?1$/, "") : this.constant;
+        // const variable = this.variable || "";
+        // return constant + variable;
       }
     }
 
     class UnknownToken extends Token {
-      constructor(parent, path, startIndex = null) {
-        super(parent, path, null, null, startIndex, null);
+      constructor(parent, node, indices) {
+        super(parent, [node], indices);
         this.unknown = true;
+      }
+      value() {
+        return "□"; //?
       }
     }
 
     class Expression extends EquationNode {
-      constructor(parent, path, nodes, parens = false) {
-        super(parent, path);
-        this.nodes = nodes;
-        this.parens = parens;
+      constructor(parent, node, items) {
+        super(parent, node);
+        this.items = items;
       }
       stringify() {
-        return "(" + this.nodes.map((item) => item.stringify()).join(" ") + ")";
+        return "(" + this.items.map((item) => item.stringify()).join(" ") + ")";
       }
     }
 
-    const Operations = { PLUS: "+", MINUS: "-", TIMES: "×", DIVIDE: "÷" };
-    class Operator extends EquationNode {
-      constructor(parent, path, symbol, operation) {
-        super(parent, path);
-        this.symbol = symbol;
-        this.operation = operation;
-      }
-      equals(other) {
-        return typeof other === "string" || other instanceof String
-          ? this.symbol === other
-          : other instanceof Operator && other.symbol === this.symbol;
-      }
-      stringify() {
-        return this.symbol;
-      }
-    }
+    const Operators = {
+      PLUS: "+",
+      MINUS: "-",
+      TIMES: "×",
+      DIVIDE: "÷",
+    };
 
-    class PlusOperator extends Operator {
-      constructor(parent, path) {
-        super(parent, path, Operations.PLUS, "PLUS");
-      }
-    }
-
-    class MinusOperator extends Operator {
-      constructor(parent, path) {
-        super(parent, path, Operations.MINUS, "MINUS");
-      }
-    }
-
-    class TimesOperator extends Operator {
-      constructor(parent, path) {
-        super(parent, path, Operations.TIMES, "TIMES");
-      }
-    }
-
-    class DivideOperator extends Operator {
-      constructor(parent, path) {
-        super(parent, path, Operations.DIVIDE, "DIVIDE");
-      }
-    }
-
-    function flattenPath(path) {
-      return path.join(",").split(",");
-    }
-
-    /**
-     * Transforms algebra grammar tree from CTATAlgebraParser into EquationNode interpretable by the interface
-     * @export
-     * @param {CTATAlgebraNode} expression grammar to transform into an EquationNode
-     * @param {EquationNode} [parent=null] the parent of the passed in node; will be automatically set recursively
-     * @param {int} [parentIndex=null] the index of the passed in node relative to its parent
-     * @param {bool} [ignoreSign=false] should constants take the sign of their expression; only used when constructing PLUS operations with minuses to properly display numbers as e.g. 1 - 2 not 1 + -2
-     * @returns EquationNode transformed tree
-     */
-    function parseGrammar(expression, parent = null, parentIndex = null, ignoreSign = false) {
+    function parseGrammar(expression, parent = null, parentIndex = null) {
       //return different things depending on what the node's operator is
       if (expression.operator === "EQUAL") {
         let operands = parse.algGetOperands(expression);
@@ -613,132 +664,60 @@ var app = (function () {
         eqn.right = parseGrammar(operands[1], eqn);
         return eqn;
       } else if (expression.operator === "CONST") {
-        return new Token(
-          parent,
-          flattenPath(expression.path),
-          (ignoreSign ? 1 : expression.sign) * expression.value,
-          null,
-          parentIndex
-        );
+        return new Token(parent, [expression], [parentIndex]);
       } else if (expression.operator === "VAR") {
-        return new Token(
-          parent,
-          flattenPath(expression.path),
-          expression.sign,
-          expression.variable,
-          parentIndex
-        );
+        return new Token(parent, [expression], [parentIndex]);
       } else if (expression.operator === "UMINUS") {
-        return new Token(
-          parent,
-          flattenPath(expression.path),
-          -expression.base.value,
-          null,
-          parentIndex
-        );
+        return new Token(parent, [expression], [parentIndex]);
       } else if (expression.operator === "UNKNOWN") {
-        return new UnknownToken(parent, flattenPath(expression.path), parentIndex);
+        return new UnknownToken(parent, expression, [parentIndex]);
       } else if (expression.operator === "PLUS") {
         let operands = parse.algGetOperands(expression);
-        let exp = new Expression(parent, flattenPath(expression.path), [], expression.parens > 0);
-        exp.nodes = operands.reduce((acc, e, i) => {
-          let node = parseGrammar(e, exp, i, i > 0);
-          return i > 0
-            ? acc.concat(
-                e.sign > 0
-                  ? new PlusOperator(parent, flattenPath(expression.path))
-                  : new MinusOperator(parent, flattenPath(expression.path)),
-                node
-              )
-            : acc.concat(node);
-        }, []);
+        let exp = new Expression(parent, expression, []);
+        exp.items = operands.map((node, i) => parseGrammar(node, exp, i));
         return exp;
       } else if (expression.operator === "TIMES") {
         let operands = parse.algGetOperands(expression);
-        let nodes = operands.reduce((acc, e, i) => {
-          //parse nodes, but remember their exponent so we can sort it into top or bottom
-          let node = parseGrammar(e, null, i); //these nodes won't have a parent yet; it'll be set later once we determine which expression it's the child of
-          return acc.concat({ exp: e.exp, node });
-        }, []);
-        let topNodes = [];
-        let bottomNodes = [];
-        nodes.forEach((e) => {
-          //sort nodes into top or bottom exponent^1 is on top exponent^-1 is on bottom
-          if (e.exp >= 0) {
-            topNodes.push(e.node);
-          } else {
-            bottomNodes.push(e.node);
-          }
-        });
-        if (bottomNodes.length > 0) {
-          //if there are bottom nodes then create division expression with top and bottom nodes in their respective places
-          let exp = new Expression(parent, flattenPath(expression.path), [], expression.parens > 0);
-          exp.nodes = [
-            combineConstVars(topNodes, exp, flattenPath(expression.path)),
-            new DivideOperator(parent, flattenPath(expression.path)),
-            combineConstVars(bottomNodes, exp, flattenPath(expression.path)),
-          ];
-          return exp;
-        } else {
-          //if there aren't any bottom nodes, then create a multiplication expression
-          return combineConstVars(topNodes, parent, flattenPath(expression.path));
-        }
+        let exp = new Expression(parent, expression, []);
+        let items = groupNodes(exp, operands);
+        if (items.length === 1) return items[0];
+        exp.items = items;
+        return exp;
       } else {
         //this shouldn't happen, but nulls are just ignored by the interface renderer
         return null;
       }
     }
 
-    /**
-     * Given a list of nodes, combine neigbor constants and variables into single tokens and returns the resulting nodes as a single expression
-     * NOTE: this should only be called on lists of nodes in TIMES expressions
-     * @param {array of EquationNode} nodes nodes which will be combined
-     * @param {EquationNode} parent parent of the passed in nodes
-     * @returns EquationNode expression of combined nodes
-     */
-    function combineConstVars(nodes, parent, path) {
-      if (nodes.length === 1) {
-        //if there's only one node, then set the parent of that node to the original parent, then return it alone
-        nodes[0].parent = parent;
-        return nodes[0];
-      }
-      let exp = new Expression(parent, path, []);
+    function groupNodes(parent, nodes) {
+      if (nodes.length === 1) return nodes;
+      const groups = [];
       for (let i = 0; i < nodes.length; i++) {
-        if (i === nodes.length - 1) {
-          //if we're at the last node, just add it to the expression
-          nodes[i].parent = exp;
-          exp.nodes.push(nodes[i]);
-        } else if (
-          nodes[i] instanceof Token &&
-          nodes[i].constant &&
-          nodes[i + 1] instanceof Token &&
-          nodes[i + 1].variable
+        let node = nodes[i];
+        if (
+          node.operator === "VAR" &&
+          groups.length > 0 &&
+          groups[groups.length - 1][0].exp === node.exp
         ) {
-          //if the current node is a constant and the next a variable, combine them into a single token and add it to the expression
-          exp.nodes.push(
-            new Token(
-              exp,
-              path,
-              nodes[i].constant,
-              nodes[i + 1].variable,
-              nodes[i].startIndex,
-              nodes[i + 1].stopIndex
-            )
-          );
-          i++;
+          groups[groups.length - 1].push(node);
         } else {
-          //otherwise, add the node and a times operator
-          nodes[i].parent = exp;
-          exp.nodes.push(nodes[i]);
-          exp.nodes.push(new TimesOperator(parent, path));
+          groups.push([node]);
         }
       }
-      if (exp.nodes.length === 1) {
-        //if, after combining, there's only one element, then ignore the new expression, set that node's parent to the original parent and return it
-        exp.nodes[0].parent = parent;
-        return exp.nodes[0];
-      }
-      return exp;
+      return groups.map((group) => {
+        if (group.length === 1)
+          return parseGrammar(
+            group[0],
+            parent,
+            group.map((n) => nodes.indexOf(n))
+          );
+        else
+          return new Token(
+            parent,
+            group,
+            group.map((n) => nodes.indexOf(n))
+          );
+      });
     }
 
     const subscriber_queue = [];
@@ -2689,7 +2668,8 @@ var app = (function () {
     //   history.push(window.parse.algParse(newEqn));
     // };
 
-    const initial = null;
+    const initial = parse$1.algParse("4(1+x) = (x+1)/4");
+    history.push(initial);
 
     // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
     let dragOperation = {
@@ -2730,7 +2710,7 @@ var app = (function () {
             return tokenToToken(src, dest, eqn);
           } else if (dest instanceof Expression) {
             return tokenToExpression(src, dest, eqn);
-          } else if (dest instanceof Operator) {
+          } else if (Object.keys(Operators).includes(dest)) {
             return tokenToOperator(src, dest, eqn);
           } else {
             throw new TypeError("Drag destination is not a proper item type");
@@ -2740,17 +2720,17 @@ var app = (function () {
             return expressionToToken(src, dest);
           } else if (dest instanceof Expression) {
             return expressionToExpression(src, dest);
-          } else if (dest instanceof Operator) {
+          } else if (Object.keys(Operators).includes(dest)) {
             return expressionToOperator(src, dest, eqn);
           } else {
             throw new TypeError("Drag destination is not a proper item type");
           }
-        } else if (src instanceof Operator) {
+        } else if (Object.keys(Operators).includes(src)) {
           if (dest instanceof Token) {
             return operatorToToken(src, dest, eqn);
           } else if (dest instanceof Expression) {
             return operatorToExpression(src, dest, eqn);
-          } else if (dest instanceof Operator) {
+          } else if (Object.keys(Operators).includes(dest)) {
             return operatorToOperator(src, dest, eqn);
           } else {
             throw new TypeError("Drag destination is not a proper item type");
@@ -2782,6 +2762,7 @@ var app = (function () {
           parse$1.algStringify(get_store_value(history).current) !== parse$1.algStringify(eqn)
         ) {
           history.push(eqn);
+          console.log(parse$1.algStringify(eqn), eqn);
         }
         return eqn;
       }
@@ -2796,8 +2777,9 @@ var app = (function () {
        */
       function updateToken(eqn, token, value) {
         eqn = get_store_value(history).current;
-        dragOperation = { from: "Update", to: "Token", side: token.path[0] };
-        let target = Object.path(eqn, token.path);
+        let path = flattenPath(token.node.path);
+        dragOperation = { from: "Update", to: "Token", side: path[0] };
+        let target = Object.path(eqn, path);
         let newToken = parse$1.algParse(value);
         newToken.sign = target.sign;
         newToken.exp = target.exp;
@@ -2823,6 +2805,10 @@ var app = (function () {
      */
     Object.path = (o, p) => p.reduce((xs, x) => (xs && xs[x] ? xs[x] : null), o);
 
+    function flattenPath(path) {
+      return path.join(",").split(",");
+    }
+
     /**
      * When a token is dragged onto a token, the following should happen:
      * if the destination is the unknown operator ("?"), then replace its value with the source's value and return the result
@@ -2833,21 +2819,17 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function tokenToToken(src, dest, eqn) {
-      dragOperation = { from: "Token", to: "Token", side: dest.path[0] };
-      console.log(src, dest);
-
+      dragOperation = { from: "Token", to: "Token", side: flattenPath(dest.node.path)[0] };
       if (dest instanceof UnknownToken) {
-        let d = Object.path(eqn, dest.path);
+        let d = Object.path(eqn, flattenPath(dest.node.path));
         let s = parse$1.algParse(src.value());
         s.exp = d.exp;
         s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
         return parse$1.algReplaceExpression(eqn, d, s);
-      } else if (src.parent === dest.parent) {
-        let parentPath = src.path.slice(0, -2);
+      } else if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
+        let parentPath = flattenPath(src.node.path).slice(0, -2);
         let parent = Object.path(eqn, parentPath);
         let indices = src.indices.concat(dest.indices);
-        console.log(indices);
-
         indices.sort();
         let next = parse$1.algReplaceExpression(
           eqn,
@@ -2859,8 +2841,6 @@ var app = (function () {
             ...indices
           )
         );
-        console.log(parse$1.algStringify(next));
-
         parent = Object.path(next, parentPath);
         return parse$1.algReplaceExpression(
           next,
@@ -2881,21 +2861,24 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function tokenToExpression(src, dest, eqn) {
-      dragOperation = { from: "Token", to: "Expression", side: dest.path[0] };
-      console.log("TOKEN TO EXPRESSION", src, dest);
+      let srcPath = flattenPath(src.node.path);
+      let destPath = flattenPath(dest.node.path);
+      dragOperation = { from: "Token", to: "Expression", side: destPath[0] };
+      // console.log("TOKEN TO EXPRESSION", src, dest);
 
       if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
-        let parent = Object.path(eqn, src.path.slice(0, -2));
-        let i0 = parseInt(src.path.slice(-1)[0]);
-        let i1 = parseInt(dest.path.slice(-1)[0]);
-        console.log(parent, i0, i1);
+        let parent = Object.path(eqn, srcPath.slice(0, -2));
+        let i0 = parseInt(srcPath.slice(-1)[0]);
+        let i1 = parseInt(destPath.slice(-1)[0]);
+        console.log(i0, i1);
+
         let next = parse$1.algReplaceExpression(
           eqn,
           parent,
           parse$1.algApplyRulesSelectively(parent, ["distribute", "removeIdentity"], false, i0, i1)
         );
-        console.log(next);
-        return next;
+        //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negativ exponent), it only happens with 1/k; this is because of removeIdentity
+        return parse$1.algParse(parse$1.algStringify(next));
       } else {
         return eqn;
       }
@@ -2908,16 +2891,16 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function tokenToOperator(src, dest, eqn) {
-      dragOperation = { from: "Token", to: "Operator", side: dest.path[0] };
+      dragOperation = { from: "Token", to: "Operator", side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
     function expressionToToken(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Token", side: dest.path[0] };
+      dragOperation = { from: "Expression", to: "Token", side: flattenPath(dest.node.path)[0] };
     }
 
     function expressionToExpression(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Expression", side: dest.path[0] };
+      dragOperation = { from: "Expression", to: "Expression", side: flattenPath(dest.node.path)[0] };
     }
 
     /**
@@ -2927,39 +2910,41 @@ var app = (function () {
      * @param {CTATAlgebraTreeNode} eqn the current equation
      */
     function expressionToOperator(src, dest, eqn) {
-      dragOperation = { from: "Expression", to: "Operator", side: dest.path[0] };
+      dragOperation = { from: "Expression", to: "Operator", side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
     function operatorToToken(src, dest, eqn) {
-      dragOperation = { from: "Operator", to: "Token", side: dest.path[0] };
+      let destPath = flattenPath(dest.node.path);
+      dragOperation = { from: "Operator", to: "Token", side: destPath[0] };
+
       let subexp;
       let indices = dest.indices;
       if (indices > 1) {
         indices.sort();
-        let parent = Object.path(eqn, dest.path.slice(0, -2));
+        let parent = Object.path(eqn, destPath.slice(0, -2));
         subexp = parse$1.algGetExpression(parent, ...indices);
       } else {
-        subexp = Object.path(eqn, dest.path);
+        subexp = Object.path(eqn, destPath);
       }
       let next = parse$1.algReplaceExpression(
         parse$1.algParse(parse$1.algStringify(eqn)),
         subexp,
-        parse$1.algCreateExpression(src.operation, subexp, "?")
+        parse$1.algCreateExpression(src, subexp, "?")
       );
       //TODO, unless I do parse.algParse(parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
       return next;
     }
 
     function operatorToExpression(src, dest, eqn) {
-      dragOperation = { from: "Operator", to: "Expression", side: dest.path[0] };
+      let destPath = flattenPath(dest.node.path);
+      dragOperation = { from: "Operator", to: "Expression", side: destPath[0] };
       // eqn = parse.algParse(parse.algStringify(eqn)); // TODO Weird error unless we do this;
       // console.log(eqn);
 
       // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
-      let d = Object.path(eqn, dest.path);
-      let next = parse$1.algReplaceExpression(eqn, d, parse$1.algCreateExpression(src.operation, d, "?"));
-
+      let d = Object.path(eqn, destPath);
+      let next = parse$1.algReplaceExpression(eqn, d, parse$1.algCreateExpression(src, d, "?"));
       return parse$1.algParse(parse$1.algStringify(next)); //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
     }
 
@@ -2971,7 +2956,7 @@ var app = (function () {
      */
     function operatorToOperator(src, dest, eqn) {
       //TODO this should be technically feasible to code, but it's probably not necessary to implement
-      dragOperation = { from: "Operator", to: "Operator", side: dest.path[0] };
+      dragOperation = { from: "Operator", to: "Operator", side: flattenPath(dest.node.path)[0] };
       return eqn;
     }
 
@@ -6162,13 +6147,11 @@ var app = (function () {
     soundEffects.volume(0.25);
 
     /* src\components\Operator.svelte generated by Svelte v3.21.0 */
-
-    const { console: console_1 } = globals;
     const file = "src\\components\\Operator.svelte";
 
-    // (39:2) {#if !divide}
+    // (35:2) {#if !divide}
     function create_if_block(ctx) {
-    	let t_value = /*operator*/ ctx[0].symbol + "";
+    	let t_value = Operators[/*operator*/ ctx[0]] + "";
     	let t;
 
     	const block = {
@@ -6179,7 +6162,7 @@ var app = (function () {
     			insert_dev(target, t, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*operator*/ 1 && t_value !== (t_value = /*operator*/ ctx[0].symbol + "")) set_data_dev(t, t_value);
+    			if (dirty & /*operator*/ 1 && t_value !== (t_value = Operators[/*operator*/ ctx[0]] + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(t);
@@ -6190,7 +6173,7 @@ var app = (function () {
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(39:2) {#if !divide}",
+    		source: "(35:2) {#if !divide}",
     		ctx
     	});
 
@@ -6208,7 +6191,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "operator no-highlight svelte-9mh0yx");
     			toggle_class(div, "divide", /*divide*/ ctx[1]);
-    			add_location(div, file, 37, 0, 792);
+    			add_location(div, file, 33, 0, 658);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -6262,17 +6245,14 @@ var app = (function () {
     	let { siblings = null } = $$props;
 
     	function handleDoubleCLick(e) {
-    		console.log(siblings);
-    		let index = siblings.indexOf(operator);
-    		console.log(index);
-    		draftEquation.draftOperation(siblings[index - 1], siblings[index + 1]);
+    		draftEquation.draftOperation(siblings[0], siblings[1]);
     		draftEquation.apply();
     	}
 
     	const writable_props = ["operator", "siblings"];
 
     	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<Operator> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Operator> was created with unknown prop '${key}'`);
     	});
 
     	let { $$slots = {}, $$scope } = $$props;
@@ -6284,7 +6264,7 @@ var app = (function () {
     	};
 
     	$$self.$capture_state = () => ({
-    		DivideOperator,
+    		Operators,
     		draftEquation,
     		operator,
     		siblings,
@@ -6306,14 +6286,14 @@ var app = (function () {
 
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty & /*operator*/ 1) {
-    			 $$invalidate(1, divide = operator instanceof DivideOperator);
+    			 $$invalidate(1, divide = operator === "DIVIDE");
     		}
     	};
 
     	return [operator, divide, handleDoubleCLick, siblings];
     }
 
-    class Operator$1 extends SvelteComponentDev {
+    class Operator extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
     		init(this, options, instance, create_fragment, safe_not_equal, { operator: 0, siblings: 3 });
@@ -6329,7 +6309,7 @@ var app = (function () {
     		const props = options.props || {};
 
     		if (/*operator*/ ctx[0] === undefined && !("operator" in props)) {
-    			console_1.warn("<Operator> was created without expected prop 'operator'");
+    			console.warn("<Operator> was created without expected prop 'operator'");
     		}
     	}
 
@@ -7728,17 +7708,75 @@ var app = (function () {
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[9] = list[i];
-    	child_ctx[11] = i;
+    	child_ctx[11] = list[i];
+    	child_ctx[13] = i;
     	return child_ctx;
     }
 
-    // (83:38) 
-    function create_if_block_2(ctx) {
+    function get_each_context_1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[11] = list[i];
+    	child_ctx[13] = i;
+    	return child_ctx;
+    }
+
+    // (122:8) {:else}
+    function create_else_block_1$1(ctx) {
+    	let current;
+
+    	const operator = new Operator({
+    			props: {
+    				operator: /*item*/ ctx[11],
+    				siblings: [/*top*/ ctx[1][/*i*/ ctx[13] - 1], /*top*/ ctx[1][/*i*/ ctx[13] + 1]]
+    			},
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(operator.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(operator, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const operator_changes = {};
+    			if (dirty & /*top*/ 2) operator_changes.operator = /*item*/ ctx[11];
+    			if (dirty & /*top*/ 2) operator_changes.siblings = [/*top*/ ctx[1][/*i*/ ctx[13] - 1], /*top*/ ctx[1][/*i*/ ctx[13] + 1]];
+    			operator.$set(operator_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(operator.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(operator.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(operator, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block_1$1.name,
+    		type: "else",
+    		source: "(122:8) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (120:40) 
+    function create_if_block_4(ctx) {
     	let current;
 
     	const tokencomponent = new Token$1({
-    			props: { token: /*item*/ ctx[9] },
+    			props: { token: /*item*/ ctx[11] },
     			$$inline: true
     		});
 
@@ -7752,7 +7790,334 @@ var app = (function () {
     		},
     		p: function update(ctx, dirty) {
     			const tokencomponent_changes = {};
-    			if (dirty & /*expression*/ 1) tokencomponent_changes.token = /*item*/ ctx[9];
+    			if (dirty & /*top*/ 2) tokencomponent_changes.token = /*item*/ ctx[11];
+    			tokencomponent.$set(tokencomponent_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tokencomponent.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(tokencomponent.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(tokencomponent, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_4.name,
+    		type: "if",
+    		source: "(120:40) ",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (118:8) {#if item instanceof Expression}
+    function create_if_block_3(ctx) {
+    	let current;
+
+    	const expression_1 = new Expression_1({
+    			props: { expression: /*item*/ ctx[11] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(expression_1.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(expression_1, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const expression_1_changes = {};
+    			if (dirty & /*top*/ 2) expression_1_changes.expression = /*item*/ ctx[11];
+    			expression_1.$set(expression_1_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(expression_1.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(expression_1.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(expression_1, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_3.name,
+    		type: "if",
+    		source: "(118:8) {#if item instanceof Expression}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (117:6) {#each top as item, i (item.id)}
+    function create_each_block_1(key_1, ctx) {
+    	let first;
+    	let current_block_type_index;
+    	let if_block;
+    	let if_block_anchor;
+    	let current;
+    	const if_block_creators = [create_if_block_3, create_if_block_4, create_else_block_1$1];
+    	const if_blocks = [];
+
+    	function select_block_type(ctx, dirty) {
+    		if (/*item*/ ctx[11] instanceof Expression) return 0;
+    		if (/*item*/ ctx[11] instanceof Token) return 1;
+    		return 2;
+    	}
+
+    	current_block_type_index = select_block_type(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+
+    	const block = {
+    		key: key_1,
+    		first: null,
+    		c: function create() {
+    			first = empty();
+    			if_block.c();
+    			if_block_anchor = empty();
+    			this.first = first;
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, first, anchor);
+    			if_blocks[current_block_type_index].m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			let previous_block_index = current_block_type_index;
+    			current_block_type_index = select_block_type(ctx);
+
+    			if (current_block_type_index === previous_block_index) {
+    				if_blocks[current_block_type_index].p(ctx, dirty);
+    			} else {
+    				group_outros();
+
+    				transition_out(if_blocks[previous_block_index], 1, 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
+
+    				check_outros();
+    				if_block = if_blocks[current_block_type_index];
+
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
+    				}
+
+    				transition_in(if_block, 1);
+    				if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(first);
+    			if_blocks[current_block_type_index].d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_1.name,
+    		type: "each",
+    		source: "(117:6) {#each top as item, i (item.id)}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (127:4) {#if bottom.length > 0}
+    function create_if_block$2(ctx) {
+    	let div0;
+    	let t;
+    	let div1;
+    	let each_blocks = [];
+    	let each_1_lookup = new Map();
+    	let current;
+    	let each_value = /*bottom*/ ctx[2];
+    	validate_each_argument(each_value);
+    	const get_key = ctx => /*item*/ ctx[11].id;
+    	validate_each_keys(ctx, each_value, get_each_context, get_key);
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		let child_ctx = get_each_context(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block(key, child_ctx));
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div0 = element("div");
+    			t = space();
+    			div1 = element("div");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			attr_dev(div0, "class", "vinculum svelte-199nscd");
+    			add_location(div0, file$3, 127, 6, 3201);
+    			attr_dev(div1, "class", "item-display bottom svelte-199nscd");
+    			add_location(div1, file$3, 128, 6, 3233);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div0, anchor);
+    			insert_dev(target, t, anchor);
+    			insert_dev(target, div1, anchor);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div1, null);
+    			}
+
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*bottom, Expression, Token*/ 4) {
+    				const each_value = /*bottom*/ ctx[2];
+    				validate_each_argument(each_value);
+    				group_outros();
+    				validate_each_keys(ctx, each_value, get_each_context, get_key);
+    				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value, each_1_lookup, div1, outro_and_destroy_block, create_each_block, null, get_each_context);
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+
+    			for (let i = 0; i < each_value.length; i += 1) {
+    				transition_in(each_blocks[i]);
+    			}
+
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				transition_out(each_blocks[i]);
+    			}
+
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div0);
+    			if (detaching) detach_dev(t);
+    			if (detaching) detach_dev(div1);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].d();
+    			}
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$2.name,
+    		type: "if",
+    		source: "(127:4) {#if bottom.length > 0}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (135:10) {:else}
+    function create_else_block$1(ctx) {
+    	let current;
+
+    	const operator = new Operator({
+    			props: {
+    				operator: /*item*/ ctx[11],
+    				siblings: [
+    					/*bottom*/ ctx[2][/*i*/ ctx[13] - 1],
+    					/*bottom*/ ctx[2][/*i*/ ctx[13] + 1]
+    				]
+    			},
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(operator.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(operator, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const operator_changes = {};
+    			if (dirty & /*bottom*/ 4) operator_changes.operator = /*item*/ ctx[11];
+    			if (dirty & /*bottom*/ 4) operator_changes.siblings = [/*bottom*/ ctx[2][/*i*/ ctx[13] - 1], /*bottom*/ ctx[2][/*i*/ ctx[13] + 1]];
+    			operator.$set(operator_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(operator.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(operator.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(operator, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block$1.name,
+    		type: "else",
+    		source: "(135:10) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (133:42) 
+    function create_if_block_2(ctx) {
+    	let current;
+
+    	const tokencomponent = new Token$1({
+    			props: { token: /*item*/ ctx[11] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(tokencomponent.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(tokencomponent, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const tokencomponent_changes = {};
+    			if (dirty & /*bottom*/ 4) tokencomponent_changes.token = /*item*/ ctx[11];
     			tokencomponent.$set(tokencomponent_changes);
     		},
     		i: function intro(local) {
@@ -7773,19 +8138,19 @@ var app = (function () {
     		block,
     		id: create_if_block_2.name,
     		type: "if",
-    		source: "(83:38) ",
+    		source: "(133:42) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (81:43) 
+    // (131:10) {#if item instanceof Expression}
     function create_if_block_1$1(ctx) {
     	let current;
 
     	const expression_1 = new Expression_1({
-    			props: { expression: /*item*/ ctx[9] },
+    			props: { expression: /*item*/ ctx[11] },
     			$$inline: true
     		});
 
@@ -7799,7 +8164,7 @@ var app = (function () {
     		},
     		p: function update(ctx, dirty) {
     			const expression_1_changes = {};
-    			if (dirty & /*expression*/ 1) expression_1_changes.expression = /*item*/ ctx[9];
+    			if (dirty & /*bottom*/ 4) expression_1_changes.expression = /*item*/ ctx[11];
     			expression_1.$set(expression_1_changes);
     		},
     		i: function intro(local) {
@@ -7820,129 +8185,70 @@ var app = (function () {
     		block,
     		id: create_if_block_1$1.name,
     		type: "if",
-    		source: "(81:43) ",
+    		source: "(131:10) {#if item instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (79:6) {#if item instanceof Operator}
-    function create_if_block$2(ctx) {
-    	let current;
-
-    	const operatorcomponent = new Operator$1({
-    			props: {
-    				operator: /*item*/ ctx[9],
-    				siblings: /*expression*/ ctx[0].nodes
-    			},
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(operatorcomponent.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(operatorcomponent, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const operatorcomponent_changes = {};
-    			if (dirty & /*expression*/ 1) operatorcomponent_changes.operator = /*item*/ ctx[9];
-    			if (dirty & /*expression*/ 1) operatorcomponent_changes.siblings = /*expression*/ ctx[0].nodes;
-    			operatorcomponent.$set(operatorcomponent_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(operatorcomponent.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(operatorcomponent.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(operatorcomponent, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block$2.name,
-    		type: "if",
-    		source: "(79:6) {#if item instanceof Operator}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (78:4) {#each expression.nodes as item, i}
-    function create_each_block(ctx) {
+    // (130:8) {#each bottom as item, i (item.id)}
+    function create_each_block(key_1, ctx) {
+    	let first;
     	let current_block_type_index;
     	let if_block;
     	let if_block_anchor;
     	let current;
-    	const if_block_creators = [create_if_block$2, create_if_block_1$1, create_if_block_2];
+    	const if_block_creators = [create_if_block_1$1, create_if_block_2, create_else_block$1];
     	const if_blocks = [];
 
-    	function select_block_type(ctx, dirty) {
-    		if (/*item*/ ctx[9] instanceof Operator) return 0;
-    		if (/*item*/ ctx[9] instanceof Expression) return 1;
-    		if (/*item*/ ctx[9] instanceof Token) return 2;
-    		return -1;
+    	function select_block_type_1(ctx, dirty) {
+    		if (/*item*/ ctx[11] instanceof Expression) return 0;
+    		if (/*item*/ ctx[11] instanceof Token) return 1;
+    		return 2;
     	}
 
-    	if (~(current_block_type_index = select_block_type(ctx))) {
-    		if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
-    	}
+    	current_block_type_index = select_block_type_1(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
 
     	const block = {
+    		key: key_1,
+    		first: null,
     		c: function create() {
-    			if (if_block) if_block.c();
+    			first = empty();
+    			if_block.c();
     			if_block_anchor = empty();
+    			this.first = first;
     		},
     		m: function mount(target, anchor) {
-    			if (~current_block_type_index) {
-    				if_blocks[current_block_type_index].m(target, anchor);
-    			}
-
+    			insert_dev(target, first, anchor);
+    			if_blocks[current_block_type_index].m(target, anchor);
     			insert_dev(target, if_block_anchor, anchor);
     			current = true;
     		},
     		p: function update(ctx, dirty) {
     			let previous_block_index = current_block_type_index;
-    			current_block_type_index = select_block_type(ctx);
+    			current_block_type_index = select_block_type_1(ctx);
 
     			if (current_block_type_index === previous_block_index) {
-    				if (~current_block_type_index) {
-    					if_blocks[current_block_type_index].p(ctx, dirty);
-    				}
+    				if_blocks[current_block_type_index].p(ctx, dirty);
     			} else {
-    				if (if_block) {
-    					group_outros();
+    				group_outros();
 
-    					transition_out(if_blocks[previous_block_index], 1, 1, () => {
-    						if_blocks[previous_block_index] = null;
-    					});
+    				transition_out(if_blocks[previous_block_index], 1, 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
 
-    					check_outros();
+    				check_outros();
+    				if_block = if_blocks[current_block_type_index];
+
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
     				}
 
-    				if (~current_block_type_index) {
-    					if_block = if_blocks[current_block_type_index];
-
-    					if (!if_block) {
-    						if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
-    						if_block.c();
-    					}
-
-    					transition_in(if_block, 1);
-    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
-    				} else {
-    					if_block = null;
-    				}
+    				transition_in(if_block, 1);
+    				if_block.m(if_block_anchor.parentNode, if_block_anchor);
     			}
     		},
     		i: function intro(local) {
@@ -7955,10 +8261,8 @@ var app = (function () {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (~current_block_type_index) {
-    				if_blocks[current_block_type_index].d(detaching);
-    			}
-
+    			if (detaching) detach_dev(first);
+    			if_blocks[current_block_type_index].d(detaching);
     			if (detaching) detach_dev(if_block_anchor);
     		}
     	};
@@ -7967,125 +8271,147 @@ var app = (function () {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(78:4) {#each expression.nodes as item, i}",
+    		source: "(130:8) {#each bottom as item, i (item.id)}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (70:2) <div      slot="dropzone"      class="expression no-highlight dropzone"      class:dragging      class:hovering      class:draghovering      class:divide      class:parens={expression.parens}>
+    // (108:2) <div      slot="dropzone"      class="expression no-highlight dropzone"      class:dragging      class:hovering      class:draghovering      class:divide={bottom.length > 0}      class:parens={expression.node.parens}>
     function create_dropzone_slot$1(ctx) {
-    	let div;
-    	let current;
-    	let each_value = /*expression*/ ctx[0].nodes;
-    	validate_each_argument(each_value);
+    	let div0;
+    	let div1;
     	let each_blocks = [];
+    	let each_1_lookup = new Map();
+    	let t;
+    	let current;
+    	let each_value_1 = /*top*/ ctx[1];
+    	validate_each_argument(each_value_1);
+    	const get_key = ctx => /*item*/ ctx[11].id;
+    	validate_each_keys(ctx, each_value_1, get_each_context_1, get_key);
 
-    	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    	for (let i = 0; i < each_value_1.length; i += 1) {
+    		let child_ctx = get_each_context_1(ctx, each_value_1, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block_1(key, child_ctx));
     	}
 
-    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
-    		each_blocks[i] = null;
-    	});
+    	let if_block = /*bottom*/ ctx[2].length > 0 && create_if_block$2(ctx);
 
     	const block = {
     		c: function create() {
-    			div = element("div");
+    			div0 = element("div");
+    			div1 = element("div");
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div, "slot", "dropzone");
-    			attr_dev(div, "class", "expression no-highlight dropzone svelte-umhtb0");
-    			toggle_class(div, "dragging", /*dragging*/ ctx[6]);
-    			toggle_class(div, "hovering", /*hovering*/ ctx[7]);
-    			toggle_class(div, "draghovering", /*draghovering*/ ctx[8]);
-    			toggle_class(div, "divide", /*divide*/ ctx[1]);
-    			toggle_class(div, "parens", /*expression*/ ctx[0].parens);
-    			add_location(div, file$3, 69, 2, 1682);
+    			t = space();
+    			if (if_block) if_block.c();
+    			attr_dev(div1, "class", "item-display top svelte-199nscd");
+    			add_location(div1, file$3, 115, 4, 2787);
+    			attr_dev(div0, "slot", "dropzone");
+    			attr_dev(div0, "class", "expression no-highlight dropzone svelte-199nscd");
+    			toggle_class(div0, "dragging", /*dragging*/ ctx[8]);
+    			toggle_class(div0, "hovering", /*hovering*/ ctx[9]);
+    			toggle_class(div0, "draghovering", /*draghovering*/ ctx[10]);
+    			toggle_class(div0, "divide", /*bottom*/ ctx[2].length > 0);
+    			toggle_class(div0, "parens", /*expression*/ ctx[0].node.parens);
+    			add_location(div0, file$3, 107, 2, 2564);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
+    			insert_dev(target, div0, anchor);
+    			append_dev(div0, div1);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(div, null);
+    				each_blocks[i].m(div1, null);
     			}
 
+    			append_dev(div0, t);
+    			if (if_block) if_block.m(div0, null);
     			current = true;
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*expression, Operator, Expression, Token*/ 1) {
-    				each_value = /*expression*/ ctx[0].nodes;
-    				validate_each_argument(each_value);
-    				let i;
+    			if (dirty & /*top, Expression, Token*/ 2) {
+    				const each_value_1 = /*top*/ ctx[1];
+    				validate_each_argument(each_value_1);
+    				group_outros();
+    				validate_each_keys(ctx, each_value_1, get_each_context_1, get_key);
+    				each_blocks = update_keyed_each(each_blocks, dirty, get_key, 1, ctx, each_value_1, each_1_lookup, div1, outro_and_destroy_block, create_each_block_1, null, get_each_context_1);
+    				check_outros();
+    			}
 
-    				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context(ctx, each_value, i);
+    			if (/*bottom*/ ctx[2].length > 0) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
 
-    					if (each_blocks[i]) {
-    						each_blocks[i].p(child_ctx, dirty);
-    						transition_in(each_blocks[i], 1);
-    					} else {
-    						each_blocks[i] = create_each_block(child_ctx);
-    						each_blocks[i].c();
-    						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(div, null);
+    					if (dirty & /*bottom*/ 4) {
+    						transition_in(if_block, 1);
     					}
+    				} else {
+    					if_block = create_if_block$2(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(div0, null);
     				}
-
+    			} else if (if_block) {
     				group_outros();
 
-    				for (i = each_value.length; i < each_blocks.length; i += 1) {
-    					out(i);
-    				}
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
 
     				check_outros();
     			}
 
-    			if (dirty & /*dragging*/ 64) {
-    				toggle_class(div, "dragging", /*dragging*/ ctx[6]);
+    			if (dirty & /*dragging*/ 256) {
+    				toggle_class(div0, "dragging", /*dragging*/ ctx[8]);
     			}
 
-    			if (dirty & /*hovering*/ 128) {
-    				toggle_class(div, "hovering", /*hovering*/ ctx[7]);
+    			if (dirty & /*hovering*/ 512) {
+    				toggle_class(div0, "hovering", /*hovering*/ ctx[9]);
     			}
 
-    			if (dirty & /*draghovering*/ 256) {
-    				toggle_class(div, "draghovering", /*draghovering*/ ctx[8]);
+    			if (dirty & /*draghovering*/ 1024) {
+    				toggle_class(div0, "draghovering", /*draghovering*/ ctx[10]);
     			}
 
-    			if (dirty & /*divide*/ 2) {
-    				toggle_class(div, "divide", /*divide*/ ctx[1]);
+    			if (dirty & /*bottom*/ 4) {
+    				toggle_class(div0, "divide", /*bottom*/ ctx[2].length > 0);
     			}
 
     			if (dirty & /*expression*/ 1) {
-    				toggle_class(div, "parens", /*expression*/ ctx[0].parens);
+    				toggle_class(div0, "parens", /*expression*/ ctx[0].node.parens);
     			}
     		},
     		i: function intro(local) {
     			if (current) return;
 
-    			for (let i = 0; i < each_value.length; i += 1) {
+    			for (let i = 0; i < each_value_1.length; i += 1) {
     				transition_in(each_blocks[i]);
     			}
 
+    			transition_in(if_block);
     			current = true;
     		},
     		o: function outro(local) {
-    			each_blocks = each_blocks.filter(Boolean);
-
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				transition_out(each_blocks[i]);
     			}
 
+    			transition_out(if_block);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    			destroy_each(each_blocks, detaching);
+    			if (detaching) detach_dev(div0);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].d();
+    			}
+
+    			if (if_block) if_block.d();
     		}
     	};
 
@@ -8093,7 +8419,7 @@ var app = (function () {
     		block,
     		id: create_dropzone_slot$1.name,
     		type: "slot",
-    		source: "(70:2) <div      slot=\\\"dropzone\\\"      class=\\\"expression no-highlight dropzone\\\"      class:dragging      class:hovering      class:draghovering      class:divide      class:parens={expression.parens}>",
+    		source: "(108:2) <div      slot=\\\"dropzone\\\"      class=\\\"expression no-highlight dropzone\\\"      class:dragging      class:hovering      class:draghovering      class:divide={bottom.length > 0}      class:parens={expression.node.parens}>",
     		ctx
     	});
 
@@ -8106,18 +8432,18 @@ var app = (function () {
     	const dragdrop = new DragDrop({
     			props: {
     				canDrag: false,
-    				dropReceive: /*func*/ ctx[3],
-    				dragLeave: /*func_1*/ ctx[4],
-    				dragHover: /*func_2*/ ctx[5],
+    				dropReceive: /*func*/ ctx[5],
+    				dragLeave: /*func_1*/ ctx[6],
+    				dragHover: /*func_2*/ ctx[7],
     				$$slots: {
     					dropzone: [
     						create_dropzone_slot$1,
     						({ dragging, hovering, draghovering }) => ({
-    							6: dragging,
-    							7: hovering,
-    							8: draghovering
+    							8: dragging,
+    							9: hovering,
+    							10: draghovering
     						}),
-    						({ dragging, hovering, draghovering }) => (dragging ? 64 : 0) | (hovering ? 128 : 0) | (draghovering ? 256 : 0)
+    						({ dragging, hovering, draghovering }) => (dragging ? 256 : 0) | (hovering ? 512 : 0) | (draghovering ? 1024 : 0)
     					]
     				},
     				$$scope: { ctx }
@@ -8138,9 +8464,9 @@ var app = (function () {
     		},
     		p: function update(ctx, [dirty]) {
     			const dragdrop_changes = {};
-    			if (dirty & /*expression, $dragdropData*/ 5) dragdrop_changes.dragHover = /*func_2*/ ctx[5];
+    			if (dirty & /*expression, $dragdropData*/ 9) dragdrop_changes.dragHover = /*func_2*/ ctx[7];
 
-    			if (dirty & /*$$scope, dragging, hovering, draghovering, divide, expression*/ 4547) {
+    			if (dirty & /*$$scope, dragging, hovering, draghovering, bottom, expression, top*/ 34567) {
     				dragdrop_changes.$$scope = { dirty, ctx };
     			}
 
@@ -8174,8 +8500,11 @@ var app = (function () {
     function instance$3($$self, $$props, $$invalidate) {
     	let $dragdropData;
     	validate_store(dragdropData, "dragdropData");
-    	component_subscribe($$self, dragdropData, $$value => $$invalidate(2, $dragdropData = $$value));
+    	component_subscribe($$self, dragdropData, $$value => $$invalidate(3, $dragdropData = $$value));
     	let { expression } = $$props;
+    	let isAdd = expression.node.operator === "PLUS";
+    	let top = expression.items;
+    	let bottom = [];
     	const writable_props = ["expression"];
 
     	Object.keys($$props).forEach(key => {
@@ -8204,37 +8533,52 @@ var app = (function () {
     		beforeUpdate,
     		Token,
     		Expression,
-    		Operator,
-    		DivideOperator,
     		ExpressionComponent: Expression_1,
-    		OperatorComponent: Operator$1,
+    		Operator,
     		TokenComponent: Token$1,
     		DragDrop,
     		draftEquation,
     		dragdropData,
     		expression,
-    		divide,
+    		isAdd,
+    		top,
+    		bottom,
     		$dragdropData
     	});
 
     	$$self.$inject_state = $$props => {
     		if ("expression" in $$props) $$invalidate(0, expression = $$props.expression);
-    		if ("divide" in $$props) $$invalidate(1, divide = $$props.divide);
+    		if ("isAdd" in $$props) $$invalidate(4, isAdd = $$props.isAdd);
+    		if ("top" in $$props) $$invalidate(1, top = $$props.top);
+    		if ("bottom" in $$props) $$invalidate(2, bottom = $$props.bottom);
     	};
-
-    	let divide;
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
     	$$self.$$.update = () => {
-    		if ($$self.$$.dirty & /*expression*/ 1) {
-    			 $$invalidate(1, divide = expression.nodes[1] instanceof DivideOperator);
+    		if ($$self.$$.dirty & /*expression, isAdd*/ 17) {
+    			 if (expression) {
+    				$$invalidate(4, isAdd = expression.node.operator === "PLUS");
+
+    				$$invalidate(1, top = (isAdd
+    				? expression.items
+    				: expression.items.filter(item => item.node.exp > 0)).reduce(
+    					(acc, cur, i) => acc.concat(i === 0
+    					? [cur]
+    					: [isAdd ? cur.node.sign > 0 ? "PLUS" : "MINUS" : "TIMES", cur]),
+    					[]
+    				));
+
+    				$$invalidate(2, bottom = isAdd
+    				? []
+    				: expression.items.filter(item => item.node.exp < 0).reduce((acc, cur, i) => acc.concat(i === 0 ? [cur] : [isAdd ? "PLUS" : "TIMES", cur]), []));
+    			}
     		}
     	};
 
-    	return [expression, divide, $dragdropData, func, func_1, func_2];
+    	return [expression, top, bottom, $dragdropData, isAdd, func, func_1, func_2];
     }
 
     class Expression_1 extends SvelteComponentDev {
@@ -8463,8 +8807,8 @@ var app = (function () {
     /* src\components\Equation.svelte generated by Svelte v3.21.0 */
     const file$5 = "src\\components\\Equation.svelte";
 
-    // (41:47) 
-    function create_if_block_5(ctx) {
+    // (39:47) 
+    function create_if_block_3$1(ctx) {
     	let current;
 
     	const tokencomponent = new Token$1({
@@ -8501,17 +8845,17 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_5.name,
+    		id: create_if_block_3$1.name,
     		type: "if",
-    		source: "(41:47) ",
+    		source: "(39:47) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (39:52) 
-    function create_if_block_4(ctx) {
+    // (37:6) {#if equation.left instanceof Expression}
+    function create_if_block_2$1(ctx) {
     	let current;
 
     	const expressioncomponent = new Expression_1({
@@ -8548,60 +8892,9 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_4.name,
+    		id: create_if_block_2$1.name,
     		type: "if",
-    		source: "(39:52) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (37:6) {#if equation.left instanceof Operator}
-    function create_if_block_3(ctx) {
-    	let current;
-
-    	const operatorcomponent = new Operator$1({
-    			props: {
-    				operator: /*equation*/ ctx[0].left,
-    				siblings: /*equation*/ ctx[0].left
-    			},
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(operatorcomponent.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(operatorcomponent, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const operatorcomponent_changes = {};
-    			if (dirty & /*equation*/ 1) operatorcomponent_changes.operator = /*equation*/ ctx[0].left;
-    			if (dirty & /*equation*/ 1) operatorcomponent_changes.siblings = /*equation*/ ctx[0].left;
-    			operatorcomponent.$set(operatorcomponent_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(operatorcomponent.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(operatorcomponent.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(operatorcomponent, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_3.name,
-    		type: "if",
-    		source: "(37:6) {#if equation.left instanceof Operator}",
+    		source: "(37:6) {#if equation.left instanceof Expression}",
     		ctx
     	});
 
@@ -8614,13 +8907,12 @@ var app = (function () {
     	let current_block_type_index;
     	let if_block;
     	let current;
-    	const if_block_creators = [create_if_block_3, create_if_block_4, create_if_block_5];
+    	const if_block_creators = [create_if_block_2$1, create_if_block_3$1];
     	const if_blocks = [];
 
     	function select_block_type(ctx, dirty) {
-    		if (/*equation*/ ctx[0].left instanceof Operator) return 0;
-    		if (/*equation*/ ctx[0].left instanceof Expression) return 1;
-    		if (/*equation*/ ctx[0].left instanceof Token) return 2;
+    		if (/*equation*/ ctx[0].left instanceof Expression) return 0;
+    		if (/*equation*/ ctx[0].left instanceof Token) return 1;
     		return -1;
     	}
 
@@ -8634,7 +8926,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "side left svelte-1c3qqr6");
     			toggle_class(div, "no-exp", !(/*equation*/ ctx[0].right instanceof Expression));
-    			add_location(div, file$5, 33, 4, 716);
+    			add_location(div, file$5, 33, 4, 713);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -8712,8 +9004,8 @@ var app = (function () {
     	return block;
     }
 
-    // (57:48) 
-    function create_if_block_2$1(ctx) {
+    // (51:48) 
+    function create_if_block_1$2(ctx) {
     	let current;
 
     	const tokencomponent = new Token$1({
@@ -8750,17 +9042,17 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_2$1.name,
+    		id: create_if_block_1$2.name,
     		type: "if",
-    		source: "(57:48) ",
+    		source: "(51:48) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (55:53) 
-    function create_if_block_1$2(ctx) {
+    // (49:6) {#if equation.right instanceof Expression}
+    function create_if_block$3(ctx) {
     	let current;
 
     	const expressioncomponent = new Expression_1({
@@ -8797,79 +9089,27 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_1$2.name,
-    		type: "if",
-    		source: "(55:53) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (51:6) {#if equation.right instanceof Operator}
-    function create_if_block$3(ctx) {
-    	let current;
-
-    	const operatorcomponent = new Operator$1({
-    			props: {
-    				operator: /*equation*/ ctx[0].right,
-    				siblings: /*equation*/ ctx[0].right
-    			},
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(operatorcomponent.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(operatorcomponent, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const operatorcomponent_changes = {};
-    			if (dirty & /*equation*/ 1) operatorcomponent_changes.operator = /*equation*/ ctx[0].right;
-    			if (dirty & /*equation*/ 1) operatorcomponent_changes.siblings = /*equation*/ ctx[0].right;
-    			operatorcomponent.$set(operatorcomponent_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(operatorcomponent.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(operatorcomponent.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(operatorcomponent, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
     		id: create_if_block$3.name,
     		type: "if",
-    		source: "(51:6) {#if equation.right instanceof Operator}",
+    		source: "(49:6) {#if equation.right instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (47:2) <Flaggable error={error === 'right'} size={110}>
+    // (45:2) <Flaggable error={error === 'right'} size={110}>
     function create_default_slot$1(ctx) {
     	let div;
     	let current_block_type_index;
     	let if_block;
     	let current;
-    	const if_block_creators = [create_if_block$3, create_if_block_1$2, create_if_block_2$1];
+    	const if_block_creators = [create_if_block$3, create_if_block_1$2];
     	const if_blocks = [];
 
     	function select_block_type_1(ctx, dirty) {
-    		if (/*equation*/ ctx[0].right instanceof Operator) return 0;
-    		if (/*equation*/ ctx[0].right instanceof Expression) return 1;
-    		if (/*equation*/ ctx[0].right instanceof Token) return 2;
+    		if (/*equation*/ ctx[0].right instanceof Expression) return 0;
+    		if (/*equation*/ ctx[0].right instanceof Token) return 1;
     		return -1;
     	}
 
@@ -8883,7 +9123,7 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div, "class", "side right svelte-1c3qqr6");
     			toggle_class(div, "no-exp", !(/*equation*/ ctx[0].right instanceof Expression));
-    			add_location(div, file$5, 47, 4, 1281);
+    			add_location(div, file$5, 45, 4, 1145);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -8954,7 +9194,7 @@ var app = (function () {
     		block,
     		id: create_default_slot$1.name,
     		type: "slot",
-    		source: "(47:2) <Flaggable error={error === 'right'} size={110}>",
+    		source: "(45:2) <Flaggable error={error === 'right'} size={110}>",
     		ctx
     	});
 
@@ -8998,9 +9238,9 @@ var app = (function () {
     			t2 = space();
     			create_component(flaggable1.$$.fragment);
     			attr_dev(span, "class", "equals svelte-1c3qqr6");
-    			add_location(span, file$5, 45, 2, 1194);
+    			add_location(span, file$5, 43, 2, 1058);
     			attr_dev(div, "class", "equation no-highlight svelte-1c3qqr6");
-    			add_location(div, file$5, 30, 0, 622);
+    			add_location(div, file$5, 30, 0, 619);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9063,7 +9303,7 @@ var app = (function () {
 
     function instance$5($$self, $$props, $$invalidate) {
     	let { equation } = $$props;
-    	let { error } = $$props;
+    	let { error = null } = $$props;
     	const writable_props = ["equation", "error"];
 
     	Object.keys($$props).forEach(key => {
@@ -9081,9 +9321,8 @@ var app = (function () {
     	$$self.$capture_state = () => ({
     		Token,
     		Expression,
-    		Operator,
     		ExpressionComponent: Expression_1,
-    		OperatorComponent: Operator$1,
+    		OperatorComponent: Operator,
     		TokenComponent: Token$1,
     		Flaggable,
     		equation,
@@ -9120,10 +9359,6 @@ var app = (function () {
     		if (/*equation*/ ctx[0] === undefined && !("equation" in props)) {
     			console.warn("<Equation> was created without expected prop 'equation'");
     		}
-
-    		if (/*error*/ ctx[1] === undefined && !("error" in props)) {
-    			console.warn("<Equation> was created without expected prop 'error'");
-    		}
     	}
 
     	get equation() {
@@ -9146,9 +9381,9 @@ var app = (function () {
     /* src\components\DraggableOperator.svelte generated by Svelte v3.21.0 */
     const file$6 = "src\\components\\DraggableOperator.svelte";
 
-    // (22:16) {#if !isDivide}
+    // (80:8) {#if !isDivide}
     function create_if_block_1$3(ctx) {
-    	let t_value = /*operator*/ ctx[0].symbol + "";
+    	let t_value = Operators[/*operator*/ ctx[0]] + "";
     	let t;
 
     	const block = {
@@ -9159,7 +9394,7 @@ var app = (function () {
     			insert_dev(target, t, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*operator*/ 1 && t_value !== (t_value = /*operator*/ ctx[0].symbol + "")) set_data_dev(t, t_value);
+    			if (dirty & /*operator*/ 1 && t_value !== (t_value = Operators[/*operator*/ ctx[0]] + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(t);
@@ -9170,14 +9405,14 @@ var app = (function () {
     		block,
     		id: create_if_block_1$3.name,
     		type: "if",
-    		source: "(22:16) {#if !isDivide}",
+    		source: "(80:8) {#if !isDivide}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (20:8) <div slot="dropzone" class="operator no-highlight dropzone" class:dragging class:hovering class:draghovering>
+    // (73:4) <div        slot="dropzone"        class="operator no-highlight dropzone"        class:dragging        class:hovering        class:draghovering>
     function create_dropzone_slot$2(ctx) {
     	let div0;
     	let div1;
@@ -9190,13 +9425,13 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div1, "class", "no-highlight");
     			toggle_class(div1, "divide", /*isDivide*/ ctx[1]);
-    			add_location(div1, file$6, 20, 12, 780);
+    			add_location(div1, file$6, 78, 6, 1800);
     			attr_dev(div0, "slot", "dropzone");
-    			attr_dev(div0, "class", "operator no-highlight dropzone svelte-1hmbt3l");
+    			attr_dev(div0, "class", "operator no-highlight dropzone svelte-1jm4ghx");
     			toggle_class(div0, "dragging", /*dragging*/ ctx[5]);
     			toggle_class(div0, "hovering", /*hovering*/ ctx[6]);
     			toggle_class(div0, "draghovering", /*draghovering*/ ctx[7]);
-    			add_location(div0, file$6, 19, 8, 657);
+    			add_location(div0, file$6, 72, 4, 1648);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -9232,16 +9467,16 @@ var app = (function () {
     		block,
     		id: create_dropzone_slot$2.name,
     		type: "slot",
-    		source: "(20:8) <div slot=\\\"dropzone\\\" class=\\\"operator no-highlight dropzone\\\" class:dragging class:hovering class:draghovering>",
+    		source: "(73:4) <div        slot=\\\"dropzone\\\"        class=\\\"operator no-highlight dropzone\\\"        class:dragging        class:hovering        class:draghovering>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (27:16) {#if !isDivide}
+    // (91:8) {#if !isDivide}
     function create_if_block$4(ctx) {
-    	let t_value = /*operator*/ ctx[0].symbol + "";
+    	let t_value = Operators[/*operator*/ ctx[0]] + "";
     	let t;
 
     	const block = {
@@ -9252,7 +9487,7 @@ var app = (function () {
     			insert_dev(target, t, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*operator*/ 1 && t_value !== (t_value = /*operator*/ ctx[0].symbol + "")) set_data_dev(t, t_value);
+    			if (dirty & /*operator*/ 1 && t_value !== (t_value = Operators[/*operator*/ ctx[0]] + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(t);
@@ -9263,14 +9498,14 @@ var app = (function () {
     		block,
     		id: create_if_block$4.name,
     		type: "if",
-    		source: "(27:16) {#if !isDivide}",
+    		source: "(91:8) {#if !isDivide}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (25:8) <div slot="mover" class="operator no-highlight mover" class:dragging class:hovering class:draghovering class:fade>
+    // (83:4) <div        slot="mover"        class="operator no-highlight mover"        class:dragging        class:hovering        class:draghovering        class:fade>
     function create_mover_slot$1(ctx) {
     	let div0;
     	let div1;
@@ -9283,14 +9518,14 @@ var app = (function () {
     			if (if_block) if_block.c();
     			attr_dev(div1, "class", "no-highlight");
     			toggle_class(div1, "divide", /*isDivide*/ ctx[1]);
-    			add_location(div1, file$6, 25, 12, 1059);
+    			add_location(div1, file$6, 89, 6, 2097);
     			attr_dev(div0, "slot", "mover");
-    			attr_dev(div0, "class", "operator no-highlight mover svelte-1hmbt3l");
+    			attr_dev(div0, "class", "operator no-highlight mover svelte-1jm4ghx");
     			toggle_class(div0, "dragging", /*dragging*/ ctx[5]);
     			toggle_class(div0, "hovering", /*hovering*/ ctx[6]);
     			toggle_class(div0, "draghovering", /*draghovering*/ ctx[7]);
     			toggle_class(div0, "fade", /*fade*/ ctx[8]);
-    			add_location(div0, file$6, 24, 8, 931);
+    			add_location(div0, file$6, 82, 4, 1933);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div0, anchor);
@@ -9330,14 +9565,14 @@ var app = (function () {
     		block,
     		id: create_mover_slot$1.name,
     		type: "slot",
-    		source: "(25:8) <div slot=\\\"mover\\\" class=\\\"operator no-highlight mover\\\" class:dragging class:hovering class:draghovering class:fade>",
+    		source: "(83:4) <div        slot=\\\"mover\\\"        class=\\\"operator no-highlight mover\\\"        class:dragging        class:hovering        class:draghovering        class:fade>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (12:4) <DragDrop          let:dragging={dragging}          let:hovering={hovering}          let:draghovering={draghovering}          let:fade={fade}          canDragHover={false}          dragStart={() => dragdropData.setDrag(operator)}          dropReceive={() => draftEquation.apply()}>
+    // (65:2) <DragDrop      let:dragging      let:hovering      let:draghovering      let:fade      canDragHover={false}      dragStart={() => dragdropData.setDrag(operator)}      dropReceive={() => draftEquation.apply()}>
     function create_default_slot$2(ctx) {
     	let t;
 
@@ -9358,7 +9593,7 @@ var app = (function () {
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(12:4) <DragDrop          let:dragging={dragging}          let:hovering={hovering}          let:draghovering={draghovering}          let:fade={fade}          canDragHover={false}          dragStart={() => dragdropData.setDrag(operator)}          dropReceive={() => draftEquation.apply()}>",
+    		source: "(65:2) <DragDrop      let:dragging      let:hovering      let:draghovering      let:fade      canDragHover={false}      dragStart={() => dragdropData.setDrag(operator)}      dropReceive={() => draftEquation.apply()}>",
     		ctx
     	});
 
@@ -9415,8 +9650,8 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			create_component(dragdrop.$$.fragment);
-    			attr_dev(div, "class", "draggable-operator svelte-1hmbt3l");
-    			add_location(div, file$6, 10, 0, 328);
+    			attr_dev(div, "class", "draggable-operator svelte-1jm4ghx");
+    			add_location(div, file$6, 63, 0, 1397);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9465,7 +9700,7 @@ var app = (function () {
     function instance$6($$self, $$props, $$invalidate) {
     	let { operator } = $$props;
     	let { onlySymbol = false } = $$props;
-    	let isDivide = !onlySymbol && operator instanceof DivideOperator;
+    	let isDivide = !onlySymbol && operator === "DIVIDE";
     	const writable_props = ["operator", "onlySymbol"];
 
     	Object.keys($$props).forEach(key => {
@@ -9484,9 +9719,9 @@ var app = (function () {
 
     	$$self.$capture_state = () => ({
     		DragDrop,
+    		Operators,
     		draftEquation,
     		dragdropData,
-    		DivideOperator,
     		operator,
     		onlySymbol,
     		isDivide
@@ -9543,17 +9778,12 @@ var app = (function () {
     }
 
     /* src\components\display\TokenDisplay.svelte generated by Svelte v3.21.0 */
-
     const file$7 = "src\\components\\display\\TokenDisplay.svelte";
 
     function create_fragment$7(ctx) {
     	let div;
     	let span;
-
-    	let t_value = (/*token*/ ctx[0].constant == null
-    	? "□"
-    	: /*token*/ ctx[0].value()) + "";
-
+    	let t_value = /*token*/ ctx[0].value() + "";
     	let t;
 
     	const block = {
@@ -9562,9 +9792,9 @@ var app = (function () {
     			span = element("span");
     			t = text(t_value);
     			attr_dev(span, "class", "content");
-    			add_location(span, file$7, 1, 4, 33);
-    			attr_dev(div, "class", "token-display svelte-tdkd9s");
-    			add_location(div, file$7, 0, 0, 0);
+    			add_location(span, file$7, 13, 2, 220);
+    			attr_dev(div, "class", "token-display svelte-1n90egx");
+    			add_location(div, file$7, 12, 0, 189);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9575,9 +9805,7 @@ var app = (function () {
     			append_dev(span, t);
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*token*/ 1 && t_value !== (t_value = (/*token*/ ctx[0].constant == null
-    			? "□"
-    			: /*token*/ ctx[0].value()) + "")) set_data_dev(t, t_value);
+    			if (dirty & /*token*/ 1 && t_value !== (t_value = /*token*/ ctx[0].value() + "")) set_data_dev(t, t_value);
     		},
     		i: noop,
     		o: noop,
@@ -9612,7 +9840,7 @@ var app = (function () {
     		if ("token" in $$props) $$invalidate(0, token = $$props.token);
     	};
 
-    	$$self.$capture_state = () => ({ token });
+    	$$self.$capture_state = () => ({ Token, token });
 
     	$$self.$inject_state = $$props => {
     		if ("token" in $$props) $$invalidate(0, token = $$props.token);
@@ -9657,9 +9885,9 @@ var app = (function () {
     /* src\components\display\OperatorDisplay.svelte generated by Svelte v3.21.0 */
     const file$8 = "src\\components\\display\\OperatorDisplay.svelte";
 
-    // (9:4) {#if !isDivide}
+    // (22:2) {#if !isDivide}
     function create_if_block$5(ctx) {
-    	let t_value = /*operator*/ ctx[0].symbol + "";
+    	let t_value = Operators[/*operator*/ ctx[0]] + "";
     	let t;
 
     	const block = {
@@ -9670,7 +9898,7 @@ var app = (function () {
     			insert_dev(target, t, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*operator*/ 1 && t_value !== (t_value = /*operator*/ ctx[0].symbol + "")) set_data_dev(t, t_value);
+    			if (dirty & /*operator*/ 1 && t_value !== (t_value = Operators[/*operator*/ ctx[0]] + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(t);
@@ -9681,7 +9909,7 @@ var app = (function () {
     		block,
     		id: create_if_block$5.name,
     		type: "if",
-    		source: "(9:4) {#if !isDivide}",
+    		source: "(22:2) {#if !isDivide}",
     		ctx
     	});
 
@@ -9696,9 +9924,9 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			if (if_block) if_block.c();
-    			attr_dev(div, "class", "operator-display svelte-1whr8ca");
+    			attr_dev(div, "class", "operator-display svelte-x4a9vg");
     			toggle_class(div, "divide", /*isDivide*/ ctx[1]);
-    			add_location(div, file$8, 7, 0, 163);
+    			add_location(div, file$8, 20, 0, 386);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -9735,7 +9963,7 @@ var app = (function () {
 
     function instance$8($$self, $$props, $$invalidate) {
     	let { operator } = $$props;
-    	let isDivide = operator instanceof DivideOperator;
+    	let isDivide = operator === "DIVIDE";
     	const writable_props = ["operator"];
 
     	Object.keys($$props).forEach(key => {
@@ -9749,7 +9977,7 @@ var app = (function () {
     		if ("operator" in $$props) $$invalidate(0, operator = $$props.operator);
     	};
 
-    	$$self.$capture_state = () => ({ DivideOperator, operator, isDivide });
+    	$$self.$capture_state = () => ({ Operators, operator, isDivide });
 
     	$$self.$inject_state = $$props => {
     		if ("operator" in $$props) $$invalidate(0, operator = $$props.operator);
@@ -9797,111 +10025,24 @@ var app = (function () {
 
     function get_each_context$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[1] = list[i];
-    	child_ctx[3] = i;
+    	child_ctx[4] = list[i];
+    	child_ctx[6] = i;
     	return child_ctx;
     }
 
-    // (15:40) 
-    function create_if_block_2$2(ctx) {
-    	let current;
-
-    	const tokendisplay = new TokenDisplay({
-    			props: { token: /*item*/ ctx[1] },
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(tokendisplay.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(tokendisplay, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const tokendisplay_changes = {};
-    			if (dirty & /*expression*/ 1) tokendisplay_changes.token = /*item*/ ctx[1];
-    			tokendisplay.$set(tokendisplay_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(tokendisplay.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(tokendisplay.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(tokendisplay, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_2$2.name,
-    		type: "if",
-    		source: "(15:40) ",
-    		ctx
-    	});
-
-    	return block;
+    function get_each_context_1$1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[4] = list[i];
+    	child_ctx[6] = i;
+    	return child_ctx;
     }
 
-    // (13:45) 
-    function create_if_block_1$4(ctx) {
-    	let current;
-
-    	const expressiondisplay = new ExpressionDisplay({
-    			props: { expression: /*item*/ ctx[1] },
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(expressiondisplay.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(expressiondisplay, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const expressiondisplay_changes = {};
-    			if (dirty & /*expression*/ 1) expressiondisplay_changes.expression = /*item*/ ctx[1];
-    			expressiondisplay.$set(expressiondisplay_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(expressiondisplay.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(expressiondisplay.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(expressiondisplay, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_1$4.name,
-    		type: "if",
-    		source: "(13:45) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (11:8) {#if item instanceof Operator}
-    function create_if_block$6(ctx) {
+    // (88:6) {:else}
+    function create_else_block_1$2(ctx) {
     	let current;
 
     	const operatordisplay = new OperatorDisplay({
-    			props: { operator: /*item*/ ctx[1] },
+    			props: { operator: /*item*/ ctx[4] },
     			$$inline: true
     		});
 
@@ -9915,7 +10056,7 @@ var app = (function () {
     		},
     		p: function update(ctx, dirty) {
     			const operatordisplay_changes = {};
-    			if (dirty & /*expression*/ 1) operatordisplay_changes.operator = /*item*/ ctx[1];
+    			if (dirty & /*top*/ 2) operatordisplay_changes.operator = /*item*/ ctx[4];
     			operatordisplay.$set(operatordisplay_changes);
     		},
     		i: function intro(local) {
@@ -9934,45 +10075,134 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$6.name,
-    		type: "if",
-    		source: "(11:8) {#if item instanceof Operator}",
+    		id: create_else_block_1$2.name,
+    		type: "else",
+    		source: "(88:6) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (10:4) {#each expression.nodes as item, i}
-    function create_each_block$1(ctx) {
+    // (86:38) 
+    function create_if_block_4$1(ctx) {
+    	let current;
+
+    	const tokendisplay = new TokenDisplay({
+    			props: { token: /*item*/ ctx[4] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(tokendisplay.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(tokendisplay, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const tokendisplay_changes = {};
+    			if (dirty & /*top*/ 2) tokendisplay_changes.token = /*item*/ ctx[4];
+    			tokendisplay.$set(tokendisplay_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tokendisplay.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(tokendisplay.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(tokendisplay, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_4$1.name,
+    		type: "if",
+    		source: "(86:38) ",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (84:6) {#if item instanceof Expression}
+    function create_if_block_3$2(ctx) {
+    	let current;
+
+    	const expressiondisplay = new ExpressionDisplay({
+    			props: { expression: /*item*/ ctx[4] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(expressiondisplay.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(expressiondisplay, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const expressiondisplay_changes = {};
+    			if (dirty & /*top*/ 2) expressiondisplay_changes.expression = /*item*/ ctx[4];
+    			expressiondisplay.$set(expressiondisplay_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(expressiondisplay.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(expressiondisplay.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(expressiondisplay, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_3$2.name,
+    		type: "if",
+    		source: "(84:6) {#if item instanceof Expression}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (83:4) {#each top as item, i}
+    function create_each_block_1$1(ctx) {
     	let current_block_type_index;
     	let if_block;
     	let if_block_anchor;
     	let current;
-    	const if_block_creators = [create_if_block$6, create_if_block_1$4, create_if_block_2$2];
+    	const if_block_creators = [create_if_block_3$2, create_if_block_4$1, create_else_block_1$2];
     	const if_blocks = [];
 
     	function select_block_type(ctx, dirty) {
-    		if (/*item*/ ctx[1] instanceof Operator) return 0;
-    		if (/*item*/ ctx[1] instanceof Expression) return 1;
-    		if (/*item*/ ctx[1] instanceof Token) return 2;
-    		return -1;
+    		if (/*item*/ ctx[4] instanceof Expression) return 0;
+    		if (/*item*/ ctx[4] instanceof Token) return 1;
+    		return 2;
     	}
 
-    	if (~(current_block_type_index = select_block_type(ctx))) {
-    		if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
-    	}
+    	current_block_type_index = select_block_type(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
 
     	const block = {
     		c: function create() {
-    			if (if_block) if_block.c();
+    			if_block.c();
     			if_block_anchor = empty();
     		},
     		m: function mount(target, anchor) {
-    			if (~current_block_type_index) {
-    				if_blocks[current_block_type_index].m(target, anchor);
-    			}
-
+    			if_blocks[current_block_type_index].m(target, anchor);
     			insert_dev(target, if_block_anchor, anchor);
     			current = true;
     		},
@@ -9981,33 +10211,24 @@ var app = (function () {
     			current_block_type_index = select_block_type(ctx);
 
     			if (current_block_type_index === previous_block_index) {
-    				if (~current_block_type_index) {
-    					if_blocks[current_block_type_index].p(ctx, dirty);
-    				}
+    				if_blocks[current_block_type_index].p(ctx, dirty);
     			} else {
-    				if (if_block) {
-    					group_outros();
+    				group_outros();
 
-    					transition_out(if_blocks[previous_block_index], 1, 1, () => {
-    						if_blocks[previous_block_index] = null;
-    					});
+    				transition_out(if_blocks[previous_block_index], 1, 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
 
-    					check_outros();
+    				check_outros();
+    				if_block = if_blocks[current_block_type_index];
+
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
     				}
 
-    				if (~current_block_type_index) {
-    					if_block = if_blocks[current_block_type_index];
-
-    					if (!if_block) {
-    						if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
-    						if_block.c();
-    					}
-
-    					transition_in(if_block, 1);
-    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
-    				} else {
-    					if_block = null;
-    				}
+    				transition_in(if_block, 1);
+    				if_block.m(if_block_anchor.parentNode, if_block_anchor);
     			}
     		},
     		i: function intro(local) {
@@ -10020,29 +10241,29 @@ var app = (function () {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (~current_block_type_index) {
-    				if_blocks[current_block_type_index].d(detaching);
-    			}
-
+    			if_blocks[current_block_type_index].d(detaching);
     			if (detaching) detach_dev(if_block_anchor);
     		}
     	};
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block$1.name,
+    		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(10:4) {#each expression.nodes as item, i}",
+    		source: "(83:4) {#each top as item, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$9(ctx) {
-    	let div;
+    // (93:2) {#if bottom.length > 0}
+    function create_if_block$6(ctx) {
+    	let div0;
+    	let t;
+    	let div1;
     	let current;
-    	let each_value = /*expression*/ ctx[0].nodes;
+    	let each_value = /*bottom*/ ctx[2];
     	validate_each_argument(each_value);
     	let each_blocks = [];
 
@@ -10056,32 +10277,33 @@ var app = (function () {
 
     	const block = {
     		c: function create() {
-    			div = element("div");
+    			div0 = element("div");
+    			t = space();
+    			div1 = element("div");
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div, "class", "expression-display svelte-l6pgmv");
-    			toggle_class(div, "divide", /*expression*/ ctx[0].nodes[1] instanceof DivideOperator);
-    			toggle_class(div, "parens", /*expression*/ ctx[0].parens);
-    			add_location(div, file$9, 8, 0, 254);
-    		},
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    			attr_dev(div0, "class", "vinculum svelte-jabheg");
+    			add_location(div0, file$9, 93, 4, 2204);
+    			attr_dev(div1, "class", "item-display bottom svelte-jabheg");
+    			add_location(div1, file$9, 94, 4, 2234);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
+    			insert_dev(target, div0, anchor);
+    			insert_dev(target, t, anchor);
+    			insert_dev(target, div1, anchor);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(div, null);
+    				each_blocks[i].m(div1, null);
     			}
 
     			current = true;
     		},
-    		p: function update(ctx, [dirty]) {
-    			if (dirty & /*expression, Operator, Expression, Token*/ 1) {
-    				each_value = /*expression*/ ctx[0].nodes;
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*bottom, Expression, Token*/ 4) {
+    				each_value = /*bottom*/ ctx[2];
     				validate_each_argument(each_value);
     				let i;
 
@@ -10095,7 +10317,7 @@ var app = (function () {
     						each_blocks[i] = create_each_block$1(child_ctx);
     						each_blocks[i].c();
     						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(div, null);
+    						each_blocks[i].m(div1, null);
     					}
     				}
 
@@ -10106,14 +10328,6 @@ var app = (function () {
     				}
 
     				check_outros();
-    			}
-
-    			if (dirty & /*expression, DivideOperator*/ 1) {
-    				toggle_class(div, "divide", /*expression*/ ctx[0].nodes[1] instanceof DivideOperator);
-    			}
-
-    			if (dirty & /*expression*/ 1) {
-    				toggle_class(div, "parens", /*expression*/ ctx[0].parens);
     			}
     		},
     		i: function intro(local) {
@@ -10135,8 +10349,380 @@ var app = (function () {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
+    			if (detaching) detach_dev(div0);
+    			if (detaching) detach_dev(t);
+    			if (detaching) detach_dev(div1);
     			destroy_each(each_blocks, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$6.name,
+    		type: "if",
+    		source: "(93:2) {#if bottom.length > 0}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (101:8) {:else}
+    function create_else_block$2(ctx) {
+    	let current;
+
+    	const operatordisplay = new OperatorDisplay({
+    			props: { operator: /*item*/ ctx[4] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(operatordisplay.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(operatordisplay, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const operatordisplay_changes = {};
+    			if (dirty & /*bottom*/ 4) operatordisplay_changes.operator = /*item*/ ctx[4];
+    			operatordisplay.$set(operatordisplay_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(operatordisplay.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(operatordisplay.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(operatordisplay, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_else_block$2.name,
+    		type: "else",
+    		source: "(101:8) {:else}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (99:40) 
+    function create_if_block_2$2(ctx) {
+    	let current;
+
+    	const tokendisplay = new TokenDisplay({
+    			props: { token: /*item*/ ctx[4] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(tokendisplay.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(tokendisplay, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const tokendisplay_changes = {};
+    			if (dirty & /*bottom*/ 4) tokendisplay_changes.token = /*item*/ ctx[4];
+    			tokendisplay.$set(tokendisplay_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(tokendisplay.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(tokendisplay.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(tokendisplay, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_2$2.name,
+    		type: "if",
+    		source: "(99:40) ",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (97:8) {#if item instanceof Expression}
+    function create_if_block_1$4(ctx) {
+    	let current;
+
+    	const expressiondisplay = new ExpressionDisplay({
+    			props: { expression: /*item*/ ctx[4] },
+    			$$inline: true
+    		});
+
+    	const block = {
+    		c: function create() {
+    			create_component(expressiondisplay.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(expressiondisplay, target, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const expressiondisplay_changes = {};
+    			if (dirty & /*bottom*/ 4) expressiondisplay_changes.expression = /*item*/ ctx[4];
+    			expressiondisplay.$set(expressiondisplay_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(expressiondisplay.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(expressiondisplay.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(expressiondisplay, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1$4.name,
+    		type: "if",
+    		source: "(97:8) {#if item instanceof Expression}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (96:6) {#each bottom as item, i}
+    function create_each_block$1(ctx) {
+    	let current_block_type_index;
+    	let if_block;
+    	let if_block_anchor;
+    	let current;
+    	const if_block_creators = [create_if_block_1$4, create_if_block_2$2, create_else_block$2];
+    	const if_blocks = [];
+
+    	function select_block_type_1(ctx, dirty) {
+    		if (/*item*/ ctx[4] instanceof Expression) return 0;
+    		if (/*item*/ ctx[4] instanceof Token) return 1;
+    		return 2;
+    	}
+
+    	current_block_type_index = select_block_type_1(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+
+    	const block = {
+    		c: function create() {
+    			if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m: function mount(target, anchor) {
+    			if_blocks[current_block_type_index].m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			let previous_block_index = current_block_type_index;
+    			current_block_type_index = select_block_type_1(ctx);
+
+    			if (current_block_type_index === previous_block_index) {
+    				if_blocks[current_block_type_index].p(ctx, dirty);
+    			} else {
+    				group_outros();
+
+    				transition_out(if_blocks[previous_block_index], 1, 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
+
+    				check_outros();
+    				if_block = if_blocks[current_block_type_index];
+
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
+    				}
+
+    				transition_in(if_block, 1);
+    				if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if_blocks[current_block_type_index].d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block$1.name,
+    		type: "each",
+    		source: "(96:6) {#each bottom as item, i}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$9(ctx) {
+    	let div1;
+    	let div0;
+    	let t;
+    	let current;
+    	let each_value_1 = /*top*/ ctx[1];
+    	validate_each_argument(each_value_1);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value_1.length; i += 1) {
+    		each_blocks[i] = create_each_block_1$1(get_each_context_1$1(ctx, each_value_1, i));
+    	}
+
+    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+    		each_blocks[i] = null;
+    	});
+
+    	let if_block = /*bottom*/ ctx[2].length > 0 && create_if_block$6(ctx);
+
+    	const block = {
+    		c: function create() {
+    			div1 = element("div");
+    			div0 = element("div");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t = space();
+    			if (if_block) if_block.c();
+    			attr_dev(div0, "class", "item-display top svelte-jabheg");
+    			add_location(div0, file$9, 81, 2, 1855);
+    			attr_dev(div1, "class", "expression-display svelte-jabheg");
+    			toggle_class(div1, "divide", /*bottom*/ ctx[2].length > 0);
+    			toggle_class(div1, "parens", /*expression*/ ctx[0].parens);
+    			add_location(div1, file$9, 77, 0, 1744);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div1, anchor);
+    			append_dev(div1, div0);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div0, null);
+    			}
+
+    			append_dev(div1, t);
+    			if (if_block) if_block.m(div1, null);
+    			current = true;
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*top, Expression, Token*/ 2) {
+    				each_value_1 = /*top*/ ctx[1];
+    				validate_each_argument(each_value_1);
+    				let i;
+
+    				for (i = 0; i < each_value_1.length; i += 1) {
+    					const child_ctx = get_each_context_1$1(ctx, each_value_1, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block_1$1(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(div0, null);
+    					}
+    				}
+
+    				group_outros();
+
+    				for (i = each_value_1.length; i < each_blocks.length; i += 1) {
+    					out(i);
+    				}
+
+    				check_outros();
+    			}
+
+    			if (/*bottom*/ ctx[2].length > 0) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+
+    					if (dirty & /*bottom*/ 4) {
+    						transition_in(if_block, 1);
+    					}
+    				} else {
+    					if_block = create_if_block$6(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(div1, null);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+
+    			if (dirty & /*bottom*/ 4) {
+    				toggle_class(div1, "divide", /*bottom*/ ctx[2].length > 0);
+    			}
+
+    			if (dirty & /*expression*/ 1) {
+    				toggle_class(div1, "parens", /*expression*/ ctx[0].parens);
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+
+    			for (let i = 0; i < each_value_1.length; i += 1) {
+    				transition_in(each_blocks[i]);
+    			}
+
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			each_blocks = each_blocks.filter(Boolean);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				transition_out(each_blocks[i]);
+    			}
+
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div1);
+    			destroy_each(each_blocks, detaching);
+    			if (if_block) if_block.d();
     		}
     	};
 
@@ -10153,6 +10739,30 @@ var app = (function () {
 
     function instance$9($$self, $$props, $$invalidate) {
     	let { expression } = $$props;
+    	let isAdd = expression.node.operator === "PLUS";
+
+    	let top = isAdd
+    	? expression.items
+    	: expression.items.filter(item => item.node.exp > 0);
+
+    	top = top.reduce(
+    		(acc, cur, i) => acc.concat(i < top.length - 1
+    		? [cur, isAdd ? "PLUS" : "TIMES"]
+    		: [cur]),
+    		[]
+    	);
+
+    	let bottom = isAdd
+    	? []
+    	: expression.items.filter(item => item.node.exp < 0);
+
+    	bottom = bottom.reduce(
+    		(acc, cur, i) => acc.concat(i < bottom.length - 1
+    		? [cur, isAdd ? "PLUS" : "TIMES"]
+    		: [cur]),
+    		[]
+    	);
+
     	const writable_props = ["expression"];
 
     	Object.keys($$props).forEach(key => {
@@ -10171,20 +10781,24 @@ var app = (function () {
     		OperatorDisplay,
     		Token,
     		Expression,
-    		Operator,
-    		DivideOperator,
-    		expression
+    		expression,
+    		isAdd,
+    		top,
+    		bottom
     	});
 
     	$$self.$inject_state = $$props => {
     		if ("expression" in $$props) $$invalidate(0, expression = $$props.expression);
+    		if ("isAdd" in $$props) isAdd = $$props.isAdd;
+    		if ("top" in $$props) $$invalidate(1, top = $$props.top);
+    		if ("bottom" in $$props) $$invalidate(2, bottom = $$props.bottom);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [expression];
+    	return [expression, top, bottom];
     }
 
     class ExpressionDisplay extends SvelteComponentDev {
@@ -10226,8 +10840,8 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (66:49) 
-    function create_if_block_5$1(ctx) {
+    // (64:49) 
+    function create_if_block_3$3(ctx) {
     	let current;
 
     	const tokendisplay = new TokenDisplay({
@@ -10264,17 +10878,17 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_5$1.name,
+    		id: create_if_block_3$3.name,
     		type: "if",
-    		source: "(66:49) ",
+    		source: "(64:49) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (64:54) 
-    function create_if_block_4$1(ctx) {
+    // (62:12) {#if item.left instanceof Expression}
+    function create_if_block_2$3(ctx) {
     	let current;
 
     	const expressiondisplay = new ExpressionDisplay({
@@ -10311,64 +10925,17 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_4$1.name,
+    		id: create_if_block_2$3.name,
     		type: "if",
-    		source: "(64:54) ",
+    		source: "(62:12) {#if item.left instanceof Expression}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (62:12) {#if item.left instanceof Operator}
-    function create_if_block_3$1(ctx) {
-    	let current;
-
-    	const operatordisplay = new OperatorDisplay({
-    			props: { operator: /*item*/ ctx[4].left },
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(operatordisplay.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(operatordisplay, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const operatordisplay_changes = {};
-    			if (dirty & /*parsedHistory*/ 2) operatordisplay_changes.operator = /*item*/ ctx[4].left;
-    			operatordisplay.$set(operatordisplay_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(operatordisplay.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(operatordisplay.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(operatordisplay, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_3$1.name,
-    		type: "if",
-    		source: "(62:12) {#if item.left instanceof Operator}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (78:50) 
-    function create_if_block_2$3(ctx) {
+    // (74:50) 
+    function create_if_block_1$5(ctx) {
     	let current;
 
     	const tokendisplay = new TokenDisplay({
@@ -10405,17 +10972,17 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_2$3.name,
+    		id: create_if_block_1$5.name,
     		type: "if",
-    		source: "(78:50) ",
+    		source: "(74:50) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (76:55) 
-    function create_if_block_1$5(ctx) {
+    // (72:12) {#if item.right instanceof Expression}
+    function create_if_block$7(ctx) {
     	let current;
 
     	const expressiondisplay = new ExpressionDisplay({
@@ -10452,56 +11019,9 @@ var app = (function () {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_1$5.name,
-    		type: "if",
-    		source: "(76:55) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (74:12) {#if item.right instanceof Operator}
-    function create_if_block$7(ctx) {
-    	let current;
-
-    	const operatordisplay = new OperatorDisplay({
-    			props: { operator: /*item*/ ctx[4].right },
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			create_component(operatordisplay.$$.fragment);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(operatordisplay, target, anchor);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const operatordisplay_changes = {};
-    			if (dirty & /*parsedHistory*/ 2) operatordisplay_changes.operator = /*item*/ ctx[4].right;
-    			operatordisplay.$set(operatordisplay_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(operatordisplay.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(operatordisplay.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(operatordisplay, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
     		id: create_if_block$7.name,
     		type: "if",
-    		source: "(74:12) {#if item.right instanceof Operator}",
+    		source: "(72:12) {#if item.right instanceof Expression}",
     		ctx
     	});
 
@@ -10524,13 +11044,12 @@ var app = (function () {
     	let if_block1;
     	let t3;
     	let current;
-    	const if_block_creators = [create_if_block_3$1, create_if_block_4$1, create_if_block_5$1];
+    	const if_block_creators = [create_if_block_2$3, create_if_block_3$3];
     	const if_blocks = [];
 
     	function select_block_type(ctx, dirty) {
-    		if (/*item*/ ctx[4].left instanceof Operator) return 0;
-    		if (/*item*/ ctx[4].left instanceof Expression) return 1;
-    		if (/*item*/ ctx[4].left instanceof Token) return 2;
+    		if (/*item*/ ctx[4].left instanceof Expression) return 0;
+    		if (/*item*/ ctx[4].left instanceof Token) return 1;
     		return -1;
     	}
 
@@ -10538,13 +11057,12 @@ var app = (function () {
     		if_block0 = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
     	}
 
-    	const if_block_creators_1 = [create_if_block$7, create_if_block_1$5, create_if_block_2$3];
+    	const if_block_creators_1 = [create_if_block$7, create_if_block_1$5];
     	const if_blocks_1 = [];
 
     	function select_block_type_1(ctx, dirty) {
-    		if (/*item*/ ctx[4].right instanceof Operator) return 0;
-    		if (/*item*/ ctx[4].right instanceof Expression) return 1;
-    		if (/*item*/ ctx[4].right instanceof Token) return 2;
+    		if (/*item*/ ctx[4].right instanceof Expression) return 0;
+    		if (/*item*/ ctx[4].right instanceof Token) return 1;
     		return -1;
     	}
 
@@ -10567,18 +11085,18 @@ var app = (function () {
     			if (if_block1) if_block1.c();
     			t3 = space();
     			attr_dev(div0, "class", "left svelte-qtw04b");
-    			add_location(div0, file$a, 60, 10, 1520);
+    			add_location(div0, file$a, 60, 10, 1510);
     			attr_dev(div1, "class", "svelte-qtw04b");
-    			add_location(div1, file$a, 70, 12, 1943);
+    			add_location(div1, file$a, 68, 12, 1823);
     			attr_dev(div2, "class", "equals svelte-qtw04b");
-    			add_location(div2, file$a, 69, 10, 1909);
+    			add_location(div2, file$a, 67, 10, 1789);
     			attr_dev(div3, "class", "right svelte-qtw04b");
-    			add_location(div3, file$a, 72, 10, 1985);
+    			add_location(div3, file$a, 70, 10, 1865);
     			attr_dev(div4, "class", "equation svelte-qtw04b");
-    			add_location(div4, file$a, 59, 8, 1486);
+    			add_location(div4, file$a, 59, 8, 1476);
     			attr_dev(div5, "class", "equation-display svelte-qtw04b");
     			toggle_class(div5, "current", /*i*/ ctx[6] === /*$history*/ ctx[2].index);
-    			add_location(div5, file$a, 58, 6, 1409);
+    			add_location(div5, file$a, 58, 6, 1399);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div5, anchor);
@@ -10734,9 +11252,9 @@ var app = (function () {
     			}
 
     			attr_dev(div0, "class", "stack svelte-qtw04b");
-    			add_location(div0, file$a, 56, 2, 1328);
+    			add_location(div0, file$a, 56, 2, 1318);
     			attr_dev(div1, "class", "History svelte-qtw04b");
-    			add_location(div1, file$a, 55, 0, 1303);
+    			add_location(div1, file$a, 55, 0, 1293);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -10753,7 +11271,7 @@ var app = (function () {
     			current = true;
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*$history, parsedHistory, Operator, Expression, Token*/ 6) {
+    			if (dirty & /*$history, parsedHistory, Expression, Token*/ 6) {
     				each_value = /*parsedHistory*/ ctx[1];
     				validate_each_argument(each_value);
     				let i;
@@ -10842,7 +11360,6 @@ var app = (function () {
     		ExpressionDisplay,
     		OperatorDisplay,
     		TokenDisplay,
-    		Operator,
     		Expression,
     		Token,
     		parseGrammar,
@@ -11282,9 +11799,11 @@ var app = (function () {
 
     /* src\App.svelte generated by Svelte v3.21.0 */
 
+    const { console: console_1 } = globals;
+
     const file$d = "src\\App.svelte";
 
-    // (191:6) {#if true}
+    // (186:6) {#if true}
     function create_if_block_2$4(ctx) {
     	let current;
     	const history_1 = new History({ $$inline: true });
@@ -11315,14 +11834,14 @@ var app = (function () {
     		block,
     		id: create_if_block_2$4.name,
     		type: "if",
-    		source: "(191:6) {#if true}",
+    		source: "(186:6) {#if true}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (218:4) {#if $history.current}
+    // (213:4) {#if $history.current}
     function create_if_block$9(ctx) {
     	let div;
     	let t;
@@ -11344,9 +11863,9 @@ var app = (function () {
     			create_component(equation.$$.fragment);
     			t = space();
     			if (if_block) if_block.c();
-    			attr_dev(div, "class", "equation svelte-vqibtc");
+    			attr_dev(div, "class", "equation svelte-1wsf8wk");
     			toggle_class(div, "disable", /*$error*/ ctx[4]);
-    			add_location(div, file$d, 218, 6, 5301);
+    			add_location(div, file$d, 213, 6, 5152);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11410,14 +11929,14 @@ var app = (function () {
     		block,
     		id: create_if_block$9.name,
     		type: "if",
-    		source: "(218:4) {#if $history.current}",
+    		source: "(213:4) {#if $history.current}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (221:8) {#if $dragdropData.drop}
+    // (216:8) {#if $dragdropData.drop}
     function create_if_block_1$6(ctx) {
     	let div;
     	let current;
@@ -11433,8 +11952,8 @@ var app = (function () {
     		c: function create() {
     			div = element("div");
     			create_component(equation.$$.fragment);
-    			attr_dev(div, "class", "draft-equation svelte-vqibtc");
-    			add_location(div, file$d, 221, 10, 5471);
+    			attr_dev(div, "class", "draft-equation svelte-1wsf8wk");
+    			add_location(div, file$d, 216, 10, 5322);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -11465,7 +11984,7 @@ var app = (function () {
     		block,
     		id: create_if_block_1$6.name,
     		type: "if",
-    		source: "(221:8) {#if $dragdropData.drop}",
+    		source: "(216:8) {#if $dragdropData.drop}",
     		ctx
     	});
 
@@ -11508,25 +12027,22 @@ var app = (function () {
     		});
 
     	const draggableoperator0 = new DraggableOperator({
-    			props: { operator: new PlusOperator("", []) },
+    			props: { operator: "PLUS" },
     			$$inline: true
     		});
 
     	const draggableoperator1 = new DraggableOperator({
-    			props: { operator: new MinusOperator("", []) },
+    			props: { operator: "MINUS" },
     			$$inline: true
     		});
 
     	const draggableoperator2 = new DraggableOperator({
-    			props: { operator: new TimesOperator("", []) },
+    			props: { operator: "TIMES" },
     			$$inline: true
     		});
 
     	const draggableoperator3 = new DraggableOperator({
-    			props: {
-    				onlySymbol: true,
-    				operator: new DivideOperator("", [])
-    			},
+    			props: { onlySymbol: true, operator: "DIVIDE" },
     			$$inline: true
     		});
 
@@ -11577,45 +12093,45 @@ var app = (function () {
     			t11 = space();
     			button = element("button");
     			button.textContent = "🕨";
-    			attr_dev(h1, "class", "svelte-vqibtc");
-    			add_location(h1, file$d, 188, 4, 4252);
-    			attr_dev(div0, "class", "history svelte-vqibtc");
-    			add_location(div0, file$d, 189, 4, 4272);
-    			attr_dev(div1, "class", "steps svelte-vqibtc");
-    			add_location(div1, file$d, 187, 2, 4227);
+    			attr_dev(h1, "class", "svelte-1wsf8wk");
+    			add_location(h1, file$d, 183, 4, 4175);
+    			attr_dev(div0, "class", "history svelte-1wsf8wk");
+    			add_location(div0, file$d, 184, 4, 4195);
+    			attr_dev(div1, "class", "steps svelte-1wsf8wk");
+    			add_location(div1, file$d, 182, 2, 4150);
     			set_style(path0, "fill", "#FF6E52");
     			attr_dev(path0, "d", "M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z");
-    			attr_dev(path0, "class", "svelte-vqibtc");
-    			add_location(path0, file$d, 197, 6, 4474);
+    			attr_dev(path0, "class", "svelte-1wsf8wk");
+    			add_location(path0, file$d, 192, 6, 4397);
     			set_style(path1, "fill", "#FFC33E");
     			attr_dev(path1, "d", "M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z");
-    			attr_dev(path1, "class", "svelte-vqibtc");
-    			add_location(path1, file$d, 200, 6, 4585);
+    			attr_dev(path1, "class", "svelte-1wsf8wk");
+    			add_location(path1, file$d, 195, 6, 4508);
     			set_style(path2, "fill", "#f5f4f3");
     			attr_dev(path2, "d", "M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z");
-    			attr_dev(path2, "class", "svelte-vqibtc");
-    			add_location(path2, file$d, 203, 6, 4697);
+    			attr_dev(path2, "class", "svelte-1wsf8wk");
+    			add_location(path2, file$d, 198, 6, 4620);
     			attr_dev(svg, "viewBox", "0 0 302 269");
     			set_style(svg, "enable-background", "new 0 0 302 269");
-    			attr_dev(svg, "class", "svelte-vqibtc");
-    			add_location(svg, file$d, 196, 4, 4396);
+    			attr_dev(svg, "class", "svelte-1wsf8wk");
+    			add_location(svg, file$d, 191, 4, 4319);
     			attr_dev(div2, "id", "hintwindow");
-    			attr_dev(div2, "class", "CTATHintWindow svelte-vqibtc");
+    			attr_dev(div2, "class", "CTATHintWindow svelte-1wsf8wk");
     			toggle_class(div2, "visible", /*$showMessages*/ ctx[3]);
-    			add_location(div2, file$d, 208, 4, 4853);
-    			attr_dev(div3, "class", "alien svelte-vqibtc");
-    			add_location(div3, file$d, 195, 2, 4371);
-    			attr_dev(div4, "class", "operators svelte-vqibtc");
-    			add_location(div4, file$d, 210, 2, 4943);
-    			attr_dev(div5, "class", "main svelte-vqibtc");
-    			add_location(div5, file$d, 216, 2, 5247);
-    			attr_dev(button, "class", "mute svelte-vqibtc");
+    			add_location(div2, file$d, 203, 4, 4776);
+    			attr_dev(div3, "class", "alien svelte-1wsf8wk");
+    			add_location(div3, file$d, 190, 2, 4294);
+    			attr_dev(div4, "class", "operators svelte-1wsf8wk");
+    			add_location(div4, file$d, 205, 2, 4866);
+    			attr_dev(div5, "class", "main svelte-1wsf8wk");
+    			add_location(div5, file$d, 211, 2, 5098);
+    			attr_dev(button, "class", "mute svelte-1wsf8wk");
     			toggle_class(button, "muted", /*muted*/ ctx[0]);
-    			add_location(button, file$d, 231, 4, 5707);
-    			attr_dev(div6, "class", "buttons svelte-vqibtc");
-    			add_location(div6, file$d, 228, 2, 5637);
-    			attr_dev(div7, "class", "app svelte-vqibtc");
-    			add_location(div7, file$d, 186, 0, 4206);
+    			add_location(button, file$d, 226, 4, 5558);
+    			attr_dev(div6, "class", "buttons svelte-1wsf8wk");
+    			add_location(div6, file$d, 223, 2, 5488);
+    			attr_dev(div7, "class", "app svelte-1wsf8wk");
+    			add_location(div7, file$d, 181, 0, 4129);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -11779,10 +12295,11 @@ var app = (function () {
     		}
     	}
 
+    	console.log($history.current);
     	const writable_props = [];
 
     	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<App> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
     	let { $$slots = {}, $$scope } = $$props;
@@ -11806,10 +12323,6 @@ var app = (function () {
     		Buttons,
     		Alien,
     		muted,
-    		PlusOperator,
-    		MinusOperator,
-    		TimesOperator,
-    		DivideOperator,
     		showMessages,
     		lastCorrect,
     		error,

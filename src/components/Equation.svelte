@@ -1,12 +1,12 @@
 <script>
-  import { Token, Expression, Operator } from "../classes.js";
+  import { Token, Expression } from "../classes.js";
   import ExpressionComponent from "./Expression.svelte";
   import OperatorComponent from "./Operator.svelte";
   import TokenComponent from "./Token.svelte";
   import Flaggable from "./Flaggable.svelte";
 
   export let equation;
-  export let error;
+  export let error = null;
 </script>
 
 <style>
@@ -34,9 +34,7 @@
     <div
       class="side left"
       class:no-exp={!(equation.right instanceof Expression)}>
-      {#if equation.left instanceof Operator}
-        <OperatorComponent operator={equation.left} siblings={equation.left} />
-      {:else if equation.left instanceof Expression}
+      {#if equation.left instanceof Expression}
         <ExpressionComponent expression={equation.left} />
       {:else if equation.left instanceof Token}
         <TokenComponent token={equation.left} />
@@ -48,11 +46,7 @@
     <div
       class="side right"
       class:no-exp={!(equation.right instanceof Expression)}>
-      {#if equation.right instanceof Operator}
-        <OperatorComponent
-          operator={equation.right}
-          siblings={equation.right} />
-      {:else if equation.right instanceof Expression}
+      {#if equation.right instanceof Expression}
         <ExpressionComponent expression={equation.right} />
       {:else if equation.right instanceof Token}
         <TokenComponent token={equation.right} />

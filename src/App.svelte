@@ -14,12 +14,6 @@
   let muted = document.cookie.split("muted=")[1] === "true";
 
   import {
-    PlusOperator,
-    MinusOperator,
-    TimesOperator,
-    DivideOperator
-  } from "./classes.js";
-  import {
     showMessages,
     lastCorrect,
     error,
@@ -28,12 +22,13 @@
 
   function onUndo() {
     history.undo();
-
     if ($lastCorrect === $history.current) {
       error.set(null);
       alienState.set(null);
     }
   }
+
+  console.log($history.current);
 </script>
 
 <style>
@@ -137,14 +132,14 @@
   #hintwindow :global(.CTATHintWindow--hint-button-area) {
     text-align: right;
   }
-  :global(.ctatpageoverlay) {
+  /* :global(.ctatpageoverlay) {
     position: fixed;
     padding: 30px;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     background: #f5f4f3;
-  }
+  } */
   :global(.CTATHintWindow--button) {
     border: none;
     cursor: pointer;
@@ -209,10 +204,10 @@
     <div id="hintwindow" class="CTATHintWindow" class:visible={$showMessages} />
   </div>
   <div class="operators">
-    <DraggableOperator operator={new PlusOperator('', [])} />
-    <DraggableOperator operator={new MinusOperator('', [])} />
-    <DraggableOperator operator={new TimesOperator('', [])} />
-    <DraggableOperator onlySymbol operator={new DivideOperator('', [])} />
+    <DraggableOperator operator={'PLUS'} />
+    <DraggableOperator operator={'MINUS'} />
+    <DraggableOperator operator={'TIMES'} />
+    <DraggableOperator onlySymbol operator={'DIVIDE'} />
   </div>
   <div class="main">
     {#if $history.current}
