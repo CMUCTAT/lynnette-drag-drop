@@ -1,7 +1,7 @@
 <script>
-  import { spring } from "svelte/motion";
-  import { dragdrop } from "./dragdrop.js";
-  import soundEffects from "../soundEffect.js";
+  import { spring } from 'svelte/motion';
+  import { dragdrop } from './dragdrop.js';
+  import soundEffects from '../soundEffect.js';
 
   export let canDrag = true;
   export let canDragHover = true;
@@ -18,25 +18,30 @@
   let dragHovering = false;
   let dropAnim = false;
 
+  let origin = { x: 0, y: 0 };
+
   const coords = spring(
     { x: 0, y: 0 },
     {
       stiffness: 0.05,
-      damping: 0.15
-    }
+      damping: 0.15,
+    },
   );
 
-  function handleDragStart() {
+  function handleDragStart(event) {
     coords.stiffness = coords.damping = 1;
     dragging = true;
-    soundEffects.play("pop");
+    soundEffects.play('pop');
+    origin = { x: event.detail.x, y: event.detail.y };
     if (dragStart) dragStart(event);
   }
 
   function handleDragMove(event) {
     coords.update($coords => ({
-      x: $coords.x + event.detail.dx,
-      y: $coords.y + event.detail.dy
+      // x: $coords.x + event.detail.dx,
+      // y: $coords.y + event.detail.dy,
+      x: event.detail.x - origin.x,
+      y: event.detail.y - origin.y,
     }));
   }
 
@@ -78,7 +83,7 @@
       dropAnim = false;
       dragging = false;
     }, 300);
-    soundEffects.play("click");
+    soundEffects.play('click');
     if (dropSend) dropSend(event);
   }
 
@@ -106,37 +111,11 @@
   }
 </style>
 
-<div
-  class="dragdrop"
-  use:dragdrop={{ type: 'dragdrop', canDrag }}
-  on:dragstart={handleDragStart}
-  on:dragmove={handleDragMove}
-  on:dragend={handleDragEnd}
-  on:enter={handleMouseEnter}
-  on:leave={handleMouseLeave}
-  on:dragenter={handleDragEnter}
-  on:dragleave={handleDragLeave}
-  on:dropsend={handleDropSend}
-  on:dropreceive={handleDropReceive}
-  class:dragging
-  class:returning
-  class:hovering
-  class:draghovering={dragHovering}>
+<div class="dragdrop" use:dragdrop={{ type: 'dragdrop', canDrag }} on:dragstart={handleDragStart} on:dragmove={handleDragMove} on:dragend={handleDragEnd} on:enter={handleMouseEnter} on:leave={handleMouseLeave} on:dragenter={handleDragEnter} on:dragleave={handleDragLeave} on:dropsend={handleDropSend} on:dropreceive={handleDropReceive} class:dragging class:returning class:hovering class:draghovering={dragHovering}>
   <div class="dragdrop-dropzone">
-    <slot
-      name="dropzone"
-      {dragging}
-      draghovering={dragHovering}
-      hovering={hovering && !dropAnim} />
+    <slot name="dropzone" {dragging} draghovering={dragHovering} hovering={hovering && !dropAnim} />
   </div>
-  <div
-    class="dragdrop-mover"
-    style="transform: translate({$coords.x}px,{$coords.y}px)">
-    <slot
-      name="mover"
-      {dragging}
-      draghovering={dragHovering}
-      hovering={hovering && !dropAnim}
-      fade={dropAnim} />
+  <div class="dragdrop-mover" style="transform: translate({$coords.x}px,{$coords.y}px)">
+    <slot name="mover" {dragging} draghovering={dragHovering} hovering={hovering && !dropAnim} fade={dropAnim} />
   </div>
 </div>

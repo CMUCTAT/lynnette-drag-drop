@@ -3,6 +3,7 @@
   import DragDrop from './DragDrop.svelte';
 
   export let token;
+  export let isSubtract = false;
 
   function handleDragStart(e) {
     dragdropData.setDrag(token);
@@ -24,7 +25,7 @@
   function handleUpdateToken(e) {
     draftEquation.updateToken(token, e.target.value);
   }
-  $: value = token.value();
+  $: value = token.value(isSubtract ? -1 : 1);
 </script>
 
 <style>

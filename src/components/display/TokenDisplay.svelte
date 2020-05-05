@@ -1,6 +1,7 @@
 <script>
   import { Token } from '../../classes.js';
   export let token;
+  export let isSubtract = false;
 </script>
 
 <style>
@@ -11,5 +12,5 @@
 </style>
 
 <div class="token-display">
-  <span class="content">{token.value()}</span>
+  <span class="content">{token.value(isSubtract ? -1 : 1)}</span>
 </div>

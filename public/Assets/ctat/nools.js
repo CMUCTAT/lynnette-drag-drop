@@ -266,6 +266,12 @@ var ConflictTreeNode = declare({
 					str += ' ' + tSAI.selection+' ; '+tSAI.action+" ; "+tSAI.input;
 				}
 			}
+			if (this.isBug) {
+				str += ' (bug)';
+			}
+			if (this.auxData) {
+				str += ' '+this.auxData+' ';
+			}
 			str += '\n';
 			return str;
 		}
@@ -3324,7 +3330,7 @@ module.exports = (function() {
 				return v;
 			},
 			
-			setNodeMatcherResult: function(matchResult) {
+			setNodeMatcherResult: function(matchResult, isBug) {
 				let node = this.conflictTree.getCurrNode(),
 					states = ConflictTree.MATCHER_STATES;
 				
@@ -3332,6 +3338,7 @@ module.exports = (function() {
 				node.matcherStatus = matchResult.isMatch ? states.MATCH : states.NO_MATCH;
 				matchResult.rule = node.name;
 				node.match = matchResult;
+				node.isBug = isBug;
 			},
 			
 			getNodeMatcherResult: function(nodeId) {
@@ -3340,6 +3347,11 @@ module.exports = (function() {
 					return node.match || "no match";
 				}
 				return null;
+			},
+			
+			setNodeData: function(data) {
+				let node = this.conflictTree.getCurrNode();
+				node.auxData = data;
 			}
 		}
 	})
@@ -3780,12 +3792,16 @@ module.exports = declare(Flow, {
 			return endOfChainReached;
 		},
 		
-		setNodeMatcherResult: function(matchResult) {
-			this.agenda.setNodeMatcherResult(matchResult);
+		setNodeMatcherResult: function(matchResult, isBug) {
+			this.agenda.setNodeMatcherResult(matchResult, isBug);
 		},
 		
 		getNodeMatcherResult: function(nodeId) {
 			return this.agenda.getNodeMatcherResult(nodeId);
+		},
+		
+		setNodeData: function(data) {
+			this.agenda.setNodeData(data);
 		},
 		
 		dispose: function () {

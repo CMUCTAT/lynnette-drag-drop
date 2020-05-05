@@ -76,11 +76,11 @@
 
 <div class="expression-display" class:divide={bottom.length > 0} class:parens={expression.parens}>
   <div class="item-display top">
-    {#each top as item, i}
+    {#each top as item, i (item.id || item + i)}
       {#if item instanceof Expression}
         <svelte:self expression={item} />
       {:else if item instanceof Token}
-        <TokenDisplay token={item} />
+        <TokenDisplay token={item} isSubtract={i > 0 && item.node.sign < 0} />
       {:else}
         <OperatorDisplay operator={item} />
       {/if}
@@ -89,7 +89,7 @@
   {#if bottom.length > 0}
     <div class="vinculum" />
     <div class="item-display bottom">
-      {#each bottom as item, i}
+      {#each bottom as item, i (item.id || item + i)}
         {#if item instanceof Expression}
           <svelte:self expression={item} />
         {:else if item instanceof Token}

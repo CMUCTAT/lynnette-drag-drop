@@ -20,7 +20,7 @@ window.parse = parse;
 // };
 
 const initial = null;
-// const initial = parse.algParse("4(1+x) = (x+1)/4");
+// const initial = parse.algParse('-7x - 5 - 2y - (-y) = -x');
 // history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
@@ -132,15 +132,9 @@ function createDraftEquation() {
     let path = flattenPath(token.node.path);
     dragOperation = { from: 'Update', to: 'Token', side: path[0] };
     let target = Object.path(eqn, path);
-    console.log(target);
-
     let newToken = parse.algParse(value);
-    console.log(newToken);
-
     newToken.sign = target.sign;
     newToken.exp = target.exp;
-    console.log(newToken);
-
     let next = parse.algReplaceExpression(eqn, target, newToken);
     return apply(next);
   }
@@ -179,37 +173,30 @@ function flattenPath(path) {
 function tokenToToken(src, dest, eqn) {
   let srcPath = flattenPath(src.node.path);
   let destPath = flattenPath(dest.node.path);
-  console.log(srcPath, destPath);
-
   dragOperation = { from: 'Token', to: 'Token', side: destPath[0] };
   if (dest instanceof UnknownToken) {
     let d = Object.path(eqn, flattenPath(dest.node.path));
-    let s = parse.algParse(src.value());
+    let isSubtract = Math.min(...src.indices) !== 0 && src.node.sign < 0;
+    let s = parse.algParse(src.value(isSubtract ? -1 : 1));
     s.exp = d.exp;
     s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
     return parse.algReplaceExpression(eqn, d, s);
   } else if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
     let parentPath = srcPath.slice(0, -2);
     let parent = Object.path(eqn, parentPath);
-    console.log(src.indices, dest.indices);
-
     let indices = src.indices.concat(dest.indices);
-    console.log(indices);
-
     indices.sort();
-    console.log(eqn);
 
     let next = parse.algReplaceExpression(
       eqn,
       parent,
       parse.algApplyRulesSelectively(
         parent,
-        ['computeConstants', 'combineSimilar'],
-        false,
+        ['flatten', 'computeConstants', 'combineSimilar', 'removeIdentity'],
+        true,
         ...indices,
       ),
     );
-    console.log(next);
 
     parent = Object.path(next, parentPath);
     return parse.algReplaceExpression(

@@ -36,22 +36,34 @@ export class Equation extends EquationNode {
 //     }
 
 export class Token extends EquationNode {
-  constructor(parent, nodes, indices, hideSign = false) {
-    super(parent, nodes[0]);
+  constructor(parent, nodes, indices, baseNode = null) {
+    super(parent, baseNode || nodes[0]);
     this.nodes = nodes;
     this.indices = indices;
-    this.hideSign = hideSign;
   }
 
   stringify() {
     return this.value;
   }
-  value() {
-    let sign = this.nodes.reduce((sign, node) => (sign *= node.sign), 1);
-    return (
-      (this.hideSign ? '' : sign.toString().replace('1', '')) +
-      this.nodes.map((node) => node.value || node.variable || -node.base.value).join('')
-    );
+  value(mult = 1) {
+    let sign = this.nodes
+      .reduce((sign, cur) => cur.sign * sign, mult)
+      .toString()
+      .replace('1', '');
+    return sign + this.nodes.map((n) => n.value || n.variable).join('');
+  }
+}
+
+export class UMinusToken extends Token {
+  constructor(parent, nodes, indices) {
+    super(parent, [nodes[0].base, ...nodes.slice(1)], indices, nodes[0]);
+  }
+  value(mult = 1) {
+    let sign = this.nodes
+      .reduce((sign, cur) => cur.sign * sign, mult * -1 * this.node.sign)
+      .toString()
+      .replace('1', '');
+    return `${sign}${super.value()}`;
   }
 }
 

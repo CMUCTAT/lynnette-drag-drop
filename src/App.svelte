@@ -40,8 +40,8 @@
       'steps operators buttons'
       'steps main buttons'
       'alien main buttons';
-    grid-template-columns: 1fr 3fr 1fr;
-    grid-template-rows: 200px 1fr 30%;
+    grid-template-columns: minmax(200px, 1fr) 3fr 1fr;
+    grid-template-rows: 200px 1fr minmax(200px, 25%);
     row-gap: 50px;
     background: center / cover no-repeat url('./images/lynnette-sapce-bg.png');
   }
@@ -66,6 +66,11 @@
     position: relative;
   }
   .alien svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* right: 0;
+    bottom: 0; */
     height: 100%;
   }
   .main {
@@ -175,12 +180,11 @@
     transform: translate(-50%, 0) rotate(45deg);
     height: 80%;
     width: 3px;
-    background: #f00;
+    background: #f35;
   }
 </style>
 
 <div class="app">
-  {$history.current && console.log($history.current, parseGrammar($history.current))}
   <div class="steps">
     <h1>Steps</h1>
     <div bind:this={historyScroll} class="history">

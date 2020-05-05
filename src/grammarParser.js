@@ -1,4 +1,4 @@
-import { Equation, Token, UnknownToken, Expression } from './classes.js';
+import { Equation, Token, UnknownToken, Expression, UMinusToken } from './classes.js';
 
 export function parseGrammar(expression, parent = null, parentIndex = null) {
   //return different things depending on what the node's operator is
@@ -9,21 +9,11 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     eqn.right = parseGrammar(operands[1], eqn);
     return eqn;
   } else if (expression.operator === 'CONST') {
-    return new Token(
-      parent,
-      [expression],
-      [parentIndex],
-      parent.node && parent.node.operator === 'PLUS' && parentIndex > 0,
-    );
+    return new Token(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'VAR') {
     return new Token(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UMINUS') {
-    return new Token(
-      parent,
-      [expression],
-      [parentIndex],
-      parent.node && parent.node.operator === 'PLUS' && parentIndex > 0,
-    );
+    return new UMinusToken(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UNKNOWN') {
     return new UnknownToken(parent, expression, [parentIndex]);
   } else if (expression.operator === 'PLUS') {
@@ -37,17 +27,22 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     let items = groupNodes(exp, operands);
     if (items.length === 1) {
       let token = items[0];
-      token.node = token.nodes[0] = {
-        ...token.node,
-        sign: token.node.sign * expression.sign,
-        path: token.node.path.slice(0, -1),
-      };
+      if (token instanceof UMinusToken) {
+        token.node = {
+          ...token.node,
+          sign: token.node.sign * expression.sign,
+          path: token.node.path.slice(0, -1),
+        };
+      } else {
+        token.node = token.nodes[0] = {
+          ...token.node,
+          sign: token.node.sign * expression.sign,
+          path: token.node.path.slice(0, -1),
+        };
+      }
       token.indices = [parentIndex];
       token.parent = parent;
-      console.log(token.value(), parent.node.operator === 'PLUS', parentIndex > 0);
-
-      token.hideSign = parent.node && parent.node.operator === 'PLUS' && parentIndex > 0;
-      return items[0];
+      return token;
     }
     exp.items = items;
     return exp;
@@ -75,11 +70,19 @@ function groupNodes(parent, nodes) {
   return groups.map((group, i) => {
     if (group.length === 1) return parseGrammar(group[0], parent, nodes.indexOf(group[0]));
     else {
-      return new Token(
-        parent,
-        group,
-        group.map((n) => nodes.indexOf(n)),
-      );
+      if (group[0].operator === 'UMINUS') {
+        return new UMinusToken(
+          parent,
+          group,
+          group.map((n) => nodes.indexOf(n)),
+        );
+      } else {
+        return new Token(
+          parent,
+          group,
+          group.map((n) => nodes.indexOf(n)),
+        );
+      }
     }
   });
 }

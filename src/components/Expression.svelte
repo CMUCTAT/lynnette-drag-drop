@@ -101,7 +101,7 @@
         {#if item instanceof Expression}
           <svelte:self expression={item} />
         {:else if item instanceof Token}
-          <TokenComponent token={item} />
+          <TokenComponent token={item} isSubtract={i > 0 && item.node.sign < 0} />
         {:else}
           <Operator operator={item} siblings={[top[i - 1], top[i + 1]]} />
         {/if}
