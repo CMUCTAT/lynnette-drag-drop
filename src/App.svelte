@@ -19,7 +19,6 @@
   function onUndo() {
     history.undo();
     if ($lastCorrect === $history.current) {
-      error.set(null);
       alienState.set(null);
     }
   }
@@ -210,7 +209,7 @@
   </div>
   <div class="main">
     {#if $history.current}
-      <div class="equation" class:disable={$error}>
+      <div class="equation" class:disable={$error && $lastCorrect !== $history.current}>
         <Equation error={$error} equation={parseGrammar($history.current)} />
         {#if $dragdropData.drop}
           <div class="draft-equation">
@@ -221,7 +220,7 @@
     {/if}
   </div>
   <div class="buttons">
-    <Buttons error={$error} {onUndo} />
+    <Buttons error={$error && $lastCorrect !== $history.current} {onUndo} />
 
     <button
       class="mute"

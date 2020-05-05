@@ -2,6 +2,7 @@ import { writable, get } from 'svelte/store';
 // import { history } from './history.js';
 import { Equation, Token, Expression, UnknownToken, Operators } from '../classes.js';
 import { history } from './history';
+import { error } from './messageManager';
 
 function createDragdropData() {
   const { subscribe, set, update } = writable({ drag: null, drop: null });
@@ -105,10 +106,12 @@ function createDraftEquation() {
       parse.algStringify(eqn),
     );
     console.log(`%c${sai.toXMLString()}`, 'color: #15f');
+    // console.log(parse.algStringify(get(history).current), parse.algStringify(eqn));
 
     if (CTATCommShell.commShell) {
       CTATCommShell.commShell.processComponentAction(sai);
     }
+    error.set(null);
     if (
       get(history).current !== eqn &&
       parse.algStringify(get(history).current) !== parse.algStringify(eqn)

@@ -6,16 +6,16 @@
  * CTATCommShell whenever the student has completed a problem
  */
 
-import { showMessages, lastCorrect, error, alienState } from "./stores/messageManager";
-import { draftEquation } from "./stores/equation";
-import { history } from "./stores/history";
-import { get } from "svelte/store";
-import soundEffects from "./soundEffect";
+import { showMessages, lastCorrect, error, alienState } from './stores/messageManager';
+import { draftEquation } from './stores/equation';
+import { history } from './stores/history';
+import { get } from 'svelte/store';
+import soundEffects from './soundEffect';
 
 export function onSuccess(finish, delay = 500) {
-  alienState.set("success");
+  alienState.set('success');
   showMessages.set(false);
-  soundEffects.play("haHa");
+  soundEffects.play('haHa');
   setTimeout(() => {
     finish();
   }, delay);
@@ -23,19 +23,18 @@ export function onSuccess(finish, delay = 500) {
 
 export function handleCorrectAction(evt, msg) {
   showMessages.set(false);
-  error.set(null);
   lastCorrect.set(get(history).current);
   alienState.set(null);
 }
 
 export function handleInCorrectAction(evt, msg) {
   var sai = msg.getSAI();
-  if (sai.getSelection() != "done") {
+  if (sai.getSelection() != 'done') {
     error.set(sai.getSelection());
-    if (get(alienState) !== "error") {
+    if (get(alienState) !== 'error') {
       showMessages.set(false);
-      soundEffects.play("hmm");
-      alienState.set("error");
+      soundEffects.play('hmm');
+      alienState.set('error');
     }
   }
 }
@@ -54,22 +53,22 @@ export function handleAssociatedRules(evt, msg) {}
 
 export function handleBuggyMessage(evt, msg) {
   showMessages.set(true);
-  if (get(alienState) !== "error") {
-    soundEffects.play("hmm");
-    alienState.set("error");
+  if (get(alienState) !== 'error') {
+    soundEffects.play('hmm');
+    alienState.set('error');
   }
 }
 
 export function handleSuccessMessage(evt, msg) {
-  alienState.set("success");
-  soundEffects.play("haHa");
+  alienState.set('success');
+  soundEffects.play('haHa');
 }
 
 export function handleInterfaceAction(evt, msg) {
-  if (!msg || typeof msg === "string" || msg instanceof String) return;
+  if (!msg || typeof msg === 'string' || msg instanceof String) return;
   var sai = msg.getSAI();
   var input = sai.getInput();
-  console.log("INPUT:", input);
+  console.log('INPUT:', input);
   if (input) {
     let parsedInput = parse.algParse(input);
     history.push(parsedInput);
@@ -83,7 +82,7 @@ export function handleShowHintsMessage(evt, msg) {
   console.log(msg.getXMLString());
 
   showMessages.set(true);
-  alienState.set("hint");
+  alienState.set('hint');
 }
 
 export function handleTutoringServiceError(evt, msg) {}
