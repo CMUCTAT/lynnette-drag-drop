@@ -40,8 +40,8 @@
   }
   .Alien {
     position: relative;
-    height: 78%;
-    padding: 15% 10% 5% 10%;
+    height: 100%;
+    width: 100%;
   }
   .alien-face {
     position: absolute;
@@ -49,9 +49,12 @@
     left: 0;
   }
   .image-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 </style>
 

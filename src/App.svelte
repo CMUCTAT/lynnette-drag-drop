@@ -13,6 +13,7 @@
   import Alien from './components/menu/Alien.svelte';
 
   let muted = document.cookie.split('muted=')[1] === 'true';
+  soundEffects.mute(muted);
 
   import { showMessages, lastCorrect, error, alienState } from './stores/messageManager.js';
 
