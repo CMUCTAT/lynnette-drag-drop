@@ -21,6 +21,7 @@
     history.undo();
     if ($lastCorrect === $history.current) {
       alienState.set(null);
+      error.set(null);
     }
   }
 

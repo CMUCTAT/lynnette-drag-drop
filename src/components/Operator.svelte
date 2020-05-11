@@ -1,11 +1,11 @@
 <script>
-  import { Operators } from "../classes.js";
-  import { draftEquation } from "../stores/equation.js";
+  import { Operators } from '../classes.js';
+  import { draftEquation } from '../stores/equation.js';
 
   export let operator;
   export let siblings = null;
 
-  $: divide = operator === "DIVIDE";
+  $: divide = operator === 'DIVIDE';
 
   function handleDoubleCLick(e) {
     draftEquation.draftOperation(siblings[0], siblings[1]);

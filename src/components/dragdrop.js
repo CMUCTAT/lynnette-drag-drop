@@ -27,7 +27,6 @@ export function dragdrop(node, parameters) {
     if (event.button !== 0) return;
     x = event.clientX;
     y = event.clientY;
-    console.log(event);
 
     offset = { x, y };
 
