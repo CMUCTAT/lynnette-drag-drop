@@ -13,12 +13,24 @@
       return items.reduce((a, c, i) => {
         return i === 0 ? [c] : a.concat([c.node.sign > 0 ? 'PLUS' : 'MINUS', c]);
       }, []);
-    else return items.reduce((a, c, i) => (i === 0 ? [c] : a.concat(['TIMES', c])), []);
+    else
+      return items.reduce(
+        (a, c, i) =>
+          i === 0 || isDistribution(c, items[i - 1]) ? a.concat(c) : a.concat(['TIMES', c]),
+        [],
+      );
+  }
+
+  function isDistribution(item, prevItem) {
+    return (item.node.parens || prevItem.node.parens) && expression.node.operator === 'TIMES';
   }
 
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS';
-    top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd);
+    top = insertOperators(
+      isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0),
+      isAdd,
+    );
     bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
   }
 </script>
@@ -34,7 +46,7 @@
     flex-direction: column;
   }
   .expression-display.parens {
-    margin: 0 4px;
+    margin: 0 6px;
     padding: 0 2px;
   }
   .expression-display.parens:after {
@@ -74,7 +86,10 @@
   }
 </style>
 
-<div class="expression-display" class:divide={bottom.length > 0} class:parens={expression.parens}>
+<div
+  class="expression-display"
+  class:divide={bottom.length > 0}
+  class:parens={expression.node.parens}>
   <div class="item-display top">
     {#each top as item, i (item.id || item + i)}
       {#if item instanceof Expression}

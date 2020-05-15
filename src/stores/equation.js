@@ -57,7 +57,7 @@ function createDraftEquation() {
       return eqn;
     //we determine what to do based on what the src and dest is
     //some of these may never trigger given how the interface manages type checking for its drag/drop operations
-    console.log(src, dest);
+    // console.log(src, dest);
     if (src instanceof Token) {
       if (dest instanceof Token) {
         return tokenToToken(src, dest, eqn);
@@ -105,7 +105,7 @@ function createDraftEquation() {
       dragOperation.from + 'To' + dragOperation.to,
       parse.algStringify(eqn),
     );
-    console.log(`%c${sai.toXMLString()}`, 'color: #15f');
+    // console.log(`%c${sai.toXMLString()}`, 'color: #15f');
     // console.log(parse.algStringify(get(history).current), parse.algStringify(eqn));
 
     if (CTATCommShell.commShell) {
@@ -117,7 +117,7 @@ function createDraftEquation() {
       parse.algStringify(get(history).current) !== parse.algStringify(eqn)
     ) {
       history.push(eqn);
-      console.log(parse.algStringify(eqn), eqn);
+      // console.log(parse.algStringify(eqn), eqn);
     }
     return eqn;
   }
@@ -230,14 +230,12 @@ function tokenToExpression(src, dest, eqn) {
     let parent = Object.path(eqn, srcPath.slice(0, -2));
     let i0 = parseInt(srcPath.slice(-1)[0]);
     let i1 = parseInt(destPath.slice(-1)[0]);
-    console.log(i0, i1);
-
     let next = parse.algReplaceExpression(
       eqn,
       parent,
       parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, i0, i1),
     );
-    //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negativ exponent), it only happens with 1/k; this is because of removeIdentity
+    //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negative exponent), it only happens with 1/k; this is because of removeIdentity
     return parse.algParse(parse.algStringify(next));
   } else {
     return eqn;

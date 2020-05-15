@@ -1,8 +1,8 @@
 import("productionrulesMB.nools");
 
 global pName = "20eq4x";
-global initLeft = "20";
-global initRight = "4x";
+global initLeft = "20(-x)";
+global initRight = "6 * 4(x-2) * 3";
 global dragNDrop = true;
 
 global parseProblem = true;

@@ -40,7 +40,7 @@ export function handleInCorrectAction(evt, msg) {
 }
 
 export function handleHighlightMsg(evt, msg) {
-  console.log(1);
+  // console.log(1);
 }
 
 export function handleUnHighlightMsg(evt, msg) {}
@@ -52,6 +52,8 @@ export function handleStartProblem(evt, msg) {}
 export function handleAssociatedRules(evt, msg) {}
 
 export function handleBuggyMessage(evt, msg) {
+  console.log(msg.getXMLString());
+
   showMessages.set(true);
   if (get(alienState) !== 'error') {
     soundEffects.play('hmm');

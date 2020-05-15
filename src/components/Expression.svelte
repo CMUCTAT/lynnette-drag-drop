@@ -18,12 +18,24 @@
       return items.reduce((a, c, i) => {
         return i === 0 ? [c] : a.concat([c.node.sign > 0 ? 'PLUS' : 'MINUS', c]);
       }, []);
-    else return items.reduce((a, c, i) => (i === 0 ? [c] : a.concat(['TIMES', c])), []);
+    else
+      return items.reduce(
+        (a, c, i) =>
+          i === 0 || isDistribution(c, items[i - 1]) ? a.concat(c) : a.concat(['TIMES', c]),
+        [],
+      );
+  }
+
+  function isDistribution(item, prevItem) {
+    return (item.node.parens || prevItem.node.parens) && expression.node.operator === 'TIMES';
   }
 
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS';
-    top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd);
+    top = insertOperators(
+      isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0),
+      isAdd,
+    );
     bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
   }
 </script>
@@ -42,7 +54,7 @@
   .parens:after {
     content: '';
     position: absolute;
-    left: 0px;
+    left: 2px;
     top: 0;
     bottom: 0;
     width: 8px;
@@ -52,7 +64,7 @@
   .parens:before {
     content: '';
     position: absolute;
-    right: 0px;
+    right: 2px;
     top: 0;
     bottom: 0;
     width: 8px;
@@ -95,7 +107,14 @@
     dragdropData.setDrop(expression);
     draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
   }}>
-  <div slot="dropzone" class="expression no-highlight dropzone" class:dragging class:hovering class:draghovering class:divide={bottom.length > 0} class:parens={expression.node.parens}>
+  <div
+    slot="dropzone"
+    class="expression no-highlight dropzone"
+    class:dragging
+    class:hovering
+    class:draghovering
+    class:divide={bottom.length > 0}
+    class:parens={expression.node.parens}>
     <div class="item-display top">
       {#each top as item, i (item.id || item + i)}
         {#if item instanceof Expression}
