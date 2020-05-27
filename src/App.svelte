@@ -27,10 +27,18 @@
 
   let historyScroll;
 
+  $: parsedEqn = parseGrammar($history.current)
+  let parsedDraft = parseGrammar($draftEquation);
+  $: if ($draftEquation) {
+    try {
+      parsedDraft = parseGrammar($draftEquation);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
   afterUpdate(() => {
     historyScroll.scrollTop = historyScroll.scrollHeight;
-    if ($history.current)
-      console.log($history.current, parseGrammar($history.current))
   });
 </script>
 
@@ -214,10 +222,10 @@
   <div class="main">
     {#if $history.current}
       <div class="equation" class:disable={$error && $lastCorrect !== $history.current}>
-        <Equation error={$error} equation={parseGrammar($history.current)} />
+        <Equation error={$error} equation={parsedEqn} />
         {#if $dragdropData.drop}
           <div class="draft-equation">
-            <Equation equation={parseGrammar($draftEquation)} />
+            <Equation equation={parsedDraft} />
           </div>
         {/if}
       </div>

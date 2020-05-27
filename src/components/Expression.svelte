@@ -32,6 +32,7 @@
 
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS';
+    console.log(isAdd, expression);
     top = insertOperators(
       isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0),
       isAdd,

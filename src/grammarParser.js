@@ -1,7 +1,8 @@
-import { Equation, Token, UnknownToken, Expression, UMinusToken } from './classes.js';
+import { Equation, Token, UnknownToken, Expression, UMinusToken, UPlusToken } from './classes.js';
 
 export function parseGrammar(expression, parent = null, parentIndex = null) {
   //return different things depending on what the node's operator is
+
   if (expression.operator === 'EQUAL') {
     let operands = parse.algGetOperands(expression);
     let eqn = new Equation(null); //null equation has to be made first to pass it in as a parent
@@ -14,6 +15,8 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     return new Token(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UMINUS') {
     return new UMinusToken(parent, [expression], [parentIndex]);
+  } else if (expression.operator === 'UPLUS') {
+    return new UPlusToken(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UNKNOWN') {
     return new UnknownToken(parent, expression, [parentIndex]);
   } else if (expression.operator === 'PLUS') {
@@ -21,7 +24,7 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     let exp = new Expression(parent, expression, []);
     exp.items = operands.map((node, i) => parseGrammar(node, exp, i));
     return exp;
-  } else if (expression.operator === 'TIMES') {
+  } else if (expression.operator === 'TIMES' || expression.operator === 'ITIMES') {
     let operands = parse.algGetOperands(expression);
     let exp = new Expression(parent, expression, []);
     let items = groupNodes(exp, operands);
@@ -47,8 +50,7 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     exp.items = items;
     return exp;
   } else {
-    //this shouldn't happen, but nulls are just ignored by the interface renderer
-    return null;
+    throw new TypeError("Grammar has type that isn't handled by the grammar parser");
   }
 }
 

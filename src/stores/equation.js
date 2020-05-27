@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-// import { history } from './history.js';
+import { parseGrammar } from '../grammarParser';
 import { Equation, Token, Expression, UnknownToken, Operators } from '../classes.js';
 import { history } from './history';
 import { error } from './messageManager';
@@ -16,9 +16,9 @@ export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
 
-const initial = null;
-// const initial = parse.algParse('(6 - x)/-1=3/-1');
-// history.push(initial);
+// const initial = null;
+const initial = parse.algParse('-6 + x - -6 = 3');
+history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
 let dragOperation = {
@@ -96,6 +96,12 @@ function createDraftEquation() {
    * @returns the current draft equation (shouldn't have been modified)
    */
   function apply(eqn) {
+    try {
+      parseGrammar(eqn);
+    } catch (e) {
+      console.log(e);
+      return;
+    }
     let sai = new CTATSAI(
       dragOperation.side,
       dragOperation.from + 'To' + dragOperation.to,

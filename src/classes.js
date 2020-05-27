@@ -67,6 +67,12 @@ export class UMinusToken extends Token {
   }
 }
 
+export class UPlusToken extends Token {
+  constructor(parent, nodes, indices) {
+    super(parent, [nodes[0].base, ...nodes.slice(1)], indices, nodes[0]);
+  }
+}
+
 export class UnknownToken extends Token {
   constructor(parent, node, indices) {
     super(parent, [node], indices);
