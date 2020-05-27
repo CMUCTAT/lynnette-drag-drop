@@ -2,7 +2,7 @@ import { Equation, Token, UnknownToken, Expression, UMinusToken, UPlusToken } fr
 
 export function parseGrammar(expression, parent = null, parentIndex = null) {
   //return different things depending on what the node's operator is
-
+  if (!expression) return null;
   if (expression.operator === 'EQUAL') {
     let operands = parse.algGetOperands(expression);
     let eqn = new Equation(null); //null equation has to be made first to pass it in as a parent
