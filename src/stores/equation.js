@@ -16,9 +16,9 @@ export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
 
-// const initial = null;
-const initial = parse.algParse('-6 + x - -6 = 3');
-history.push(initial);
+const initial = null;
+// const initial = parse.algParse('-6 + x - -6 = 3');
+// history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
 let dragOperation = {
