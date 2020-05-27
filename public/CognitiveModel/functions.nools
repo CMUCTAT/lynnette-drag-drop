@@ -251,6 +251,7 @@ function multiplyExpBy(exp, multVal, side, p) {
 }
 
 function addTermToExp(probFact, exp, termCoeff, termVar, side, cancelTerm) {
+	
 	var movedTerms = probFact.movedSimpleTerms;
 	var termCancel = probFact.termToBeCanceled;
 	var newTerm = assert(new simpleTerm(termCoeff, termVar, side));	
@@ -273,12 +274,14 @@ function addTermToExp(probFact, exp, termCoeff, termVar, side, cancelTerm) {
 	modify(probFact,"movedSimpleTerms",newMovedTerms);
 	
 	//keep record of variable and constant side
+	/*
 	if (!probFact.variableSide) {
 		let cs = (!!termVar === !!cancelTerm) ? side : (side === "right" ? "left" : "right");
 		let vs = (cs === "right") ? "left" : "right";
 		modify(probFact,"constantSide",cs);
 		modify(probFact,"variableSide",vs);
 	}
+	*/
 }
 
 function applyTransformation(probFact, pt) {

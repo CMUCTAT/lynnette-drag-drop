@@ -50,7 +50,7 @@ export class Token extends EquationNode {
       .reduce((sign, cur) => cur.sign * sign, mult)
       .toString()
       .replace('1', '');
-    return sign + this.nodes.map((n) => n.value || n.variable).join('');
+    return sign + this.nodes.map((n) => (n.value !== undefined ? n.value : n.variable)).join('');
   }
 }
 

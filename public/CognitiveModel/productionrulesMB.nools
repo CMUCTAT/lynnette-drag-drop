@@ -47,8 +47,7 @@ rule bootstrap {
 		
 		//whether this interface uses diagrams 
 		try {
-			//config.useDiagrams = useDiagrams;
-			config.useDiagrams = (getInterfaceType() === "diagrams");
+			config.useDiagrams = (interfaceType === "diagrams") || (getInterfaceType() === "diagrams");
 		} catch(e) {}
 		
 		//whether negative terms are allowed to be created by transformations
@@ -58,8 +57,7 @@ rule bootstrap {
 		
 		//whether this interface uses drag n' drop
 		try {
-			//config.dragNDrop = dragNDrop; 
-			config.dragNDrop = (getInterfaceType() === "dragndrop");
+			config.dragNDrop = (interfaceType === "dragndrop") || (getInterfaceType() === "dragndrop");
 		} catch (e) {}
 		if (config.dragNDrop) {
 			config.shallowSearch = true;
@@ -199,29 +197,42 @@ rule HintFinishTransformationDragNDrop {
 	when {
 		p: Problem p.dragNDrop;
 		ci: cycleInfo ci.selection === "hint";
-		ri: rowInfo ri.transformations.length {transformations: rowT};
-		ie1: interfaceElementDnd ie1.operand && ie1.operator;
-		ie2: interfaceElementDnd !ie2.operand || !ie2.operator {side: s};
+		pt: PartialTransformation;
+		ie1: interfaceElementDnd ie1.side === "left";
+		ie2: interfaceElementDnd ie2 !== ie1 {side: s};
 	} then {
-		var transform = rowT[0],
-			expAfter = transform.expAfter,
-			operand = transform.operand,
-			thisSide = s,
-			otherSide = s === "left" ? "right" : "left",
-			input = expAfter.split("=")[thisSide === "left" ? 0 : 1];
-		switch(transform.operation) {
-			case 'subtraction':
-				assert(new Hint("You subtracted "+operand+" from the "+otherSide+", now do the same on the "+thisSide+"."));
-				break;
-			case 'addition':
-				assert(new Hint("You added "+operand+" to the "+otherSide+", now do the same on the "+thisSide+"."));
-				break;
-			case 'division-simple':
-			case 'division-complex':
-				assert(new Hint("You divided the "+otherSide+" by "+operand+", now do the same on the "+thisSide+"."));
-				break;
+		var hasOperator = [],
+			hasOperand = [];
+		var operator = pt.operation;
+		[ie1,ie2].forEach((ie)=>{
+			if (ie.operand) {
+				hasOperand.push(ie);
+			}
+			if (ie.operator) {
+				hasOperator.push(ie);
+			}
+		});
+		if (hasOperator.length === 1) {
+			assert(new Hint("Now drag the same operator onto the other side of the equation"));
 		}
-		assert(new Hint("Enter "+input+" on the "+thisSide+" side."));
+		else if (!hasOperand.length) {
+			var hintStr = "Now fill in the blank boxes with the term you want to ";
+			switch(ie1.operator) {
+				case 'subtraction':
+					hintStr+='subtract';
+					break;
+				case 'multiplication':
+					hintStr += 'multiply by';
+					break;
+				case 'division':
+					hintStr += 'divide by';
+					break;
+			}
+			assert(new Hint(hintStr)); 
+		} else {
+			assert(new Hint("Now fill in the same operand on the other side of the equation"));
+		}
+	
 		backtrack();
 	}
 }
@@ -268,6 +279,13 @@ rule focusSolutionStepDragNDrop {
 			console.log("focusSolutionStepDragNDrop, sv is ");
 			console.log(sv);
 			console.log("stepType is "+stepType);
+			
+			//change "+ ?" to "- ?"
+			console.log("input before: "+sv.input);
+			let input = sv.input.replace(/\+ ?\?/g, '-?');
+			console.log("input after: "+input);
+			modify(sv, "input", input);
+			
 			assert(new cycleInfo(side, side, true, p.nTransLastCycle, eStr, stepType, ie1));	
 		} else {
 			backtrack();
@@ -532,7 +550,7 @@ rule writeDragNDropTransformation {
 				undoAll();
 			}else{
 				//correct
-				modify(ie1, ciStepType, "done");    
+				modify(ie1, ciStepType, ciStepType === "operator" ? pt.operator : simpleTermStr(pt.operand));    
 				modify(ri, "modified", false);
 				if ( ie1.operator && ie1.operand && ie2.operator && ie2.operand ) {
 					//whole row completed

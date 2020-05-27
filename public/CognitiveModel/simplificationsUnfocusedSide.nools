@@ -74,7 +74,7 @@ rule DistributeMultiplicationOtherSide{
 			expSide = e.side;
 			
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		
 		if(ci.selection === "hint") {
 			backtrack();
@@ -166,7 +166,7 @@ rule DistributeDivisionOtherSide {
 
 			var input = eqStr(newTerms);
 			var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-			setCTNodeData(fullExp);
+			//setCTNodeData(fullExp);
 			
 			if (inputRepeated(input, eSide)) {
 				backtrack();
@@ -223,7 +223,7 @@ rule CancelDivisionOtherSide {
 		
 		var input = eqStr(dtNumerExpTerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, dtNumerExpTerms) : eqStr(dtNumerExpTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		
 		if (inputRepeated(input, eSide)) {
 			backtrack();
@@ -305,7 +305,7 @@ rule CombineDivTermsOtherSide {
 
 		var input = eqStr(newETerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newETerms) : eqStr(newETerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (ci.selection === "hint") {
 			
 			backtrack();
@@ -379,7 +379,7 @@ rule MultiplyOtherSide{
 		retract(factorTerm2);
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -468,7 +468,7 @@ rule DivideProductTermOtherSide{
 
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -550,7 +550,7 @@ rule DivideOtherSide {
 
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -634,7 +634,7 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 		var input = eqStr(newTerms),
 			isConst = !v;
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -693,7 +693,7 @@ rule CancelTermsOtherSide {
 		var input = eqStr(topLevelExpr.terms),
 			isConst = !v;
 		var fullExp = (s === "left" ? eqStr(otherE.terms, topLevelExpr.terms) : eqStr(topLevelExpr.terms, otherE.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {

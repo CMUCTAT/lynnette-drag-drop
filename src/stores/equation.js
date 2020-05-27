@@ -15,13 +15,9 @@ function createDragdropData() {
 export const dragdropData = createDragdropData();
 const parse = new CTATAlgebraParser();
 window.parse = parse;
-// window.setEqn = (newEqn) => {
-//   history.reset();
-//   history.push(window.parse.algParse(newEqn));
-// };
 
 const initial = null;
-// const initial = parse.algParse('-7x - 5 - 2y - (-y) = -x');
+// const initial = parse.algParse('(6 - x)/-1=3/-1');
 // history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
@@ -233,7 +229,7 @@ function tokenToExpression(src, dest, eqn) {
     let next = parse.algReplaceExpression(
       eqn,
       parent,
-      parse.algApplyRulesSelectively(parent, ['distribute', 'removeIdentity'], false, i0, i1),
+      parse.algApplyRulesSelectively(parent, ['distribute'], false, i0, i1),
     );
     //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negative exponent), it only happens with 1/k; this is because of removeIdentity
     return parse.algParse(parse.algStringify(next));

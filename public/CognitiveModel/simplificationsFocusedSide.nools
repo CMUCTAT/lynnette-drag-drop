@@ -1,21 +1,18 @@
+
 rule DistributeMultiplication{
 	salience: 5;
 	when{
+		p: Problem;
 		ci: cycleInfo !ci.copyOK && !ci.simplification {focus : s};
 		ri: rowInfo;
 		pt: productTerm;
 		factorExpr1: Expr (factorExpr1 === pt.factors[0] || factorExpr1 === pt.factors[1]) && factorExpr1.terms.length > 1;
 		factorExpr2: Expr (factorExpr2 === pt.factors[1] || factorExpr2 === pt.factors[0]) && factorExpr2 !== factorExpr1;
 		e: Expr pt in e.terms && (e.side === s || s === "full");
-		topLevelE: Expr topLevelE.topLevel && (topLevelE.side === s || s === "full");
-		otherE: Expr otherE.topLevel && otherE.side !== s;
-	}then {
-	/*	
-		var pt = simpData.pt,
-			factorExpr1 = simpData.factorExpr1,
-			factorExpr2 = simpData.factorExpr2,
-			e = simpData.e;
-	*/		
+	}then {	
+		var topLevelExps = getFacts("Expr").filter((e)=>e.topLevel).sort((a,b)=>a.side==="left" ? -1 : 1);
+		var topLevelE = (s === "left" || s === "full") ? topLevelExps[0] : topLevelExps[1],
+			otherE = 	(s === "left" || s === "full") ? topLevelExps[1] : topLevelExps[0];
 		modify(ci,"opStr", ci.opStr+'s');
 		// creating a productTerm for every term
 		var allTerms = [];
@@ -70,13 +67,18 @@ rule DistributeMultiplication{
 
 		var input = eqStr(topLevelE.terms), 
 			expSide = e.side;
+
 		var fullExp = (s === "left" ? eqStr(topLevelE.terms, otherE.terms) : eqStr(otherE.terms, topLEvelE.terms));
 		setCTNodeData(fullExp);	
 		if(ci.selection === "hint") {
 			setChainPriority(1);
 			assert(new Hint("You can simplify the "+s+" side by distributing the multiplication"));
 			assert(new Hint("Multiply each of the terms in the expression "+eqStr(factorExpr1.terms)+" by "+eqStr(factorExpr2.terms)));
-			assert(new Hint("Enter "+input+" on the "+s+" side"));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag "+eqStr(factorExpr2.terms)+" over "+eqStr(factorExpr1.terms)));
+			} else {
+				assert(new Hint("Enter "+input+" on the "+s+" side"));
+			}
 			backtrack();
 		}else if(inputRepeated(input, expSide)){
 			backtrack();
@@ -183,7 +185,7 @@ rule DistributeDivision{
 
 			var input = eqStr(newTerms);
 			var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
-			setCTNodeData(fullExp);
+			//setCTNodeData(fullExp);
 			if (inputRepeated(input, eSide)) {
 				backtrack();
 			} else if (ci.selection !== "hint") {
@@ -194,7 +196,11 @@ rule DistributeDivision{
 				setChainPriority(1);
 				assert(new Hint("You have to distribute the division term on the "+eSide+" in order to simplify it"));
 				assert(new Hint("Divide each of the terms in the numerator ("+terms.map((t)=>termStr(t)).join(", ")+") by the denominator ("+termStr(coeffTerm)+")"));
-				assert(new Hint("Enter "+input+" on the "+eSide));
+				if (p.dragNDrop) {
+					assert(new Hint("Drag "+termStr(coeffTerm)+" over the expression in the numerator."));
+				} else {
+					assert(new Hint("Enter "+input+" on the "+eSide));
+				}
 				backtrack();
 			} else {
 				backtrack();
@@ -204,6 +210,8 @@ rule DistributeDivision{
 		}
 	}
 }
+
+
 
 rule CancelDivision {
 	salience: 5;
@@ -242,7 +250,7 @@ rule CancelDivision {
 		
 		var input = eqStr(dtNumerExpTerms);
 		var fullExp = (s === "left" ? eqStr(dtNumerExpTerms, otherE.terms) : eqStr(otherE.terms, dtNumerExpTerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -253,13 +261,19 @@ rule CancelDivision {
 			setChainPriority(1);
 			assert(new Hint("You can cancel terms in the division term on the "+eSide+" side."));
 			assert(new Hint("The "+cancelTermStr+" in the denominator cancels out the "+cancelTermStr+" in the numerator, so you can remove those terms from the expression."));
-			assert(new Hint("Enter "+input+" on the "+eSide));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag the "+cancelTermStr+" in the denominator over the same term in the numerator."));
+			} else {
+				assert(new Hint("Enter "+input+" on the "+eSide));
+			}
 			backtrack();
 		} else {
 			backtrack();
 		}
 	}
 }
+
+
 
 rule CombineDivTerms {
 	salience: 5;
@@ -323,7 +337,7 @@ rule CombineDivTerms {
 
 		var input = eqStr(newETerms);
 		var fullExp = (s === "left" ? eqStr(newETerms, otherE.terms) : eqStr(otherE.terms, newETerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (ci.selection === "hint") {
 			
 			backtrack();
@@ -380,7 +394,7 @@ rule Multiply{
 		retract(factorTerm2);
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -390,7 +404,11 @@ rule Multiply{
 			setChainPriority(1);
 			assert(new Hint("You can simplify the "+eSide+" side by multiplying two terms together."));
 			assert(new Hint("What does "+simpleTermStr(factorTerm1)+" * "+simpleTermStr(factorTerm2)+" evaluate to?"));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag "+simpleTermStr(factorTerm1)+" over "+simpleTermStr(factorTerm2)+" to multiply them."));
+			} else {
+				assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			}
 			backtrack();
 		} else {
 			backtrack();
@@ -461,7 +479,7 @@ rule DivideProductTerm{
 
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if(inputRepeated(input, eSide)){
 			backtrack();
 		}else{
@@ -528,7 +546,7 @@ rule Divide{
 
 		var input = eqStr(newTerms);
 		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -540,7 +558,11 @@ rule Divide{
 			var isConst = !dividend.var;
 			assert(new Hint("Now simplify the "+(isConst ? "constant" : "variable")+" term on the "+eSide+" side."));
 			assert(new Hint("What does "+divTermStr+" evaluate to?"));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag the denominator of "+divTermStr+" over the numerator."));
+			}else {
+				assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			}
 			backtrack();
 		} else {
 			backtrack();
@@ -616,7 +638,7 @@ rule CombineLikeTerms {   // terms don't cancel
 			isConst = !v;
 			
 		var fullExp = (s === "left" ? eqStr(newTerms, otherE.terms) : eqStr(otherE.terms, newTerms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		
 		if (inputRepeated(input, eSide)) {
 			backtrack();
@@ -630,7 +652,11 @@ rule CombineLikeTerms {   // terms don't cancel
 				term2 = termStr(t2);
 			assert(new Hint("You have two "+(isConst ? "constant" : "variable")+" terms on the "+eSide+" side that you can add together"));
 			assert(new Hint("On the "+eSide+" side, combine like terms by adding "+term1+" and "+term2+"."));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag "+term1+" onto "+term2));
+			} else {
+				assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			}
 			backtrack();
 		} else {
 			backtrack();
@@ -681,7 +707,7 @@ rule CancelTerms {
 		var input = eqStr(topLevelExpr.terms),
 			isConst = !v;
 		var fullExp = (s === "left" ? eqStr(topLevelExpr.terms, otherE.terms) : eqStr(otherE.terms, topLevelExpr.terms));
-		setCTNodeData(fullExp);
+		//setCTNodeData(fullExp);
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -694,7 +720,11 @@ rule CancelTerms {
 				term2 = termStr(t2);
 			assert(new Hint("On the "+eSide+" side, you have the terms "+term1+" and "+term2+". These terms cancel each other out."));
 			assert(new Hint("You can remove the terms "+term1+" and "+term2+" from the "+eSide+" side."));
-			assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			if (p.dragNDrop) {
+				assert(new Hint("Drag "+term1+" onto "+term2));
+			} else {
+				assert(new Hint("Enter "+input+" on the "+eSide+" side."));
+			}
 			backtrack();
 		} else {
 			backtrack();

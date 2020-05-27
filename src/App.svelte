@@ -29,6 +29,8 @@
 
   afterUpdate(() => {
     historyScroll.scrollTop = historyScroll.scrollHeight;
+    if ($history.current)
+      console.log($history.current, parseGrammar($history.current))
   });
 </script>
 
