@@ -35,11 +35,11 @@ export function handleInCorrectAction(evt, msg) {
       showMessages.set(false);
       soundEffects.play('hmm');
       alienState.set('error');
-      if (get(history).current === get(lastCorrect)) {
-        setTimeout(() => {
-          error.set(null);
-        }, 3000);
-      }
+    }
+    if (get(history).current === get(lastCorrect)) {
+      setTimeout(() => {
+        error.set(null);
+      }, 3000);
     }
   }
 }
