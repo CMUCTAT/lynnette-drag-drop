@@ -10,6 +10,7 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
     eqn.right = parseGrammar(operands[1], eqn);
     return eqn;
   } else if (expression.operator === 'CONST') {
+    // console.log(expression);
     return new Token(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'VAR') {
     return new Token(parent, [expression], [parentIndex]);

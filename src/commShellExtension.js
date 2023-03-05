@@ -36,11 +36,11 @@ export function handleInCorrectAction(evt, msg) {
       soundEffects.play('hmm');
       alienState.set('error');
     }
-    if (get(history).current === get(lastCorrect)) {
-      setTimeout(() => {
-        error.set(null);
-      }, 3000);
-    }
+    // if (get(history).current === get(lastCorrect)) {
+    //   setTimeout(() => {
+    //     error.set(null);
+    //   }, 3000);
+    // }
   }
 }
 
@@ -48,17 +48,15 @@ export function handleHighlightMsg(evt, msg) {
   // console.log(1);
 }
 
-export function handleUnHighlightMsg(evt, msg) {}
+export function handleUnHighlightMsg(evt, msg) { }
 
-export function handleStateGraph(evt, msg) {}
+export function handleStateGraph(evt, msg) { }
 
-export function handleStartProblem(evt, msg) {}
+export function handleStartProblem(evt, msg) { }
 
-export function handleAssociatedRules(evt, msg) {}
+export function handleAssociatedRules(evt, msg) { }
 
 export function handleBuggyMessage(evt, msg) {
-  console.log(msg.getXMLString());
-
   showMessages.set(true);
   if (get(alienState) !== 'error') {
     soundEffects.play('hmm');
@@ -92,11 +90,11 @@ export function handleShowHintsMessage(evt, msg) {
   alienState.set('hint');
 }
 
-export function handleTutoringServiceError(evt, msg) {}
+export function handleTutoringServiceError(evt, msg) { }
 
-export function handleProblemSummaryResponse(evt, msg) {}
+export function handleProblemSummaryResponse(evt, msg) { }
 
-export function handleProblemRestoreEnd(evt, msg) {}
+export function handleProblemRestoreEnd(evt, msg) { }
 
 // These events do not provide a pointer to a CTATMessage as the argument to the callback.
 

@@ -1,16 +1,13 @@
 <script>
   import { draftEquation, dragdropData } from '../stores/equation.js';
   import DragDrop from './DragDrop.svelte';
+  import { error } from '../stores/messageManager.js';
 
   export let token;
   export let isSubtract = false;
 
   function handleDragStart(e) {
     dragdropData.setDrag(token);
-  }
-
-  function handleDropReceive(e) {
-    draftEquation.apply();
   }
 
   function handleDragLeave(e) {
@@ -20,10 +17,21 @@
   function handleDragHover(e) {
     dragdropData.setDrop(token);
     draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
+    e.stopPropagation();
+  }
+
+  function handleDropSend(e) {
+    draftEquation.apply();
   }
 
   function handleUpdateToken(e) {
     draftEquation.updateToken(token, e.target.value);
+  }
+
+  function handleDropSucceed() {
+    // console.log($dragdropData.drag, $dragdropData.drag.parent, $dragdropData.drop);
+    // console.log($dragdropData.drag.parent !== $dragdropData.drop);
+    return $dragdropData.drag && $dragdropData.drag.parent !== $dragdropData.drop;
   }
   $: value = token.value(isSubtract ? -1 : 1);
 </script>
@@ -53,9 +61,9 @@
     background: none;
     color: #fff0;
     /* box-sizing: border-box;
-		opacity: 0;
-		transition: opacity 0.25s ease;
-		padding: 8px; */
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    padding: 8px; */
   }
   .dragging.dropzone {
     -webkit-text-stroke-color: #fff;
@@ -114,6 +122,9 @@
     border-right: solid 3px #fff;
     border-radius: 50%;
   }
+  .disabled {
+    pointer-events: none !important;
+  }
 </style>
 
 <div class="token" class:unknown={token.unknown} class:parens={token.node.parens}>
@@ -122,14 +133,17 @@
     let:hovering
     let:fade
     let:draghovering
+    id={token.id}
     canDrag={!token.unknown}
+    dropSend={handleDropSend}
     dragStart={handleDragStart}
-    dropReceive={handleDropReceive}
     dragLeave={handleDragLeave}
-    dragHover={handleDragHover}>
+    dragHover={handleDragHover}
+    dropSucceed={handleDropSucceed}>
     <div
       slot="dropzone"
       class="token-inner no-highlight dropzone"
+      class:disabled={$error}
       class:dragging
       class:hovering
       class:draghovering>

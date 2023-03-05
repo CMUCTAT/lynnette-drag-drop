@@ -26,6 +26,7 @@
   .CTATDoneButton :global(button) {
     background: #63fabb;
     color: #0c9769;
+    font-size: 20px;
   }
   .UndoButton button {
     background: #f1384d;
@@ -38,7 +39,7 @@
 
   .UndoButton button:after {
     opacity: 0;
-    content: "";
+    content: '';
     width: 100%;
     height: 100%;
     top: 50%;
@@ -69,13 +70,21 @@
       border-radius: 30px;
     }
   }
+
+  @media only screen and (max-width: 750px) {
+    .button :global(button) {
+      width: 70px;
+      height: 70px;
+      font-size: 20px;
+    }
+  }
 </style>
 
 <div>
   {#if error}
     <div class="UndoButton button">
       <button on:click={onUndo}>
-        <div class="icon">⮌</div>
+        <div class="icon">⤶</div>
         <div class="content">Undo</div>
       </button>
     </div>

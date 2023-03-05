@@ -28,10 +28,10 @@
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS';
     top = insertOperators(
-      isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0),
+      isAdd ? expression.items : expression.items.filter((item) => item.node.exp > 0),
       isAdd,
     );
-    bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
+    bottom = isAdd ? [] : insertOperators(expression.items.filter((item) => item.node.exp < 0));
   }
 </script>
 
@@ -95,7 +95,7 @@
       {#if item instanceof Expression}
         <svelte:self expression={item} />
       {:else if item instanceof Token}
-        <TokenDisplay token={item} isSubtract={i > 0 && item.node.sign < 0} />
+        <TokenDisplay token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
       {:else}
         <OperatorDisplay operator={item} />
       {/if}

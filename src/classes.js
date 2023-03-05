@@ -43,7 +43,7 @@ export class Token extends EquationNode {
   }
 
   stringify() {
-    return this.value;
+    return this.value();
   }
   value(mult = 1) {
     let sign = this.nodes

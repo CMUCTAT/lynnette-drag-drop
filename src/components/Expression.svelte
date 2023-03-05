@@ -1,8 +1,5 @@
 <script>
-  import { afterUpdate, beforeUpdate } from 'svelte';
-
   import { Token, Expression } from '../classes.js';
-  import ExpressionComponent from './Expression.svelte';
   import Operator from './Operator.svelte';
   import TokenComponent from './Token.svelte';
   import DragDrop from './DragDrop.svelte';
@@ -33,11 +30,26 @@
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS';
     top = insertOperators(
-      isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0),
+      isAdd ? expression.items : expression.items.filter((item) => item.node.exp > 0),
       isAdd,
     );
-    bottom = isAdd ? [] : insertOperators(expression.items.filter(item => item.node.exp < 0));
+    bottom = isAdd ? [] : insertOperators(expression.items.filter((item) => item.node.exp < 0));
   }
+
+  function handleDragLeave(e) {
+    dragdropData.setDrop(null);
+  }
+
+  function handleDragHover(e) {
+    dragdropData.setDrop(expression);
+    draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
+    e.stopPropagation();
+  }
+
+  // function handleDoubleCLick(e) {
+  //   draftEquation.draftOperation(siblings[0], siblings[1]);
+  //   draftEquation.apply();
+  // }
 </script>
 
 <style>
@@ -99,14 +111,9 @@
   let:hovering
   let:draghovering
   canDrag={false}
-  dropReceive={() => draftEquation.apply()}
-  dragLeave={() => {
-    dragdropData.setDrop(null);
-  }}
-  dragHover={() => {
-    dragdropData.setDrop(expression);
-    draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
-  }}>
+  id={expression.id}
+  dragLeave={handleDragLeave}
+  dragHover={handleDragHover}>
   <div
     slot="dropzone"
     class="expression no-highlight dropzone"
@@ -120,7 +127,7 @@
         {#if item instanceof Expression}
           <svelte:self expression={item} />
         {:else if item instanceof Token}
-          <TokenComponent token={item} isSubtract={i > 0 && item.node.sign < 0} />
+          <TokenComponent token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
         {:else}
           <Operator operator={item} siblings={[top[i - 1], top[i + 1]]} />
         {/if}

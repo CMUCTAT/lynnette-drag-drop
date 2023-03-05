@@ -114,13 +114,14 @@ function createDraftEquation() {
       CTATCommShell.commShell.processComponentAction(sai);
     }
     error.set(null);
-    if (
-      get(history).current !== eqn &&
-      parse.algStringify(get(history).current) !== parse.algStringify(eqn)
-    ) {
-      history.push(eqn);
-      // console.log(parse.algStringify(eqn), eqn);
-    }
+    history.push(eqn);
+    // if (
+    //   get(history).current !== eqn &&
+    //   parse.algStringify(get(history).current) !== parse.algStringify(eqn)
+    // ) {
+    //   history.push(eqn);
+    //   // console.log(parse.algStringify(eqn), eqn);
+    // }
     return eqn;
   }
 
@@ -138,7 +139,10 @@ function createDraftEquation() {
     dragOperation = { from: 'Update', to: 'Token', side: path[0] };
     let target = Object.path(eqn, path);
     let newToken = parse.algParse(value);
-    newToken.sign = target.sign;
+    if (newToken.sign === -1) {
+      newToken = parse.algParse(`(${value})`);
+    }
+    newToken.sign *= target.sign;
     newToken.exp = target.exp;
     let next = parse.algReplaceExpression(eqn, target, newToken);
     return apply(next);
@@ -183,6 +187,9 @@ function tokenToToken(src, dest, eqn) {
     let d = Object.path(eqn, flattenPath(dest.node.path));
     let isSubtract = Math.min(...src.indices) !== 0 && src.node.sign < 0;
     let s = parse.algParse(src.value(isSubtract ? -1 : 1));
+    if (s.sign === -1) {
+      s = parse.algParse(`(${src.value(isSubtract ? -1 : 1)})`);
+    }
     s.exp = d.exp;
     s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
     return parse.algReplaceExpression(eqn, d, s);

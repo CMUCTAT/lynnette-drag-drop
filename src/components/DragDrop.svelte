@@ -1,11 +1,14 @@
 <script>
   import { spring } from 'svelte/motion';
   import { dragdrop } from './dragdrop.js';
+  import { dragdropData } from '../stores/equation.js';
   import soundEffects from '../soundEffect.js';
 
   export let canDrag = true;
   export let canDragHover = true;
+  export let id;
 
+  export let dropSucceed = null;
   export let dropSend = null;
   export let dropReceive = null;
   export let dragStart = null;
@@ -29,6 +32,7 @@
   );
 
   function handleDragStart(event) {
+    if (!canDrag) return;
     coords.stiffness = coords.damping = 1;
     dragging = true;
     soundEffects.play('pop');
@@ -37,7 +41,7 @@
   }
 
   function handleDragMove(event) {
-    coords.update($coords => ({
+    coords.update(($coords) => ({
       // x: $coords.x + event.detail.dx,
       // y: $coords.y + event.detail.dy,
       x: event.detail.x - origin.x,
@@ -51,6 +55,7 @@
     coords.set({ x: 0, y: 0 });
     dragging = false;
     hovering = false;
+    dragdropData.setDrag(null);
   }
 
   function handleMouseEnter(event) {
@@ -74,17 +79,21 @@
   }
 
   function handleDropSend(event) {
-    // handleDragEnd(event);
     handleMouseLeave(event);
-    coords.stiffness = coords.damping = 1;
-    dropAnim = true;
-    setTimeout(() => {
-      coords.set({ x: 0, y: 0 });
-      dropAnim = false;
-      dragging = false;
-    }, 300);
-    soundEffects.play('click');
-    if (dropSend) dropSend(event);
+    if (dropSucceed === null || dropSucceed()) {
+      coords.stiffness = coords.damping = 1;
+      dropAnim = true;
+      setTimeout(() => {
+        coords.set({ x: 0, y: 0 });
+        dropAnim = false;
+        dragging = false;
+      }, 300);
+      soundEffects.play('click');
+      if (dropSend) dropSend(event);
+    } else {
+      handleDragEnd(event);
+    }
+    dragdropData.setDrag(null);
   }
 
   function handleDropReceive(event) {
@@ -111,11 +120,32 @@
   }
 </style>
 
-<div class="dragdrop" use:dragdrop={{ type: 'dragdrop', canDrag }} on:dragstart={handleDragStart} on:dragmove={handleDragMove} on:dragend={handleDragEnd} on:enter={handleMouseEnter} on:leave={handleMouseLeave} on:dragenter={handleDragEnter} on:dragleave={handleDragLeave} on:dropsend={handleDropSend} on:dropreceive={handleDropReceive} class:dragging class:returning class:hovering class:draghovering={dragHovering}>
+<div
+  class="dragdrop"
+  {id}
+  use:dragdrop={{ type: 'dragdrop', canDrag }}
+  on:dragstart={handleDragStart}
+  on:dragmove={handleDragMove}
+  on:dragend={handleDragEnd}
+  on:enter={handleMouseEnter}
+  on:leave={handleMouseLeave}
+  on:dragenter={handleDragEnter}
+  on:dragleave={handleDragLeave}
+  on:dropsend={handleDropSend}
+  on:dropreceive={handleDropReceive}
+  class:dragging
+  class:returning
+  class:hovering
+  class:draghovering={dragHovering}>
   <div class="dragdrop-dropzone">
     <slot name="dropzone" {dragging} draghovering={dragHovering} hovering={hovering && !dropAnim} />
   </div>
   <div class="dragdrop-mover" style="transform: translate({$coords.x}px,{$coords.y}px)">
-    <slot name="mover" {dragging} draghovering={dragHovering} hovering={hovering && !dropAnim} fade={dropAnim} />
+    <slot
+      name="mover"
+      {dragging}
+      draghovering={dragHovering}
+      hovering={hovering && !dropAnim}
+      fade={dropAnim} />
   </div>
 </div>

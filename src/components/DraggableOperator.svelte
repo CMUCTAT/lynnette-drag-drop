@@ -1,11 +1,19 @@
 <script>
-  import DragDrop from "./DragDrop.svelte";
-  import { Operators } from "../classes.js";
-  import { draftEquation, dragdropData } from "../stores/equation.js";
+  import DragDrop from './DragDrop.svelte';
+  import { Operators } from '../classes.js';
+  import { draftEquation, dragdropData } from '../stores/equation.js';
 
   export let operator;
   export let onlySymbol = false;
-  let isDivide = !onlySymbol && operator === "DIVIDE";
+  let isDivide = !onlySymbol && operator === 'DIVIDE';
+
+  function handleDropSend(e) {
+    draftEquation.apply();
+  }
+
+  function handleDragStart(e) {
+    dragdropData.setDrag(operator);
+  }
 </script>
 
 <style>
@@ -68,8 +76,8 @@
     let:draghovering
     let:fade
     canDragHover={false}
-    dragStart={() => dragdropData.setDrag(operator)}
-    dropReceive={() => draftEquation.apply()}>
+    dragStart={handleDragStart}
+    dropSend={handleDropSend}>
     <div
       slot="dropzone"
       class="operator no-highlight dropzone"

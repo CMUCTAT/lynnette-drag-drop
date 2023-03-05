@@ -48,14 +48,12 @@ export function dragdrop(node, parameters) {
    * @param {event} event
    */
   function handleMousemove(event) {
-    const dx = event.clientX - x;
-    const dy = event.clientY - y;
     x = event.clientX;
     y = event.clientY;
 
     node.dispatchEvent(
       new CustomEvent('dragmove', {
-        detail: { x, y, dx, dy },
+        detail: { x, y },
       }),
     );
   }
@@ -185,7 +183,7 @@ export function dragdrop(node, parameters) {
 
     node.dispatchEvent(
       new CustomEvent('dragstart', {
-        detail: { dx: x - offset.x, dy: y - offset.y },
+        detail: { x, y },
       }),
     );
 
@@ -202,7 +200,7 @@ export function dragdrop(node, parameters) {
 
     node.dispatchEvent(
       new CustomEvent('dragmove', {
-        detail: { dx: x - offset.x, dy: y - offset.y },
+        detail: { x, y },
       }),
     );
 
@@ -212,12 +210,31 @@ export function dragdrop(node, parameters) {
     if (!element) return;
     if (element !== entered) {
       if (entered) {
+        // entered.dispatchEvent(
+        //   new CustomEvent('dragleave', {
+        //     detail: { index: touchIndex },
+        //     bubbles: true,
+        //   }),
+        // );
+        // entered.dispatchEvent(
+        //   new CustomEvent('mouseout', {
+        //     detail: { index: touchIndex },
+        //     bubbles: true,
+        //   }),
+        // );
         entered.dispatchEvent(
-          new CustomEvent('leave', {
+          new CustomEvent('mouseleave', {
             detail: { index: touchIndex },
             bubbles: true,
           }),
         );
+        entered.dispatchEvent(
+          new CustomEvent('mouseout', {
+            detail: { index: touchIndex },
+            bubbles: true,
+          }),
+        );
+        unsetNodeDrop();
         // entered.dispatchEvent(new CustomEvent('mouseout', {
         //     detail: { index: touchIndex },
         //     bubbles: true
@@ -225,11 +242,19 @@ export function dragdrop(node, parameters) {
       }
       entered = element;
       entered.dispatchEvent(
-        new CustomEvent('enter', {
+        new CustomEvent('dragenter', {
           detail: { index: touchIndex },
           bubbles: true,
         }),
       );
+      if (
+        entered.className.includes('dragdrop-dropzone') ||
+        entered.className.includes('dropzone')
+      ) {
+        setNodeDrop(entered, null, touchIndex);
+      } else if (entered.parentNode.className.includes('dropzone')) {
+        setNodeDrop(entered.parentNode, null, touchIndex);
+      }
       // entered.dispatchEvent(new CustomEvent('mouseover', {
       //     detail: { index: touchIndex },
       //     bubbles: true
@@ -239,7 +264,6 @@ export function dragdrop(node, parameters) {
 
   function handleTouchEnd(event) {
     let dropped = window.drop[touchIndex] && window.drop[touchIndex].node !== node;
-
     if (dropped) {
       node.dispatchEvent(
         new CustomEvent('dropsend', {
@@ -288,6 +312,13 @@ export function dragdrop(node, parameters) {
 
   node.addEventListener('touchstart', handleTouchDown, { passive: true });
   node.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+  function stopPropagation(event) {
+    event.stopPropagation();
+  }
+
+  node.addEventListener('mouseover', stopPropagation);
+  node.addEventListener('mouseout', stopPropagation);
 
   return {
     update(parameters) {
