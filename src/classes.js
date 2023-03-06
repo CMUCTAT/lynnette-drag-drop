@@ -1,4 +1,4 @@
-const generateID = () => Math.random().toString(36).substr(2, 9);
+const generateID = () => Math.random().toString(36).substring(2, 11);
 
 class EquationNode {
   constructor(parent, node) {

@@ -38,6 +38,7 @@
 
 <style>
   .token {
+    flex: 0;
     margin: 10px;
     position: relative;
   }
@@ -102,7 +103,7 @@
     transform: scale(0) !important;
     opacity: 0 !important;
   }
-  .parens:after {
+  .parens:before {
     content: '';
     position: absolute;
     left: -10px;
@@ -112,7 +113,7 @@
     border-left: solid 3px #fff;
     border-radius: 50%;
   }
-  .parens:before {
+  .parens:after {
     content: '';
     position: absolute;
     right: -10px;

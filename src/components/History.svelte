@@ -1,11 +1,9 @@
 <script>
   import { history } from "../stores/history";
   import ExpressionDisplay from "./display/ExpressionDisplay.svelte";
-  import OperatorDisplay from "./display/OperatorDisplay.svelte";
   import TokenDisplay from "./display/TokenDisplay.svelte";
   import { Expression, Token } from "../classes.js";
   import { parseGrammar } from "../grammarParser.js";
-  let ref;
 
   $: parsedHistory = $history.all.map(item => parseGrammar(item));
 </script>
@@ -21,13 +19,8 @@
     overflow-y: auto;
     height: 100%;
   }
-
   .equation-display {
-    user-select: none; /* supported by Chrome and Opera */
-    -webkit-user-select: none; /* Safari */
-    -khtml-user-select: none; /* Konqueror HTML */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none;
   }
   .equation-display .equals {
     font-size: 1em;
@@ -47,14 +40,13 @@
     font-size: 1.5em;
     margin: 5px;
   }
-
   .equals > div {
     height: 20px;
   }
 </style>
 
 <div class="History">
-  <div class="stack" bind:this={ref}>
+  <div class="stack">
     {#each parsedHistory as item, i}
       <div class="equation-display" class:current={i === $history.index}>
         <div class="equation">

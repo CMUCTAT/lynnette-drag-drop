@@ -13,16 +13,13 @@
     cursor: pointer;
     transition: transform 0.25s ease;
   }
-
   .button :global(button):hover {
     transform: scale(1.1);
   }
-
   .CTATHintButton :global(button) {
     background: #ffc954;
     color: #9e770a;
   }
-
   .CTATDoneButton :global(button) {
     background: #63fabb;
     color: #0c9769;
@@ -36,7 +33,6 @@
   .UndoButton {
     margin-bottom: 30px;
   }
-
   .UndoButton button:after {
     opacity: 0;
     content: '';
@@ -50,12 +46,8 @@
     box-sizing: border-box;
     border-radius: 10px;
     z-index: 0;
-    -webkit-animation: ripple 1.5s infinite;
-    -moz-animation: ripple 1.5s infinite;
-    -o-animation: ripple 1.5s infinite;
     animation: ripple 1.5s infinite;
   }
-
   @keyframes ripple {
     0% {
       opacity: 1;
@@ -70,8 +62,7 @@
       border-radius: 30px;
     }
   }
-
-  @media only screen and (max-width: 750px) {
+  @media only screen and (max-width: 820px) {
     .button :global(button) {
       width: 70px;
       height: 70px;

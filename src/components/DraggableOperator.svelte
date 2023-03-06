@@ -18,12 +18,12 @@
 
 <style>
   /* .divide {
-        padding: 0;
-        margin: 4px;
-        width: 100%;
-        height: 2px;
-        background: #333;
-        border-radius: 2px;
+      padding: 0;
+      margin: 4px;
+      width: 100%;
+      height: 2px;
+      background: #333;
+      border-radius: 2px;
     } */
   .draggable-operator {
     margin: 10px;

@@ -1,17 +1,15 @@
 <script>
-  import { onMount, beforeUpdate } from 'svelte';
   export let state;
   import bodyNeutral from '../../assets/images/body/neutral.png';
   import bodyPoint from '../../assets/images/body/point.png';
   import bodyExcited from '../../assets/images/body/excited.png';
-  import bodyConfused from '../../assets/images/body/confused.png';
+  // import bodyConfused from '../../assets/images/body/confused.png';
 
   import faceNeutral from '../../assets/images/face/neutral.png';
   import faceProblem from '../../assets/images/face/problem.png';
   import faceExcited from '../../assets/images/face/excited.png';
-  import faceConfused from '../../assets/images/face/confused.png';
+  // import faceConfused from '../../assets/images/face/confused.png';
 
-  let prevState;
   const stateMap = {
     default: {
       body: bodyNeutral,
@@ -56,7 +54,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
   }
-  @media only screen and (max-width: 750px) {
+  @media only screen and (max-width: 820px) {
     .Alien {
       display: none;
     }

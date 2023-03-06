@@ -8,8 +8,6 @@
   .Flaggable {
     position: relative;
   }
-  /* .Flaggable:before {
-    } */
   .hint .highlight {
     background: #fff04e;
   }
@@ -19,7 +17,6 @@
   }
   .highlight {
     pointer-events: none;
-    content: "";
     position: absolute;
     z-index: 0;
     top: 50%;
@@ -39,6 +36,6 @@
             border-radius: ${hint || error ? size : 60}%;
             width: ${hint || error ? size * 0.85 : 60}%;
             height: ${hint || error ? size : 60}%;
-        `} />
+          `} />
   <slot />
 </div>

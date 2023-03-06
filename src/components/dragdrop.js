@@ -14,7 +14,6 @@ export function dragdrop(node, parameters) {
   let x;
   let y;
   let touchIndex = 0; // used to index drag/drop references for multi-touch interfaces
-  let offset;
   let entered = null;
   var { type, canDrag } = parameters;
 
@@ -27,8 +26,6 @@ export function dragdrop(node, parameters) {
     if (event.button !== 0) return;
     x = event.clientX;
     y = event.clientY;
-
-    offset = { x, y };
 
     if (canDrag) {
       setNodeDrag(node, type, touchIndex);
@@ -179,7 +176,6 @@ export function dragdrop(node, parameters) {
     let curEvent = Object.values(event.touches).find((t) => t.identifier === touchIndex);
     x = curEvent.clientX;
     y = curEvent.clientY;
-    offset = { x, y };
 
     node.dispatchEvent(
       new CustomEvent('dragstart', {
@@ -203,8 +199,6 @@ export function dragdrop(node, parameters) {
         detail: { x, y },
       }),
     );
-
-    offset = { x, y };
 
     var element = document.elementFromPoint(x, y);
     if (!element) return;

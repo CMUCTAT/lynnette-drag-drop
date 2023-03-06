@@ -1,5 +1,5 @@
 <script>
-  import { Token } from '../../classes.js';
+  import { UnknownToken } from '../../classes.js';
   export let token;
   export let isSubtract = false;
 </script>
@@ -14,7 +14,7 @@
     margin: 0 7px;
     padding: 0 2px;
   }
-  .token-display.parens:after {
+  .token-display.parens:before {
     content: '';
     position: absolute;
     left: -3px;
@@ -24,7 +24,7 @@
     border-left: solid 2px #333;
     border-radius: 50%;
   }
-  .token-display.parens:before {
+  .token-display.parens:after {
     content: '';
     position: absolute;
     right: -3px;
@@ -34,8 +34,12 @@
     border-right: solid 2px #333;
     border-radius: 50%;
   }
+  .content.unknown {
+    font-size: 30px;
+    line-height: 20px;
+  }
 </style>
 
 <div class="token-display" class:parens={token.node.parens}>
-  <span class="content">{token.value(isSubtract ? -1 : 1)}</span>
+  <span class="content" class:unknown={token instanceof UnknownToken}>{token.value(isSubtract ? -1 : 1)}</span>
 </div>

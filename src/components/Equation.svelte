@@ -1,7 +1,6 @@
 <script>
   import { Token, Expression } from "../classes.js";
   import ExpressionComponent from "./Expression.svelte";
-  import OperatorComponent from "./Operator.svelte";
   import TokenComponent from "./Token.svelte";
   import Flaggable from "./Flaggable.svelte";
 
@@ -13,15 +12,12 @@
   .equation {
     display: inline-flex;
     align-items: center;
-    justify-items: center;
+    justify-content: center;
     color: #fff;
     font-size: 30px;
   }
   .side {
     display: flex;
-  }
-  .equals {
-    /* font-size: 30px; */
   }
   .no-exp {
     padding: 5px;

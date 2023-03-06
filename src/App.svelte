@@ -33,8 +33,6 @@
 
   let historyScroll;
 
-  var lineTest;
-
   $: parsedEqn = parseGrammar($history.current);
   let parsedDraft = parseGrammar($draftEquation);
   $: if ($draftEquation) {
@@ -85,7 +83,7 @@
       'steps operators buttons'
       'steps main buttons'
       'alien main buttons';
-    grid-template-columns: minmax(200px, 1fr) 3fr 1fr;
+    grid-template-columns: minmax(265px, 1fr) 3fr 1fr;
     grid-template-rows: 200px 1fr minmax(200px, 25%);
     row-gap: 50px;
     background: center / cover no-repeat url('./images/lynnette-sapce-bg.png');
@@ -241,7 +239,7 @@
     width: 3px;
     background: #f35;
   }
-  @media only screen and (max-width: 750px) {
+  @media only screen and (max-width: 820px) {
     .app {
       grid-template-areas:
         'steps operators buttons'
@@ -322,7 +320,7 @@
   <div class="alien">
     <svg viewBox="0 0 302 269" style="enable-background:new 0 0 302 269;">
       <path style="fill:#FF6E52;" d="M184.8,0H0v269h302V117.2C302,52.5,249.5,0,184.8,0z" />
-      <path style="fill:#FFC33E;" d="M170.8,6H25v263h263V123.2C288,58.5,235.5,6,170.8,6z" />
+      <path style="fill:#FFC33E;" d="M170.8,0H0v269h286V117.2C286,52.5,235.5,6,170.8,0z" />
       <path style="fill:#f5f4f3;" d="M152.8,0H0v269h270V117.2C270,52.5,217.5,0,152.8,0z" />
     </svg>
     <Alien state={$alienState} />
@@ -357,7 +355,6 @@
   </div>
   <div class="buttons">
     <Buttons error={$error} {onUndo} />
-
     <button
       class="mute"
       class:muted

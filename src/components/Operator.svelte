@@ -15,6 +15,7 @@
 
 <style>
   .operator {
+    flex: 0;
     padding: 20px;
     border-radius: 20px;
     color: #fff;

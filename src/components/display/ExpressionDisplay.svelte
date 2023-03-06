@@ -49,7 +49,7 @@
     margin: 0 6px;
     padding: 0 2px;
   }
-  .expression-display.parens:after {
+  .expression-display.parens:before {
     content: '';
     position: absolute;
     left: -4px;
@@ -59,7 +59,7 @@
     border-left: solid 2px #333;
     border-radius: 50%;
   }
-  .expression-display.parens:before {
+  .expression-display.parens:after {
     content: '';
     position: absolute;
     right: -4px;
@@ -72,12 +72,12 @@
   .item-display {
     display: flex;
     align-items: center;
-    justify-items: center;
+    justify-content: center;
   }
   .divide {
     flex-direction: column;
   }
-  .vinculum {
+  .bar {
     width: 100%;
     height: 2px;
     border-radius: 2px;
@@ -102,7 +102,7 @@
     {/each}
   </div>
   {#if bottom.length > 0}
-    <div class="vinculum" />
+    <div class="bar" />
     <div class="item-display bottom">
       {#each bottom as item, i (item.id || item + i)}
         {#if item instanceof Expression}
