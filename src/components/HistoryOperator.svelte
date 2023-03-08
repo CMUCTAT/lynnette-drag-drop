@@ -1,5 +1,5 @@
 <script>
-  import { Operators } from "../../classes.js";
+  import { Operators } from "$utils/classes.js";
   export let operator;
   let isDivide = operator === "DIVIDE";
 </script>

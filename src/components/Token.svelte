@@ -1,7 +1,7 @@
 <script>
-  import { draftEquation, dragdropData } from '../stores/equation.js';
-  import DragDrop from './DragDrop.svelte';
-  import { error } from '../stores/messageManager.js';
+  import { draftEquation, dragdropData } from '$stores/equation.js';
+  import DragDrop from '$components/DragDrop.svelte';
+  import { error } from '$stores/messageManager.js';
 
   export let token;
   export let isSubtract = false;

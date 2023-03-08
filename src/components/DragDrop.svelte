@@ -1,8 +1,8 @@
 <script>
   import { spring } from 'svelte/motion';
-  import { dragdrop } from './dragdrop.js';
-  import { dragdropData } from '../stores/equation.js';
-  import soundEffects from '../soundEffect.js';
+  import { dragdrop } from '$utils/dragdrop.js';
+  import { dragdropData } from '$stores/equation.js';
+  import soundEffects from '$utils/soundEffect.js';
 
   export let canDrag = true;
   export let canDragHover = true;

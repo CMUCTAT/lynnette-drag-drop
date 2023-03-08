@@ -1,10 +1,12 @@
-import App from './App.svelte';
-import './ctatloader.js';
+import '$/app.css'
+import App from '$/App.svelte';
+import '$utils/commShellEventHandlers.js';
 
 window.drag = {};
 window.drop = {};
-var app = new App({
-  target: document.body,
-});
+
+const app = new App({
+  target: document.getElementById('app'),
+})
 
 export default app;

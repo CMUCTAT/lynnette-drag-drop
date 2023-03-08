@@ -1,6 +1,6 @@
 <script>
-  import { Operators } from '../classes.js';
-  import { draftEquation } from '../stores/equation.js';
+  import { Operators } from '$utils/classes.js';
+  import { draftEquation } from '$stores/equation.js';
 
   export let operator;
   export let siblings = null;

@@ -1,5 +1,5 @@
 <script>
-  import { UnknownToken } from '../../classes.js';
+  import { UnknownTokenNode } from '$utils/classes.js';
   export let token;
   export let isSubtract = false;
 </script>
@@ -41,5 +41,5 @@
 </style>
 
 <div class="token-display" class:parens={token.node.parens}>
-  <span class="content" class:unknown={token instanceof UnknownToken}>{token.value(isSubtract ? -1 : 1)}</span>
+  <span class="content" class:unknown={token instanceof UnknownTokenNode}>{token.value(isSubtract ? -1 : 1)}</span>
 </div>

@@ -1,8 +1,8 @@
 import { writable, get } from 'svelte/store';
-import { parseGrammar } from '../grammarParser';
-import { Equation, Token, Expression, UnknownToken, Operators } from '../classes.js';
-import { history } from './history';
-import { error } from './messageManager';
+import { parseGrammar } from '$utils/grammarParser.js';
+import { EquationNode, TokenNode, ExpressionNode, UnknownTokenNode, Operators } from '$utils/classes.js';
+import { history } from '$stores/history.js';
+import { error } from '$stores/messageManager.js';
 
 function createDragdropData() {
   const { subscribe, set, update } = writable({ drag: null, drop: null });
@@ -17,8 +17,6 @@ const parse = new CTATAlgebraParser();
 window.parse = parse;
 
 const initial = null;
-// const initial = parse.algParse('-6 + x - -6 = 3');
-// history.push(initial);
 
 // Contains data that will be used in draftOperation.apply() to create an SAI for the Tutor
 let dragOperation = {
@@ -33,41 +31,39 @@ let dragOperation = {
  * @param {CTATAlgebraTreeNode} initial the initial state of the equation
  */
 function createDraftEquation() {
-  // let initial = window.parse.algParse('2*(3+2)/(4/x) = 1 - ?');
   const { subscribe, set, update } = writable(initial);
 
   /**
    * Will perform a draft operation on the equation, i.e. will change the equation, but not write to history
    *
-   * @param {EquationNode} src the source EquationNode
-   * @param {EquationNode} dest the destination EquationNode
+   * @param {Node} src the source Node
+   * @param {Node} dest the destination Node
    * @param {*} eqn the current equation
    * @returns new modified equation
    */
   function draftOperation(src, dest, eqn) {
     eqn = get(history).current; //the draft equation will always reset to the head of the history stack before applying draft operations; otherwise the draft would be multiple steps ahead of the current equation
 
-    // eqn = initial;
     if (src === dest)
       //if src and dest are the same, we're dragging an node onto itself, so nothing happens
       return eqn;
     //we determine what to do based on what the src and dest is
     //some of these may never trigger given how the interface manages type checking for its drag/drop operations
     // console.log(src, dest);
-    if (src instanceof Token) {
-      if (dest instanceof Token) {
+    if (src instanceof TokenNode) {
+      if (dest instanceof TokenNode) {
         return tokenToToken(src, dest, eqn);
-      } else if (dest instanceof Expression) {
+      } else if (dest instanceof ExpressionNode) {
         return tokenToExpression(src, dest, eqn);
       } else if (Object.keys(Operators).includes(dest)) {
         return tokenToOperator(src, dest, eqn);
       } else {
         throw new TypeError('Drag destination is not a proper item type');
       }
-    } else if (src instanceof Expression) {
-      if (dest instanceof Token) {
+    } else if (src instanceof ExpressionNode) {
+      if (dest instanceof TokenNode) {
         return expressionToToken(src, dest, eqn);
-      } else if (dest instanceof Expression) {
+      } else if (dest instanceof ExpressionNode) {
         return expressionToExpression(src, dest, eqn);
       } else if (Object.keys(Operators).includes(dest)) {
         return expressionToOperator(src, dest, eqn);
@@ -75,9 +71,9 @@ function createDraftEquation() {
         throw new TypeError('Drag destination is not a proper item type');
       }
     } else if (Object.keys(Operators).includes(src)) {
-      if (dest instanceof Token) {
+      if (dest instanceof TokenNode) {
         return operatorToToken(src, dest, eqn);
-      } else if (dest instanceof Expression) {
+      } else if (dest instanceof ExpressionNode) {
         return operatorToExpression(src, dest, eqn);
       } else if (Object.keys(Operators).includes(dest)) {
         return operatorToOperator(src, dest, eqn);
@@ -126,10 +122,10 @@ function createDraftEquation() {
   }
 
   /**
-   * Updates an unknown token with a value in the case where a student *types* in a value into an UnknownToken; dragging a value to an UnknownToken is accounted for in draftOperation
+   * Updates an unknown token with a value in the case where a student *types* in a value into an UnknownTokenNode; dragging a value to an UnknownTokenNode is accounted for in draftOperation
    *
    * @param {*} eqn the current draft equation
-   * @param {UnknownToken} token the token being modified
+   * @param {UnknownTokenNode} token the token being modified
    * @param {string|number} value the value to put in the token
    * @returns modified equation
    */
@@ -183,7 +179,7 @@ function tokenToToken(src, dest, eqn) {
   let srcPath = flattenPath(src.node.path);
   let destPath = flattenPath(dest.node.path);
   dragOperation = { from: 'Token', to: 'Token', side: destPath[0] };
-  if (dest instanceof UnknownToken) {
+  if (dest instanceof UnknownTokenNode) {
     let d = Object.path(eqn, flattenPath(dest.node.path));
     let isSubtract = Math.min(...src.indices) !== 0 && src.node.sign < 0;
     let s = parse.algParse(src.value(isSubtract ? -1 : 1));
@@ -193,7 +189,7 @@ function tokenToToken(src, dest, eqn) {
     s.exp = d.exp;
     s.sign = d.sign; //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
     return parse.algReplaceExpression(eqn, d, s);
-  } else if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
+  } else if (src.parent === dest.parent && !(src.parent instanceof EquationNode)) {
     let parentPath = srcPath.slice(0, -2);
     let parent = Object.path(eqn, parentPath);
     let indices = src.indices.concat(dest.indices);
@@ -235,7 +231,7 @@ function tokenToExpression(src, dest, eqn) {
   dragOperation = { from: 'Token', to: 'Expression', side: destPath[0] };
   // console.log("TOKEN TO EXPRESSION", src, dest);
 
-  if (src.parent === dest.parent && !(src.parent instanceof Equation)) {
+  if (src.parent === dest.parent && !(src.parent instanceof EquationNode)) {
     let parent = Object.path(eqn, srcPath.slice(0, -2));
     let i0 = parseInt(srcPath.slice(-1)[0]);
     let i1 = parseInt(destPath.slice(-1)[0]);

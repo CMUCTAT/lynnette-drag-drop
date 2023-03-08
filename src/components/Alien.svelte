@@ -1,14 +1,14 @@
 <script>
   export let state;
-  import bodyNeutral from '../../assets/images/body/neutral.png';
-  import bodyPoint from '../../assets/images/body/point.png';
-  import bodyExcited from '../../assets/images/body/excited.png';
-  // import bodyConfused from '../../assets/images/body/confused.png';
+  import bodyNeutral from '$assets/images/body/neutral.png';
+  import bodyPoint from '$assets/images/body/point.png';
+  import bodyExcited from '$assets/images/body/excited.png';
+  // import bodyConfused from '$assets/images/body/confused.png';
 
-  import faceNeutral from '../../assets/images/face/neutral.png';
-  import faceProblem from '../../assets/images/face/problem.png';
-  import faceExcited from '../../assets/images/face/excited.png';
-  // import faceConfused from '../../assets/images/face/confused.png';
+  import faceNeutral from '$assets/images/face/neutral.png';
+  import faceProblem from '$assets/images/face/problem.png';
+  import faceExcited from '$assets/images/face/excited.png';
+  // import faceConfused from '$assets/images/face/confused.png';
 
   const stateMap = {
     default: {

@@ -1,17 +1,17 @@
 <script>
   import { afterUpdate, onMount } from 'svelte';
-  import { parseGrammar } from './grammarParser.js';
-  import { draftEquation, dragdropData } from './stores/equation.js';
-  import { history } from './stores/history.js';
-  import soundEffects from './soundEffect.js';
-  import Equation from './components/Equation.svelte';
-  import DraggableOperator from './components/DraggableOperator.svelte';
-  import History from './components/History.svelte';
+  import { parseGrammar } from '$utils/grammarParser.js';
+  import { draftEquation, dragdropData } from '$stores/equation.js';
+  import { history } from '$stores/history.js';
+  import soundEffects from '$utils/soundEffect.js';
+  import Equation from '$components/Equation.svelte';
+  import DraggableOperator from '$components/DraggableOperator.svelte';
+  import History from '$components/History.svelte';
   import { SVG } from '@svgdotjs/svg.js';
 
   // menu elements
-  import Buttons from './components/menu/Buttons.svelte';
-  import Alien from './components/menu/Alien.svelte';
+  import Buttons from '$components/Buttons.svelte';
+  import Alien from '$components/Alien.svelte';
 
   var draw;
   onMount(() => {
@@ -21,7 +21,7 @@
   let muted = document.cookie.split('muted=')[1] === 'true';
   soundEffects.mute(muted);
 
-  import { showMessages, lastCorrect, error, alienState } from './stores/messageManager.js';
+  import { showMessages, lastCorrect, error, alienState } from '$stores/messageManager.js';
 
   function onUndo() {
     history.undo();
@@ -86,7 +86,7 @@
     grid-template-columns: minmax(265px, 1fr) 3fr 1fr;
     grid-template-rows: 200px 1fr minmax(200px, 25%);
     row-gap: 50px;
-    background: center / cover no-repeat url('./images/lynnette-sapce-bg.png');
+    background: center / cover no-repeat url('$assets/images/lynnette-sapce-bg.png');
   }
   .steps {
     grid-area: steps;

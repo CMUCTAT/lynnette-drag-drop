@@ -1,9 +1,9 @@
 <script>
-  import { Token, Expression } from '../classes.js';
-  import Operator from './Operator.svelte';
-  import TokenComponent from './Token.svelte';
-  import DragDrop from './DragDrop.svelte';
-  import { draftEquation, dragdropData } from '../stores/equation.js';
+  import { TokenNode, ExpressionNode } from '$utils/classes.js';
+  import Operator from '$components/Operator.svelte';
+  import Token from '$components/Token.svelte';
+  import DragDrop from '$components/DragDrop.svelte';
+  import { draftEquation, dragdropData } from '$stores/equation.js';
 
   export let expression;
   let isAdd = expression.node.operator === 'PLUS';
@@ -124,10 +124,10 @@
     class:parens={expression.node.parens}>
     <div class="item-display top">
       {#each top as item, i (item.id || item + i)}
-        {#if item instanceof Expression}
+        {#if item instanceof ExpressionNode}
           <svelte:self expression={item} />
-        {:else if item instanceof Token}
-          <TokenComponent token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
+        {:else if item instanceof TokenNode}
+          <Token token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
         {:else}
           <Operator operator={item} siblings={[top[i - 1], top[i + 1]]} />
         {/if}
@@ -137,10 +137,10 @@
       <div class="bar" />
       <div class="item-display bottom">
         {#each bottom as item, i (item.id || item + i)}
-          {#if item instanceof Expression}
+          {#if item instanceof ExpressionNode}
             <svelte:self expression={item} />
-          {:else if item instanceof Token}
-            <TokenComponent token={item} />
+          {:else if item instanceof TokenNode}
+            <Token token={item} />
           {:else}
             <Operator operator={item} siblings={[bottom[i - 1], bottom[i + 1]]} />
           {/if}

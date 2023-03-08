@@ -1,7 +1,7 @@
 <script>
-  import TokenDisplay from './TokenDisplay.svelte';
-  import OperatorDisplay from './OperatorDisplay.svelte';
-  import { Token, Expression } from '../../classes.js';
+  import TokenDisplay from '$components/TokenDisplay.svelte';
+  import OperatorDisplay from '$components/OperatorDisplay.svelte';
+  import { TokenNode, ExpressionNode } from '$utils/classes.js';
 
   export let expression;
   let isAdd = expression.node.operator === 'PLUS';
@@ -92,9 +92,9 @@
   class:parens={expression.node.parens}>
   <div class="item-display top">
     {#each top as item, i (item.id || item + i)}
-      {#if item instanceof Expression}
+      {#if item instanceof ExpressionNode}
         <svelte:self expression={item} />
-      {:else if item instanceof Token}
+      {:else if item instanceof TokenNode}
         <TokenDisplay token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
       {:else}
         <OperatorDisplay operator={item} />
@@ -105,9 +105,9 @@
     <div class="bar" />
     <div class="item-display bottom">
       {#each bottom as item, i (item.id || item + i)}
-        {#if item instanceof Expression}
+        {#if item instanceof ExpressionNode}
           <svelte:self expression={item} />
-        {:else if item instanceof Token}
+        {:else if item instanceof TokenNode}
           <TokenDisplay token={item} />
         {:else}
           <OperatorDisplay operator={item} />

@@ -1,6 +1,6 @@
 const generateID = () => Math.random().toString(36).substring(2, 11);
 
-class EquationNode {
+class Node {
   constructor(parent, node) {
     this.parent = parent;
     this.node = node;
@@ -8,7 +8,7 @@ class EquationNode {
   }
 }
 
-export class Equation extends EquationNode {
+export class EquationNode extends Node {
   constructor(eqn, left, right) {
     super(null, eqn);
     this.left = left;
@@ -35,7 +35,7 @@ export class Equation extends EquationNode {
 //       return values.join('');
 //     }
 
-export class Token extends EquationNode {
+export class TokenNode extends Node {
   constructor(parent, nodes, indices, baseNode = null) {
     super(parent, baseNode || nodes[0]);
     this.nodes = nodes;
@@ -54,7 +54,7 @@ export class Token extends EquationNode {
   }
 }
 
-export class UMinusToken extends Token {
+export class UMinusTokenNode extends TokenNode {
   constructor(parent, nodes, indices) {
     super(parent, [nodes[0].base, ...nodes.slice(1)], indices, nodes[0]);
   }
@@ -67,13 +67,13 @@ export class UMinusToken extends Token {
   }
 }
 
-export class UPlusToken extends Token {
+export class UPlusTokenNode extends TokenNode {
   constructor(parent, nodes, indices) {
     super(parent, [nodes[0].base, ...nodes.slice(1)], indices, nodes[0]);
   }
 }
 
-export class UnknownToken extends Token {
+export class UnknownTokenNode extends TokenNode {
   constructor(parent, node, indices) {
     super(parent, [node], indices);
     this.unknown = true;
@@ -83,7 +83,7 @@ export class UnknownToken extends Token {
   }
 }
 
-export class Expression extends EquationNode {
+export class ExpressionNode extends Node {
   constructor(parent, node, items) {
     super(parent, node);
     this.items = items;

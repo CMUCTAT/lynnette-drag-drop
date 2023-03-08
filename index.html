@@ -2,13 +2,10 @@
 <html>
   <head>
     <meta charset="utf8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Lynnette Drag & Drop</title>
-
     <link rel="icon" type="image/png" href="./Assets/favicon.png" />
-    <link rel="stylesheet" href="./Assets/global.css" />
-    <link rel="stylesheet" href="./Assets/bundle.css" />
 
     <script>
       window.interfaceType = 'dragndrop';
@@ -17,14 +14,16 @@
       };
     </script>
     <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/releases/lab/jquery.min.js"></script>
-    <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/releases/lab/ctat.min.js"></script>
     <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/releases/lab/nools.js"></script>
-    <script type="text/javascript" src="./Assets/ctat/modelhelperfuns.js"></script>
-    <script type="text/javascript" src="./Assets/ctat/math.js"></script>
+    <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/releases/lab/ctat.min.js"></script>
+    <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/releases/lab/ctatloader.js"></script>
+    <script type="text/javascript" src="./Assets/modelhelperfuns.js"></script>
+    <script type="text/javascript" src="./Assets/math.js"></script>
     <script type="text/javascript" src="./Assets/msgTranslator.js"></script>
-
-    <script defer src="./Assets/bundle.js"></script>
+    <script type="module" src="/src/main.js"></script>
   </head>
 
-  <body></body>
+  <body>
+    <div id="app"></div>
+  </body>
 </html>

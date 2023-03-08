@@ -1,37 +1,37 @@
-import { Equation, Token, UnknownToken, Expression, UMinusToken, UPlusToken } from './classes.js';
+import { EquationNode, TokenNode, UnknownTokenNode, ExpressionNode, UMinusTokenNode, UPlusTokenNode } from '$utils/classes.js';
 
 export function parseGrammar(expression, parent = null, parentIndex = null) {
   //return different things depending on what the node's operator is
   if (!expression) return null;
   if (expression.operator === 'EQUAL') {
     let operands = parse.algGetOperands(expression);
-    let eqn = new Equation(null); //null equation has to be made first to pass it in as a parent
+    let eqn = new EquationNode(null); //null equation has to be made first to pass it in as a parent
     eqn.left = parseGrammar(operands[0], eqn);
     eqn.right = parseGrammar(operands[1], eqn);
     return eqn;
   } else if (expression.operator === 'CONST') {
     // console.log(expression);
-    return new Token(parent, [expression], [parentIndex]);
+    return new TokenNode(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'VAR') {
-    return new Token(parent, [expression], [parentIndex]);
+    return new TokenNode(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UMINUS') {
-    return new UMinusToken(parent, [expression], [parentIndex]);
+    return new UMinusTokenNode(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UPLUS') {
-    return new UPlusToken(parent, [expression], [parentIndex]);
+    return new UPlusTokenNode(parent, [expression], [parentIndex]);
   } else if (expression.operator === 'UNKNOWN') {
-    return new UnknownToken(parent, expression, [parentIndex]);
+    return new UnknownTokenNode(parent, expression, [parentIndex]);
   } else if (expression.operator === 'PLUS') {
     let operands = parse.algGetOperands(expression);
-    let exp = new Expression(parent, expression, []);
+    let exp = new ExpressionNode(parent, expression, []);
     exp.items = operands.map((node, i) => parseGrammar(node, exp, i));
     return exp;
   } else if (expression.operator === 'TIMES' || expression.operator === 'ITIMES') {
     let operands = parse.algGetOperands(expression);
-    let exp = new Expression(parent, expression, []);
+    let exp = new ExpressionNode(parent, expression, []);
     let items = groupNodes(exp, operands);
     if (items.length === 1) {
       let token = items[0];
-      if (token instanceof UMinusToken) {
+      if (token instanceof UMinusTokenNode) {
         token.node = {
           ...token.node,
           sign: token.node.sign * expression.sign,
@@ -74,13 +74,13 @@ function groupNodes(parent, nodes) {
     if (group.length === 1) return parseGrammar(group[0], parent, nodes.indexOf(group[0]));
     else {
       if (group[0].operator === 'UMINUS') {
-        return new UMinusToken(
+        return new UMinusTokenNode(
           parent,
           group,
           group.map((n) => nodes.indexOf(n)),
         );
       } else {
-        return new Token(
+        return new TokenNode(
           parent,
           group,
           group.map((n) => nodes.indexOf(n)),

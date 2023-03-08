@@ -1,7 +1,7 @@
 <script>
-  import DragDrop from './DragDrop.svelte';
-  import { Operators } from '../classes.js';
-  import { draftEquation, dragdropData } from '../stores/equation.js';
+  import DragDrop from '$components/DragDrop.svelte';
+  import { Operators } from '$utils/classes.js';
+  import { draftEquation, dragdropData } from '$stores/equation.js';
 
   export let operator;
   export let onlySymbol = false;
