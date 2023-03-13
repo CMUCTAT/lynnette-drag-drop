@@ -1,5 +1,5 @@
 /**
- * Drag/drop directive for a node. Will allow a node to be picked up, dragged, and dropped over othse dragdrop nodes
+ * Drag/drop directive for a node. Will allow a node to be picked up, dragged, and dropped over other dragdrop nodes
  *
  * Note that no part of this code changes the position or state of the node it's attached to. It merely maintains internal position and state data, and reports it to the client.
  * Anything involving movement and visual changes is handled by the .svelte file.
@@ -11,32 +11,27 @@
  */
 export function dragdrop(node, parameters) {
   //TODO: is type really necessary?
-  let x;
-  let y;
-  let touchIndex = 0; // used to index drag/drop references for multi-touch interfaces
-  let entered = null;
-  var { type, canDrag } = parameters;
+  let x, y,
+      touchIndex = 0, // used to index drag/drop references for multi-touch interfaces
+      entered = null,
+      { type, canDrag } = parameters
 
   /**
    * Function for 'mousedown' event listener; registers node with window.drag registry and begins drag operation
    * @param {event} event
    */
   function handleMousedown(event) {
-    event.stopPropagation();
-    if (event.button !== 0) return;
-    x = event.clientX;
-    y = event.clientY;
+    event.stopPropagation()
+    if (event.button !== 0) return undefined
+    x = event.clientX
+    y = event.clientY
 
     if (canDrag) {
-      setNodeDrag(node, type, touchIndex);
-      node.dispatchEvent(
-        new CustomEvent('dragstart', {
-          detail: { x, y },
-        }),
-      );
+      setNodeDrag(node, type, touchIndex)
+      node.dispatchEvent(new CustomEvent('dragstart', { detail: { x, y } }))
 
-      window.addEventListener('mousemove', handleMousemove);
-      window.addEventListener('mouseup', handleMouseup);
+      window.addEventListener('mousemove', handleMousemove)
+      window.addEventListener('mouseup', handleMouseup)
     }
   }
 
@@ -45,14 +40,10 @@ export function dragdrop(node, parameters) {
    * @param {event} event
    */
   function handleMousemove(event) {
-    x = event.clientX;
-    y = event.clientY;
+    x = event.clientX
+    y = event.clientY
 
-    node.dispatchEvent(
-      new CustomEvent('dragmove', {
-        detail: { x, y },
-      }),
-    );
+    node.dispatchEvent(new CustomEvent('dragmove', { detail: { x, y }}))
   }
 
   /**
@@ -62,271 +53,167 @@ export function dragdrop(node, parameters) {
    * @param {event} event
    */
   function handleMouseup(event) {
-    event.stopPropagation();
-    x = event.clientX;
-    y = event.clientY;
+    event.stopPropagation()
+    x = event.clientX
+    y = event.clientY
 
-    let dropped = window.drop[touchIndex] && window.drop[touchIndex].node !== node;
+    let dropped = window.drop[touchIndex] && window.drop[touchIndex].node !== node
     if (dropped) {
-      node.dispatchEvent(
-        new CustomEvent('dropsend', {
-          detail: { x, y },
-        }),
-      );
-      window.drop[touchIndex].node.dispatchEvent(
-        new CustomEvent('dropreceive', {
-          detail: { x, y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] },
-        }),
-      );
-      // node.dispatchEvent(new CustomEvent('dragend', {
-      //     detail: { x, y }
-      // }));
-      // node.dispatchEvent(new CustomEvent('leave', {
-      //     detail: { x, y }
-      // }));
-      // window.drop[touchIndex].node.dispatchEvent(new CustomEvent('dragleave', {
-      //     detail: { x, y }
-      // }));
+      node.dispatchEvent(new CustomEvent('dropsend', { detail: { x, y } }))
+      window.drop[touchIndex].node.dispatchEvent(new CustomEvent('dropreceive', {
+        detail: { x, y, drag: window.drag[touchIndex], drop: window.drop[touchIndex] }
+      }))
+      // node.dispatchEvent(new CustomEvent('dragend', { detail: { x, y } }))
+      // node.dispatchEvent(new CustomEvent('leave', { detail: { x, y } }))
+      // window.drop[touchIndex].node.dispatchEvent(new CustomEvent('dragleave', { detail: { x, y } }))
     } else {
-      node.dispatchEvent(
-        new CustomEvent('dragend', {
-          detail: { x, y },
-        }),
-      );
-      node.dispatchEvent(
-        new CustomEvent('leave', {
-          detail: { x, y },
-        }),
-      );
+      node.dispatchEvent(new CustomEvent('dragend', { detail: { x, y } }))
+      node.dispatchEvent(new CustomEvent('leave', { detail: { x, y } }))
     }
-    unsetNodeDrag(touchIndex);
-    unsetNodeDrop(touchIndex);
+    unsetNodeDrag(touchIndex)
+    unsetNodeDrop(touchIndex)
 
-    window.removeEventListener('mousemove', handleMousemove);
-    window.removeEventListener('mouseup', handleMouseup);
+    window.removeEventListener('mousemove', handleMousemove)
+    window.removeEventListener('mouseup', handleMouseup)
   }
 
   /**
-   * Function for 'mouseenter' event listener; if dragging an object, trigger the 'dragenter' event on the node, if not, trigger the 'enter' event;
+   * Function for 'mouseenter' event listener; if dragging an object, trigger the 'dragenter' event on the node, if not, trigger the 'enter' event
    * Mainly used to set the hover effects and drop target
    * @param {event} event
    */
   function handleMouseenter(event) {
-    event.stopPropagation();
-    x = event.clientX;
-    y = event.clientY;
+    event.stopPropagation()
+    x = event.clientX
+    y = event.clientY
 
-    let index = event.detail instanceof Object ? event.detail.index : 0;
+    let index = event.detail instanceof Object ? event.detail.index : 0
 
     if (window.drag[index] && window.drag[index].node !== node) {
-      setNodeDrop(node, type, index);
-      node.dispatchEvent(
-        new CustomEvent('dragenter', {
-          detail: { x, y },
-        }),
-      );
+      setNodeDrop(node, type, index)
+      node.dispatchEvent(new CustomEvent('dragenter', { detail: { x, y } }))
     } else {
-      node.dispatchEvent(
-        new CustomEvent('enter', {
-          detail: { x, y },
-        }),
-      );
+      node.dispatchEvent(new CustomEvent('enter', { detail: { x, y } }))
     }
   }
 
   /**
-   * Function for 'mouseleave' event listener; if dragging an object, trigger the 'dragleave' event on the node, if not, trigger the 'leave' event;
+   * Function for 'mouseleave' event listener; if dragging an object, trigger the 'dragleave' event on the node, if not, trigger the 'leave' event
    * Mainly used to unset the hover effects and drop target
    * @param {event} event
    */
   function handleMouseleave(event) {
-    event.stopPropagation();
+    event.stopPropagation()
+    x = event.clientX
+    y = event.clientY
 
-    x = event.clientX;
-    y = event.clientY;
-
-    let index = event.detail instanceof Object ? event.detail.index : 0;
+    let index = event.detail instanceof Object ? event.detail.index : 0
 
     if (window.drag[index]) {
-      unsetNodeDrop(index);
-      node.dispatchEvent(
-        new CustomEvent('dragleave', {
-          detail: { x, y },
-        }),
-      );
-      // document.elementFromPoint(x, y).parentElement.parentElement.dispatchEvent(new CustomEvent('dragenter', {
-      //     detail: { x, y },
-      // }))
+      unsetNodeDrop(index)
+      node.dispatchEvent(new CustomEvent('dragleave', { detail: { x, y } }))
+      // document.elementFromPoint(x, y).parentElement.parentElement.dispatchEvent(new CustomEvent('dragenter', { detail: { x, y } }))
     } else {
-      node.dispatchEvent(
-        new CustomEvent('leave', {
-          detail: { x, y },
-        }),
-      );
-      // document.elementFromPoint(x, y).dispatchEvent(new CustomEvent('enter', {
-      //     detail: { x, y },
-      // }))
+      node.dispatchEvent(new CustomEvent('leave', { detail: { x, y }}))
+      // document.elementFromPoint(x, y).dispatchEvent(new CustomEvent('enter', { detail: { x, y } }))
     }
   }
 
   function handleTouchDown(event) {
-    event.stopPropagation();
-    if (!(event instanceof TouchEvent)) return;
-    touchIndex = event.changedTouches[0].identifier;
-    let curEvent = Object.values(event.touches).find((t) => t.identifier === touchIndex);
-    x = curEvent.clientX;
-    y = curEvent.clientY;
+    event.stopPropagation()
+    if (!(event instanceof TouchEvent)) return undefined
+    touchIndex = event.changedTouches[0].identifier
+    let curEvent = Object.values(event.touches).find((touch) => touch.identifier === touchIndex)
+    x = curEvent.clientX
+    y = curEvent.clientY
 
-    node.dispatchEvent(
-      new CustomEvent('dragstart', {
-        detail: { x, y },
-      }),
-    );
+    node.dispatchEvent(new CustomEvent('dragstart', { detail: { x, y } }))
 
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.drag[touchIndex] = { node: node, type: type };
-    window.drop[touchIndex] = null;
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.drag[touchIndex] = { node: node, type: type }
+    window.drop[touchIndex] = null
   }
 
   function handleTouchMove(event) {
-    let curEvent = Object.values(event.touches).find((t) => t.identifier === touchIndex);
+    let curEvent = Object.values(event.touches).find((touch) => touch.identifier === touchIndex)
 
-    x = curEvent.clientX;
-    y = curEvent.clientY;
+    x = curEvent.clientX
+    y = curEvent.clientY
 
-    node.dispatchEvent(
-      new CustomEvent('dragmove', {
-        detail: { x, y },
-      }),
-    );
+    node.dispatchEvent(new CustomEvent('dragmove', { detail: { x, y } }))
 
-    var element = document.elementFromPoint(x, y);
-    if (!element) return;
+    let element = document.elementFromPoint(x, y)
+    if (!element) return undefined
     if (element !== entered) {
       if (entered) {
-        // entered.dispatchEvent(
-        //   new CustomEvent('dragleave', {
-        //     detail: { index: touchIndex },
-        //     bubbles: true,
-        //   }),
-        // );
-        // entered.dispatchEvent(
-        //   new CustomEvent('mouseout', {
-        //     detail: { index: touchIndex },
-        //     bubbles: true,
-        //   }),
-        // );
-        entered.dispatchEvent(
-          new CustomEvent('mouseleave', {
-            detail: { index: touchIndex },
-            bubbles: true,
-          }),
-        );
-        entered.dispatchEvent(
-          new CustomEvent('mouseout', {
-            detail: { index: touchIndex },
-            bubbles: true,
-          }),
-        );
-        unsetNodeDrop();
-        // entered.dispatchEvent(new CustomEvent('mouseout', {
-        //     detail: { index: touchIndex },
-        //     bubbles: true
-        // }));
+        // entered.dispatchEvent(new CustomEvent('dragleave', { detail: { index: touchIndex }, bubbles: true }))
+        // entered.dispatchEvent(new CustomEvent('mouseout', { detail: { index: touchIndex }, bubbles: true }))
+        entered.dispatchEvent(new CustomEvent('mouseleave', { detail: { index: touchIndex }, bubbles: true }))
+        entered.dispatchEvent(new CustomEvent('mouseout', { detail: { index: touchIndex }, bubbles: true }))
+        unsetNodeDrop()
+        // entered.dispatchEvent(new CustomEvent('mouseout', { detail: { index: touchIndex }, bubbles: true }))
       }
-      entered = element;
-      entered.dispatchEvent(
-        new CustomEvent('dragenter', {
-          detail: { index: touchIndex },
-          bubbles: true,
-        }),
-      );
-      if (
-        entered.className.includes('dragdrop-dropzone') ||
+      entered = element
+      entered.dispatchEvent(new CustomEvent('dragenter', { detail: { index: touchIndex }, bubbles: true }))
+      if (entered.className.includes('dragdrop-dropzone') ||
         entered.className.includes('dropzone')
       ) {
-        setNodeDrop(entered, null, touchIndex);
+        setNodeDrop(entered, null, touchIndex)
       } else if (entered.parentNode.className.includes('dropzone')) {
-        setNodeDrop(entered.parentNode, null, touchIndex);
+        setNodeDrop(entered.parentNode, null, touchIndex)
       }
-      // entered.dispatchEvent(new CustomEvent('mouseover', {
-      //     detail: { index: touchIndex },
-      //     bubbles: true
-      // }));
+      // entered.dispatchEvent(new CustomEvent('mouseover', { detail: { index: touchIndex }, bubbles: true }))
     }
   }
 
   function handleTouchEnd(event) {
-    let dropped = window.drop[touchIndex] && window.drop[touchIndex].node !== node;
+    let dropped = window.drop[touchIndex] && window.drop[touchIndex].node !== node
     if (dropped) {
-      node.dispatchEvent(
-        new CustomEvent('dropsend', {
-          detail: { x, y },
-        }),
-      );
+      node.dispatchEvent(new CustomEvent('dropsend', { detail: { x, y } }))
     } else {
-      node.dispatchEvent(
-        new CustomEvent('dragend', {
-          detail: { x, y },
-        }),
-      );
+      node.dispatchEvent(new CustomEvent('dragend', { detail: { x, y } }))
     }
     if (entered) {
       if (window.drag[touchIndex] && window.drop[touchIndex]) {
-        entered.dispatchEvent(
-          new CustomEvent('dropreceive', {
-            detail: { x, y, drag: node, drop: window.drop[touchIndex].node },
-            bubbles: true,
-          }),
-        );
-        entered.dispatchEvent(
-          new CustomEvent('mouseleave', {
-            detail: { index: touchIndex },
-            bubbles: true,
-          }),
-        );
-        entered.dispatchEvent(
-          new CustomEvent('mouseout', {
-            detail: { index: touchIndex },
-            bubbles: true,
-          }),
-        );
+        entered.dispatchEvent(new CustomEvent('dropreceive', { detail: { x, y, drag: node, drop: window.drop[touchIndex].node }, bubbles: true }))
+        entered.dispatchEvent(new CustomEvent('mouseleave', { detail: { index: touchIndex }, bubbles: true }))
+        entered.dispatchEvent(new CustomEvent('mouseout', { detail: { index: touchIndex }, bubbles: true }))
       }
     }
-    window.drag[touchIndex] = null;
-    window.drop[touchIndex] = null;
+    window.drag[touchIndex] = null
+    window.drop[touchIndex] = null
 
-    window.removeEventListener('touchmove', handleTouchMove);
+    window.removeEventListener('touchmove', handleTouchMove)
   }
 
   //Add all event listeners to node
-  node.addEventListener('mousedown', handleMousedown);
-  node.addEventListener('mouseover', handleMouseenter);
-  node.addEventListener('mouseout', handleMouseleave);
+  node.addEventListener('mousedown', handleMousedown)
+  node.addEventListener('mouseover', handleMouseenter)
+  node.addEventListener('mouseout', handleMouseleave)
 
-  node.addEventListener('touchstart', handleTouchDown, { passive: true });
-  node.addEventListener('touchend', handleTouchEnd, { passive: true });
+  node.addEventListener('touchstart', handleTouchDown, { passive: true })
+  node.addEventListener('touchend', handleTouchEnd, { passive: true })
 
   function stopPropagation(event) {
-    event.stopPropagation();
+    event.stopPropagation()
   }
 
-  node.addEventListener('mouseover', stopPropagation);
-  node.addEventListener('mouseout', stopPropagation);
+  node.addEventListener('mouseover', stopPropagation)
+  node.addEventListener('mouseout', stopPropagation)
 
   return {
     update(parameters) {
-      ({ canDrag, type } = parameters);
+      ({ canDrag, type } = parameters)
     },
     //When node is destroyed, all event listeners need to be destroyed too
     destroy() {
-      node.removeEventListener('mousedown', handleMousedown);
-      node.removeEventListener('mouseover', handleMouseenter);
-      node.removeEventListener('mouseout', handleMouseleave);
-      node.removeEventListener('touchstart', handleTouchDown);
-      node.removeEventListener('touchend', handleTouchEnd);
-    },
-  };
+      node.removeEventListener('mousedown', handleMousedown)
+      node.removeEventListener('mouseover', handleMouseenter)
+      node.removeEventListener('mouseout', handleMouseleave)
+      node.removeEventListener('touchstart', handleTouchDown)
+      node.removeEventListener('touchend', handleTouchEnd)
+    }
+  }
 }
 
 /**
@@ -336,7 +223,7 @@ export function dragdrop(node, parameters) {
  * @param {int} index touch index of drag operation; used only with touchscreens which allow for multi-touch
  */
 function setNodeDrag(node, type, index = 0) {
-  window.drag[index] = { node, type };
+  window.drag[index] = { node, type }
 }
 
 /**
@@ -344,7 +231,7 @@ function setNodeDrag(node, type, index = 0) {
  * @param {int} index touch index of the drag operation; used only with touchscreens which allow for multi-touch
  */
 function unsetNodeDrag(index = 0) {
-  window.drag[index] = null;
+  window.drag[index] = null
 }
 
 /**
@@ -354,7 +241,7 @@ function unsetNodeDrag(index = 0) {
  * @param {int} index touch index of drag operation; used only with touchscreens which allow for multi-touch
  */
 function setNodeDrop(node, type, index = 0) {
-  window.drop[index] = { node, type };
+  window.drop[index] = { node, type }
 }
 
 /**
@@ -362,5 +249,5 @@ function setNodeDrop(node, type, index = 0) {
  * @param {int} index touch index of the drag operation; used only with touchscreens which allow for multi-touch
  */
 function unsetNodeDrop(index = 0) {
-  window.drop[index] = null;
+  window.drop[index] = null
 }

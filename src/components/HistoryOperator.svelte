@@ -1,23 +1,24 @@
+<div class="history-operator" class:divide={isDivide}>
+  {#if !isDivide}{Operators[operator]}{/if}
+</div>
+
 <script>
-  import { Operators } from "$utils/classes.js";
-  export let operator;
-  let isDivide = operator === "DIVIDE";
+  import { Operators } from "$utils/classes.js"
+
+  export let operator
+
+  let isDivide = operator === "DIVIDE"
 </script>
 
 <style>
-  .operator-display {
-    text-align: center;
-    vertical-align: middle;
+  .history-operator {
     margin: 2px;
+    text-align: center;
   }
-  .operator-display.divide {
-    overflow: hidden;
-    height: 0;
-    width: 100%;
+  .history-operator.divide {
     border-bottom: 2px solid #333;
+    width: 100%;
+    height: 0px;
+    overflow: hidden;
   }
 </style>
-
-<div class="operator-display" class:divide={isDivide}>
-  {#if !isDivide}{Operators[operator]}{/if}
-</div>

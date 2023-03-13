@@ -1,118 +1,108 @@
-<script>
-  import TokenDisplay from '$components/TokenDisplay.svelte';
-  import OperatorDisplay from '$components/OperatorDisplay.svelte';
-  import { TokenNode, ExpressionNode } from '$utils/classes.js';
-
-  export let expression;
-  let isAdd = expression.node.operator === 'PLUS';
-  let top = expression.items;
-  let bottom = [];
-
-  function insertOperators(items, isAdd = true) {
-    if (isAdd)
-      return items.reduce((a, c, i) => {
-        return i === 0 ? [c] : a.concat([c.node.sign > 0 ? 'PLUS' : 'MINUS', c]);
-      }, []);
-    else
-      return items.reduce(
-        (a, c, i) =>
-          i === 0 || isDistribution(c, items[i - 1]) ? a.concat(c) : a.concat(['TIMES', c]),
-        [],
-      );
-  }
-
-  function isDistribution(item, prevItem) {
-    return (item.node.parens || prevItem.node.parens) && expression.node.operator === 'TIMES';
-  }
-
-  $: if (expression) {
-    isAdd = expression.node.operator === 'PLUS';
-    top = insertOperators(
-      isAdd ? expression.items : expression.items.filter((item) => item.node.exp > 0),
-      isAdd,
-    );
-    bottom = isAdd ? [] : insertOperators(expression.items.filter((item) => item.node.exp < 0));
-  }
-</script>
-
-<style>
-  .expression-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .expression-display.divide {
-    flex-direction: column;
-  }
-  .expression-display.parens {
-    margin: 0 6px;
-    padding: 0 2px;
-  }
-  .expression-display.parens:before {
-    content: '';
-    position: absolute;
-    left: -4px;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    border-left: solid 2px #333;
-    border-radius: 50%;
-  }
-  .expression-display.parens:after {
-    content: '';
-    position: absolute;
-    right: -4px;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    border-right: solid 2px #333;
-    border-radius: 50%;
-  }
-  .item-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .divide {
-    flex-direction: column;
-  }
-  .bar {
-    width: 100%;
-    height: 2px;
-    border-radius: 2px;
-    background: #333;
-    margin: 5px 0;
-  }
-</style>
-
-<div
-  class="expression-display"
-  class:divide={bottom.length > 0}
-  class:parens={expression.node.parens}>
-  <div class="item-display top">
-    {#each top as item, i (item.id || item + i)}
+<div class="history-expression" class:divide={bottom.length > 0} class:parens={expression.node.parens}>
+  <div class="history-factor">
+    {#each top as item, index (item.id || item + index)}
       {#if item instanceof ExpressionNode}
-        <svelte:self expression={item} />
+        <svelte:self expression={item}/>
       {:else if item instanceof TokenNode}
-        <TokenDisplay token={item} isSubtract={isAdd && i > 0 && item.node.sign < 0} />
+        <HistoryToken token={item} isSubtract={isAdd && index > 0 && item.node.sign < 0}/>
       {:else}
-        <OperatorDisplay operator={item} />
+        <HistoryOperator operator={item}/>
       {/if}
     {/each}
   </div>
   {#if bottom.length > 0}
-    <div class="bar" />
-    <div class="item-display bottom">
-      {#each bottom as item, i (item.id || item + i)}
+    <div class="bar"/>
+    <div class="history-factor">
+      {#each bottom as item, index (item.id || item + index)}
         {#if item instanceof ExpressionNode}
-          <svelte:self expression={item} />
+          <svelte:self expression={item}/>
         {:else if item instanceof TokenNode}
-          <TokenDisplay token={item} />
+          <HistoryToken token={item}/>
         {:else}
-          <OperatorDisplay operator={item} />
+          <HistoryOperator operator={item}/>
         {/if}
       {/each}
     </div>
   {/if}
 </div>
+
+<script>
+  import HistoryToken from '$components/HistoryToken.svelte'
+  import HistoryOperator from '$components/HistoryOperator.svelte'
+  import { ExpressionNode, TokenNode } from '$utils/classes.js'
+
+  export let expression
+
+  let isAdd = expression.node.operator === 'PLUS',
+      top = expression.items,
+      bottom = []
+
+  $: if (expression) {
+    isAdd = expression.node.operator === 'PLUS'
+    top = insertOperators(
+      isAdd ? expression.items : expression.items.filter((item) => item.node.exp > 0),
+      isAdd,
+    )
+    bottom = isAdd ? [] : insertOperators(expression.items.filter((item) => item.node.exp < 0))
+  }
+
+  function insertOperators(items, isAdd = true) {
+    return items.reduce((array, item, index) =>
+      isAdd && index === 0 ? [item] :
+      isAdd ? array.concat([item.node.sign > 0 ? 'PLUS' : 'MINUS', item]) :
+      index === 0 || isDistribution(item, items[index - 1]) ? array.concat(item) :
+      array.concat(['TIMES', item]), []
+    )
+  }
+
+  function isDistribution(item, prevItem) {
+    return (item.node.parens || prevItem.node.parens) && expression.node.operator === 'TIMES'
+  }
+</script>
+
+<style>
+  .history-expression {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .history-expression.divide {
+    flex-direction: column;
+  }
+  .history-expression.parens {
+    margin-inline: 8px;
+    padding-inline: 2px;
+  }
+  .history-expression.parens:before, .history-expression.parens:after {
+    content: '';
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    border-radius: 75%;
+    width: 8px;
+  }
+  .history-expression.parens:before {
+    left: -4px;
+    border-left: solid 2px #333;
+  }
+  .history-expression.parens:after {
+    right: -4px;
+    border-right: solid 2px #333;
+  }
+  .history-factor {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .divide {
+    flex-direction: column;
+  }
+  .bar {
+    margin: 5px 0px;
+    border-radius: 2px;
+    width: 100%;
+    height: 2px;
+    background: #333;
+  }
+</style>

@@ -1,52 +1,52 @@
-<script>
-  import { TokenNode, ExpressionNode } from "$utils/classes.js";
-  import Expression from "$components/Expression.svelte";
-  import Token from "$components//Token.svelte";
-  import Flaggable from "$components/Flaggable.svelte";
+<div class="equation no-highlight" class:disable={error} class:draft>
+  <Flaggable error={error === 'left'}>
+    {#if equation.left instanceof ExpressionNode}
+      <Expression expression={equation.left}/>
+    {:else if equation.left instanceof TokenNode}
+      <Token token={equation.left}/>
+    {/if}
+  </Flaggable>
+  <div class="equals">=</div>
+  <Flaggable error={error === 'right'}>
+    {#if equation.right instanceof ExpressionNode}
+      <Expression expression={equation.right}/>
+    {:else if equation.right instanceof TokenNode}
+      <Token token={equation.right}/>
+    {/if}
+  </Flaggable>
+</div>
 
-  export let equation;
-  export let error = null;
+<script>
+  import Flaggable from "$components/Flaggable.svelte"
+  import Expression from "$components/Expression.svelte"
+  import Token from "$components//Token.svelte"
+  import { TokenNode, ExpressionNode } from "$utils/classes.js"
+
+  export let equation
+  export let error = null
+  export let draft = false
 </script>
 
 <style>
   .equation {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 30px;
-  }
-  .side {
+    width: min-content;
     display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    color: #fff;
   }
-  .no-exp {
-    padding: 5px;
+  .equation.disable {
+    pointer-events: none;
+  }
+  .equation.draft {
+    position: absolute;
+    transform: translateY(-100%);
+    background: rgb(10, 27, 44);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .equals {
+    padding: 10px;
   }
 </style>
-
-<div class="equation no-highlight">
-
-  <Flaggable error={error === 'left'} size={110}>
-    <div
-      class="side left"
-      class:no-exp={!(equation.right instanceof ExpressionNode)}>
-      {#if equation.left instanceof ExpressionNode}
-        <Expression expression={equation.left} />
-      {:else if equation.left instanceof TokenNode}
-        <Token token={equation.left} />
-      {/if}
-    </div>
-  </Flaggable>
-  <span class="equals">=</span>
-  <Flaggable error={error === 'right'} size={110}>
-    <div
-      class="side right"
-      class:no-exp={!(equation.right instanceof ExpressionNode)}>
-      {#if equation.right instanceof ExpressionNode}
-        <Expression expression={equation.right} />
-      {:else if equation.right instanceof TokenNode}
-        <Token token={equation.right} />
-      {/if}
-    </div>
-  </Flaggable>
-</div>

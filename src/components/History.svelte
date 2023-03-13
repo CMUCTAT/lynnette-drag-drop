@@ -1,74 +1,97 @@
-<script>
-  import { history } from "$stores/history";
-  import ExpressionDisplay from "$components/ExpressionDisplay.svelte";
-  import TokenDisplay from "$components/TokenDisplay.svelte";
-  import { ExpressionNode, TokenNode } from "$utils/classes.js";
-  import { parseGrammar } from "$utils/grammarParser.js";
+<dev class="history">
+  <h1>Steps</h1>
+  <div bind:this={historyScroll} class="stack">
+    {#each parsedHistory as item, index}
+      <div class="equation" class:current={index === $history.index}>
+        <div class="left">
+          {#if item.left instanceof ExpressionNode}
+            <HistoryExpression expression={item.left}/>
+          {:else if item.left instanceof TokenNode}
+            <HistoryToken token={item.left}/>
+          {/if}
+        </div>
+        <div class="equals">=</div>
+        <div class="right">
+          {#if item.right instanceof ExpressionNode}
+            <HistoryExpression expression={item.right}/>
+          {:else if item.right instanceof TokenNode}
+            <HistoryToken token={item.right}/>
+          {/if}
+        </div>
+      </div>
+    {/each}
+  </div>
+</dev>
 
-  $: parsedHistory = $history.all.map(item => parseGrammar(item));
+<script>
+  import HistoryExpression from "$components/HistoryExpression.svelte"
+  import HistoryToken from "$components/HistoryToken.svelte"
+  import { afterUpdate } from 'svelte'
+  import { ExpressionNode, TokenNode } from "$utils/classes.js"
+  import { parseGrammar } from "$utils/grammarParser.js"
+  import { history } from "$stores/history"
+
+  let historyScroll
+
+  $: parsedHistory = $history.all.map(item => parseGrammar(item))
+
+  afterUpdate(() => {
+    historyScroll.scrollTop = historyScroll.scrollHeight
+  })
 </script>
 
 <style>
+  .history {
+    grid-area: steps;
+    box-sizing: border-box;
+    border-bottom-right-radius: 40px;
+    max-width: 300px;
+    padding: 0px 10px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    font-size: 16px;
+    background: #f5f4f3;
+  }
+  .stack {
+    margin-bottom: 40px;
+    flex: 1;
+    overflow: auto;
+  }
+  .equation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+  }
+  .equation.current {
+    border-radius: 4px;
+    background: #388eb359;
+  }
   .left {
     display: flex;
   }
   .right {
     display: flex;
   }
-  .stack {
-    overflow-y: auto;
-    height: 100%;
-  }
-  .equation-display {
-    user-select: none;
-  }
-  .equation-display .equals {
+  .equals {
+    margin: 5px;
+    height: 20px;
+    display: flex;
+    align-items: center;
     font-size: 1em;
   }
-  .equation-display.current {
-    background: #388eb359;
-    border-radius: 4px;
-  }
-  .equation {
-    justify-content: center;
-    display: flex;
-    align-items: center;
-  }
-  .equals {
-    display: flex;
-    align-items: center;
-    font-size: 1.5em;
-    margin: 5px;
-  }
-  .equals > div {
-    height: 20px;
+  @media only screen and (max-width: 820px) {
+    .history {
+      border-bottom-right-radius: 10px;
+      padding: 0px;
+    }
+    .history h1 {
+      margin: 5px 0px;
+      font-size: 24px;
+    }
+    .stack {
+      margin-bottom: 5px;
+    }
   }
 </style>
-
-<div class="History">
-  <div class="stack">
-    {#each parsedHistory as item, i}
-      <div class="equation-display" class:current={i === $history.index}>
-        <div class="equation">
-          <div class="left">
-            {#if item.left instanceof ExpressionNode}
-              <ExpressionDisplay expression={item.left} />
-            {:else if item.left instanceof TokenNode}
-              <TokenDisplay token={item.left} />
-            {/if}
-          </div>
-          <div class="equals">
-            <div>=</div>
-          </div>
-          <div class="right">
-            {#if item.right instanceof ExpressionNode}
-              <ExpressionDisplay expression={item.right} />
-            {:else if item.right instanceof TokenNode}
-              <TokenDisplay token={item.right} />
-            {/if}
-          </div>
-        </div>
-      </div>
-    {/each}
-  </div>
-</div>

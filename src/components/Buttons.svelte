@@ -1,15 +1,48 @@
+<div class="buttons">
+  {#if error}
+    <div class="UndoButton button">
+      <button on:click={handleUndo}>
+        <div class="icon">⤶</div>
+        <div class="content">Undo</div>
+      </button>
+    </div>
+  {/if}
+  <div class="CTATHintButton button"/>
+  <div class="CTATDoneButton button"/>
+  <button class="mute" class:muted on:click={handleClick}>🔈</button>
+</div>
+
 <script>
-  export let onUndo;
-  export let error;
+  import { soundEffects } from '$utils/soundEffect.js'
+
+  export let handleUndo
+  export let error
+
+  let muted = document.cookie.split('muted=')[1] === 'true'
+  soundEffects.mute(muted)
+
+  function handleClick() {
+    soundEffects.mute(!soundEffects._muted)
+    muted = !muted
+    document.cookie = 'muted=' + muted
+  }
 </script>
 
 <style>
+  .buttons {
+    grid-area: buttons;
+    justify-self: center;
+    align-self: end;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
   .button :global(button) {
-    font-size: 30px;
+    border: none;
+    border-radius: 8px;
     width: 100px;
     height: 100px;
-    border-radius: 8px;
-    border: none;
+    font-size: 30px;
     cursor: pointer;
     transition: transform 0.25s ease;
   }
@@ -17,52 +50,69 @@
     transform: scale(1.1);
   }
   .CTATHintButton :global(button) {
-    background: #ffc954;
     color: #9e770a;
+    background: #ffc954;
   }
   .CTATDoneButton :global(button) {
-    background: #63fabb;
-    color: #0c9769;
     font-size: 20px;
+    color: #0c9769;
+    background: #63fabb;
   }
   .UndoButton button {
-    background: #f1384d;
-    color: #750c18;
     position: relative;
+    color: #750c18;
+    background: #f1384d;
   }
   .UndoButton {
     margin-bottom: 30px;
   }
   .UndoButton button:after {
-    opacity: 0;
     content: '';
-    width: 100%;
-    height: 100%;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    position: absolute;
-    border: 3px solid #f1384d;
-    box-sizing: border-box;
-    border-radius: 10px;
     z-index: 0;
+    border: 3px solid #f1384d;
+    border-radius: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
     animation: ripple 1.5s infinite;
   }
   @keyframes ripple {
     0% {
-      opacity: 1;
+      border-radius: 10px;
       width: 100%;
       height: 100%;
-      border-radius: 10px;
+      opacity: 1;
     }
     100% {
-      opacity: 0;
+      border-radius: 30px;
       width: 150%;
       height: 150%;
-      border-radius: 30px;
+      opacity: 0;
     }
   }
+  .mute {
+    position: relative;
+    border: none;
+    padding: 0px;
+    font-size: 30px;
+    color: #fff;
+    cursor: pointer;
+    background: none;
+  }
+  .mute.muted:after {
+    content: '❌';
+    position: absolute;
+    left: 0px;
+  }
   @media only screen and (max-width: 820px) {
+    .buttons {
+      padding-bottom: 30px;
+    }
     .button :global(button) {
       width: 70px;
       height: 70px;
@@ -70,16 +120,3 @@
     }
   }
 </style>
-
-<div>
-  {#if error}
-    <div class="UndoButton button">
-      <button on:click={onUndo}>
-        <div class="icon">⤶</div>
-        <div class="content">Undo</div>
-      </button>
-    </div>
-  {/if}
-  <div class="CTATHintButton button" />
-  <div class="CTATDoneButton button" />
-</div>

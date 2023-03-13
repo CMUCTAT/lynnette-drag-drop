@@ -1,66 +1,94 @@
+<div class="token" class:unknown={token.unknown} class:parens={token.node.parens}>
+  <DragDrop id={token.id} canDrag={!token.unknown}
+            dragStart={handleDragStart} dropSend={handleDropSend} dragHover={handleDragHover}
+            dragLeave={handleDragLeave} dropSucceed={handleDropSucceed}
+            let:dragging let:hovering let:draghovering let:fade>
+    <div slot="dropzone" class="token-inner no-highlight dropzone"
+         class:disabled={$error} class:dragging class:hovering class:draghovering>
+      {#if token.unknown}
+        <input on:change={handleUpdateToken}/>
+      {:else}
+        <div>{value}</div>
+      {/if}
+    </div>
+    <div slot="mover" class="token-inner no-highlight mover"
+         class:dragging class:hovering class:draghovering class:fade>
+      {#if token.unknown}
+        <div/>
+      {:else}
+        <div>{value}</div>
+      {/if}
+    </div>
+  </DragDrop>
+</div>
+
 <script>
-  import { draftEquation, dragdropData } from '$stores/equation.js';
-  import DragDrop from '$components/DragDrop.svelte';
-  import { error } from '$stores/messageManager.js';
+  import DragDrop from '$components/DragDrop.svelte'
+  import { error } from '$stores/messageManager.js'
+  import { draftEquation, dragdropData } from '$stores/equation.js'
 
-  export let token;
-  export let isSubtract = false;
+  export let token
+  export let isSubtract = false
 
-  function handleDragStart(e) {
-    dragdropData.setDrag(token);
+  function handleDragStart(event) {
+    dragdropData.setDrag(token)
   }
 
-  function handleDragLeave(e) {
-    dragdropData.setDrop(null);
+  function handleDragLeave(event) {
+    dragdropData.setDrop(null)
   }
 
-  function handleDragHover(e) {
-    dragdropData.setDrop(token);
-    draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop);
-    e.stopPropagation();
+  function handleDragHover(event) {
+    dragdropData.setDrop(token)
+    draftEquation.draftOperation($dragdropData.drag, $dragdropData.drop)
+    event.stopPropagation()
   }
 
-  function handleDropSend(e) {
-    draftEquation.apply();
+  function handleDropSend(event) {
+    draftEquation.apply()
   }
 
-  function handleUpdateToken(e) {
-    draftEquation.updateToken(token, e.target.value);
+  function handleUpdateToken(event) {
+    draftEquation.updateToken(token, event.target.value)
   }
 
   function handleDropSucceed() {
-    // console.log($dragdropData.drag, $dragdropData.drag.parent, $dragdropData.drop);
-    // console.log($dragdropData.drag.parent !== $dragdropData.drop);
-    return $dragdropData.drag && $dragdropData.drag.parent !== $dragdropData.drop;
+    return $dragdropData.drag && $dragdropData.drag.parent !== $dragdropData.drop
   }
-  $: value = token.value(isSubtract ? -1 : 1);
+
+  $: value = token.value(isSubtract ? -1 : 1)
 </script>
 
 <style>
   .token {
-    flex: 0;
-    margin: 10px;
     position: relative;
+    margin: 10px;
+    flex: 0;
+  }
+  @media only screen and (max-width: 820px) {
+    .token {
+      margin-inline: 5px;
+    }
   }
   .token-inner {
-    background: #fff;
-    color: #333;
-    padding: 10px;
-    text-align: center;
     border-radius: 5px;
     box-sizing: border-box;
     min-width: 58px;
     height: 58px;
+    padding: 10px;
+    text-align: center;
     line-height: 37px;
     font-size: 35px;
+    color: #333;
+    background: #fff;
     pointer-events: none;
     transition: all 0.25s ease;
   }
   .dropzone.token-inner {
     -webkit-text-stroke-width: 1px;
     -webkit-text-stroke-color: #fff0;
-    background: none;
     color: #fff0;
+    background: none;
     /* box-sizing: border-box;
     opacity: 0;
     transition: opacity 0.25s ease;
@@ -80,20 +108,20 @@
     transform: scale(1.2);
   }
   input {
-    margin: 0;
-    padding: 8px;
+    margin: 0px;
     outline: none;
     border: none;
     width: 100%;
     height: 100%;
-    background: none;
+    padding: 8px;
     text-align: center;
     color: #fff;
+    background: none;
   }
   .token.unknown .token-inner {
-    background: none;
     border: 3px dashed #fff;
-    padding: 0;
+    padding: 0px;
+    background: none;
     pointer-events: auto;
   }
   .token.unknown .token-inner.mover {
@@ -109,9 +137,9 @@
     left: -10px;
     top: -10px;
     bottom: -10px;
-    width: 8px;
     border-left: solid 3px #fff;
     border-radius: 50%;
+    width: 8px;
   }
   .parens:after {
     content: '';
@@ -119,53 +147,11 @@
     right: -10px;
     top: -10px;
     bottom: -10px;
-    width: 8px;
     border-right: solid 3px #fff;
     border-radius: 50%;
+    width: 8px;
   }
   .disabled {
     pointer-events: none !important;
   }
 </style>
-
-<div class="token" class:unknown={token.unknown} class:parens={token.node.parens}>
-  <DragDrop
-    let:dragging
-    let:hovering
-    let:fade
-    let:draghovering
-    id={token.id}
-    canDrag={!token.unknown}
-    dropSend={handleDropSend}
-    dragStart={handleDragStart}
-    dragLeave={handleDragLeave}
-    dragHover={handleDragHover}
-    dropSucceed={handleDropSucceed}>
-    <div
-      slot="dropzone"
-      class="token-inner no-highlight dropzone"
-      class:disabled={$error}
-      class:dragging
-      class:hovering
-      class:draghovering>
-      {#if token.unknown}
-        <input size={1} on:change={handleUpdateToken} />
-      {:else}
-        <div>{value}</div>
-      {/if}
-    </div>
-    <div
-      slot="mover"
-      class="token-inner no-highlight mover"
-      class:dragging
-      class:hovering
-      class:draghovering
-      class:fade>
-      {#if token.unknown}
-        <div />
-      {:else}
-        <div>{value}</div>
-      {/if}
-    </div>
-  </DragDrop>
-</div>

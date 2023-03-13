@@ -1,51 +1,70 @@
+<div class="draggable-operator">
+  <DragDrop canDragHover={false} dragStart={handleDragStart} dropSend={handleDropSend}
+            let:dragging let:hovering let:draghovering let:fade>
+    <div slot="dropzone" class="operator no-highlight dropzone"
+         class:dragging class:hovering class:draghovering>
+      <div class="no-highlight" class:divide={isDivide}>
+        {#if !isDivide}{Operators[operator]}{/if}
+      </div>
+    </div>
+    <div slot="mover" class="operator no-highlight mover"
+         class:dragging class:hovering class:draghovering class:fade>
+      <div class="no-highlight" class:divide={isDivide}>
+        {#if !isDivide}{Operators[operator]}{/if}
+      </div>
+    </div>
+  </DragDrop>
+</div>
+
 <script>
-  import DragDrop from '$components/DragDrop.svelte';
-  import { Operators } from '$utils/classes.js';
-  import { draftEquation, dragdropData } from '$stores/equation.js';
+  import DragDrop from '$components/DragDrop.svelte'
+  import { Operators } from '$utils/classes.js'
+  import { draftEquation, dragdropData } from '$stores/equation.js'
 
-  export let operator;
-  export let onlySymbol = false;
-  let isDivide = !onlySymbol && operator === 'DIVIDE';
+  export let operator
+  export let onlySymbol = false
 
-  function handleDropSend(e) {
-    draftEquation.apply();
+  let isDivide = !onlySymbol && operator === 'DIVIDE'
+
+  function handleDragStart(event) {
+    dragdropData.setDrag(operator)
   }
 
-  function handleDragStart(e) {
-    dragdropData.setDrag(operator);
+  function handleDropSend(event) {
+    draftEquation.apply()
   }
 </script>
 
 <style>
   /* .divide {
-      padding: 0;
       margin: 4px;
+      border-radius: 2px;
       width: 100%;
       height: 2px;
+      padding: 0px;
       background: #333;
-      border-radius: 2px;
     } */
   .draggable-operator {
     margin: 10px;
   }
   .operator {
-    color: #fff;
-    padding: 10px;
-    text-align: center;
     border-radius: 5px;
     box-sizing: border-box;
     min-width: 58px;
     height: 58px;
+    padding: 10px;
+    text-align: center;
     line-height: 37px;
     font-size: 35px;
+    color: #fff;
     pointer-events: none;
     transition: all 0.25s ease;
   }
   .dropzone.operator {
     -webkit-text-stroke-width: 1px;
     -webkit-text-stroke-color: #fff0;
-    background: none;
     color: #fff0;
+    background: none;
   }
   .dragging.dropzone {
     -webkit-text-stroke-color: #fff;
@@ -68,36 +87,3 @@
     opacity: 0 !important;
   }
 </style>
-
-<div class="draggable-operator">
-  <DragDrop
-    let:dragging
-    let:hovering
-    let:draghovering
-    let:fade
-    canDragHover={false}
-    dragStart={handleDragStart}
-    dropSend={handleDropSend}>
-    <div
-      slot="dropzone"
-      class="operator no-highlight dropzone"
-      class:dragging
-      class:hovering
-      class:draghovering>
-      <div class="no-highlight" class:divide={isDivide}>
-        {#if !isDivide}{Operators[operator]}{/if}
-      </div>
-    </div>
-    <div
-      slot="mover"
-      class="operator no-highlight mover"
-      class:dragging
-      class:hovering
-      class:draghovering
-      class:fade>
-      <div class="no-highlight" class:divide={isDivide}>
-        {#if !isDivide}{Operators[operator]}{/if}
-      </div>
-    </div>
-  </DragDrop>
-</div>

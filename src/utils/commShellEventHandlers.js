@@ -6,47 +6,45 @@
  * CTATCommShell whenever the student has completed a problem
  */
 
-import { showMessages, lastCorrect, error, alienState } from '$stores/messageManager.js';
-// import { draftEquation } from '$stores/equation.js';
-import { history } from '$stores/history.js';
-import { get } from 'svelte/store';
-import soundEffects from '$utils/soundEffect.js';
+import { get } from 'svelte/store'
+import { showMessages, lastCorrect, error, alienState } from '$stores/messageManager.js'
+// import { draftEquation } from '$stores/equation.js'
+import { history } from '$stores/history.js'
+import { soundEffects } from '$utils/soundEffect.js'
 
 function onSuccess(finish, delay = 500) {
-  alienState.set('success');
-  showMessages.set(false);
-  soundEffects.play('haHa');
+  alienState.set('success')
+  showMessages.set(false)
+  soundEffects.play('haHa')
   setTimeout(() => {
-    finish();
-  }, delay);
+    finish()
+  }, delay)
 }
 
 function handleCorrectAction(evt, msg) {
-  showMessages.set(false);
-  lastCorrect.set(get(history).current);
-  alienState.set(null);
+  showMessages.set(false)
+  lastCorrect.set(get(history).current)
+  alienState.set(null)
 }
 
 function handleInCorrectAction(evt, msg) {
-  var sai = msg.getSAI();
+  let sai = msg.getSAI()
   if (sai.getSelection() != 'done') {
-    error.set(sai.getSelection());
+    error.set(sai.getSelection())
     if (get(alienState) !== 'error') {
-      showMessages.set(false);
-      soundEffects.play('hmm');
-      alienState.set('error');
+      showMessages.set(false)
+      soundEffects.play('hmm')
+      alienState.set('error')
     }
     // if (get(history).current === get(lastCorrect)) {
     //   setTimeout(() => {
-    //     error.set(null);
-    //   }, 3000);
+    //     error.set(null)
+    //   }, 3000)
     // }
   }
 }
 
-function handleHighlightMsg(evt, msg) {
-  // console.log(1);
-}
+function handleHighlightMsg(evt, msg) { }
 
 function handleUnHighlightMsg(evt, msg) { }
 
@@ -57,37 +55,34 @@ function handleStartProblem(evt, msg) { }
 function handleAssociatedRules(evt, msg) { }
 
 function handleBuggyMessage(evt, msg) {
-  showMessages.set(true);
+  showMessages.set(true)
   if (get(alienState) !== 'error') {
-    soundEffects.play('hmm');
-    alienState.set('error');
+    soundEffects.play('hmm')
+    alienState.set('error')
   }
 }
 
 function handleSuccessMessage(evt, msg) {
-  alienState.set('success');
-  soundEffects.play('haHa');
+  alienState.set('success')
+  soundEffects.play('haHa')
 }
 
 function handleInterfaceAction(evt, msg) {
-  if (!msg || typeof msg === 'string' || msg instanceof String) return;
-  var sai = msg.getSAI();
-  var input = sai.getInput();
-  console.log('INPUT:', input);
+  if (!msg || typeof msg === 'string' || msg instanceof String) return undefined
+  let sai = msg.getSAI(),
+      input = sai.getInput()
   if (input) {
-    let parsedInput = parse.algParse(input);
-    history.push(parsedInput);
-    lastCorrect.set(parsedInput);
-    // draftEquation.set(parse.algParse(input))
+    let parsedInput = window.parse.algParse(input)
+    history.push(parsedInput)
+    lastCorrect.set(parsedInput)
+    // draftEquation.set(window.parse.algParse(input))
     // draftEquation.apply()
   }
 }
 
 function handleShowHintsMessage(evt, msg) {
-  console.log(msg.getXMLString());
-
-  showMessages.set(true);
-  alienState.set('hint');
+  showMessages.set(true)
+  alienState.set('hint')
 }
 
 function handleTutoringServiceError(evt, msg) { }
@@ -98,59 +93,49 @@ function handleProblemRestoreEnd(evt, msg) { }
 
 // These events do not provide a pointer to a CTATMessage as the argument to the callback.
 
-function handleRequestHint(evt) {
-  console.log(evt);
-}
+function handleRequestHint(evt) { }
 
-function handleDonePressed(evt) {
-  console.log(evt);
-}
+function handleDonePressed(evt) { }
 
-function handleNextPressed(evt) {
-  console.log(evt);
-}
+function handleNextPressed(evt) { }
 
-function handlePreviousPressed(evt) {
-  console.log(evt);
-}
+function handlePreviousPressed(evt) { }
 
 document.addEventListener('tutorInitialized',
   () => {
     CTATCommShell.commShell.assignDoneProcessor((input, finish) => {
-      onSuccess(finish);
-    });
+      onSuccess(finish)
+    })
     CTATCommShell.commShell.addGlobalEventListener({
       processCommShellEvent: (evt, msg) => {
-        console.log(evt, msg);
         switch (evt) {
           case 'BuggyMessage':
-            handleBuggyMessage(evt, msg);
-            break;
+            handleBuggyMessage(evt, msg)
+            break
           case 'InterfaceAction':
-            handleInterfaceAction(evt, msg);
-            break;
+            handleInterfaceAction(evt, msg)
+            break
           case 'CorrectAction':
-            handleCorrectAction(evt, msg);
-            break;
+            handleCorrectAction(evt, msg)
+            break
           case 'InCorrectAction':
-            handleInCorrectAction(evt, msg);
-            break;
+            handleInCorrectAction(evt, msg)
+            break
           case 'BuggyMessage':
-            handleBuggyMessage(evt, msg);
-            break;
+            handleBuggyMessage(evt, msg)
+            break
           case 'ShowHintsMessage':
-            handleShowHintsMessage(evt, msg);
-            break;
+            handleShowHintsMessage(evt, msg)
+            break
           case 'SuccessMessage':
-            handleSuccessMessage(evt, msg);
-            break;
+            handleSuccessMessage(evt, msg)
+            break
           case 'AssociatedRules':
-            console.log(msg.getXMLString());
-            break;
+            break
           default:
-            break;
+            break
         }
       }
-    });
+    })
   }
 )
