@@ -138,13 +138,13 @@ rule HintDiagram {
 			operand = cd.operand,
 			expBefore = cd.expBefore,
 			expAfter = cd.expAfter;
-			
+
 		switch(operation) {
 			case 'initial':
 				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));
 				assert(new Hint("The tape at the top shows the left-hand side of the equation, and one at the bottom shows the right-hand side of the equation."));
 			break;
-			case 'subtraction': 
+			case 'subtraction':
 				assert(new Hint("Remember that you need to keep the length of the tapes equal because they are “balanced”."));;
 				assert(new Hint("Remember that you need to subtract (take out) the same thing from both sides."));
 			break;

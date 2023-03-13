@@ -1,0 +1,11 @@
+import('productionrulesMB.nools');
+global pName = 'level7_3plus5parx-3pareq-2';
+global initLeft = '3+5(x-3)';
+global initRight = '-2';
+global stepSkipLevel = 3;
+global shallowSearch = false;
+global forceSimplify = true;
+global pregenConflictTree = false;
+global parseProblem = true;
+global dragNDrop = true;
+global operatorsFirst = true;

@@ -1,0 +1,14 @@
+import('productionrulesMB.nools');
+global pName = 'additional15';
+global initLeft = '3+5(x+3)';
+global initRight = '-7';
+global stepSkipLevel = 2;
+global shallowSearch = false;
+global forceSimplify = true;
+global pregenConflictTree = false;
+global parseProblem = true;
+global interfaceType = 'dragndrop';
+global operatorsFirst = true;
+global language = "english";
+global finalX = -5;
+global diagramsFirst = false;

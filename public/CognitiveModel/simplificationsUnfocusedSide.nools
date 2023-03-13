@@ -16,7 +16,7 @@ rule DistributeMultiplicationOtherSide{
 			factorExpr1 = simpData.factorExpr1,
 			factorExpr2 = simpData.factorExpr2,
 			e = simpData.e;
-	*/		
+	*/
 		modify(ci,"opStr", ci.opStr+'s');
 		// creating a productTerm for every term
 		var allTerms = [];
@@ -64,18 +64,18 @@ rule DistributeMultiplicationOtherSide{
 		allTerms.forEach(function(factor){
 			retract(factor);
 		});
-		
+
 		modify(ri, "modified", true);
 
 		//tree duplication
 		modify(ci, "distributedMult",true);
 
-		var input = eqStr(newTerms), 
+		var input = eqStr(newTerms),
 			expSide = e.side;
-			
+
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
 		//setCTNodeData(fullExp);
-		
+
 		if(ci.selection === "hint") {
 			backtrack();
 		}else if(inputRepeated(input, expSide)){
@@ -116,21 +116,21 @@ rule DistributeDivisionOtherSide {
 			coeffTerm = simpData.coeffTerm,
 			e = simpData.e,
 			eTerms = e.terms;
-	*/		
+	*/
 		var	eSide = e.side;
 		var terms = topExpr.terms;
 		var c = coeffTerm.coeff;
 		var newTerms = eTerms.filter((term) => term !== dt);
-		
+
 		var canDistribute = terms.every((term)=>{
 			return (term.coeff && term.coeff % coeffTerm.coeff === 0)
 		});
-		
+
 		if (canDistribute) {
 			modify(ci,"opStr", ci.opStr+'s');
 			var distributed = p.distributedDivTerms.slice();
 	//		var newTransTerms = currTrans.terms.slice();
-			
+
 			// creating a divterm for every term
 			//divide the whole equation by coeff of the variable
 			terms.forEach(function(term){
@@ -149,7 +149,7 @@ rule DistributeDivisionOtherSide {
 			if(newTransTerms.indexOf(dt.factNr) >= 0){
 				newTransTerms.splice(newTransTerms.indexOf(dt.factNr),1);
 			}
-			
+
 			if(newTransTerms.length === 0){
 				retract(currTrans);
 				modify(p,"currTransformation",null);
@@ -161,13 +161,13 @@ rule DistributeDivisionOtherSide {
 			retract(topExpr);
 			retract(bottomExpr);
 			retract(coeffTerm);
-			
+
 			modify(ri, "modified", true);
 
 			var input = eqStr(newTerms);
 			var fullExp = (s === "left" ? eqStr(otherE.terms, newTerms) : eqStr(newTerms, otherE.terms));
 			//setCTNodeData(fullExp);
-			
+
 			if (inputRepeated(input, eSide)) {
 				backtrack();
 			} else if (ci.selection !== "hint") {
@@ -198,18 +198,18 @@ rule CancelDivisionOtherSide {
 		dt: divTerm dt === ptFactor1.terms[0];
 		dtDenomExp: Expr dtDenomExp === dt.factors[1] && dtDenomExp.terms.length === 1;
 		btmCancelTerm: simpleTerm btmCancelTerm === dtDenomExp.terms[0] {coeff: btmCancelCoeff, var: btmCancelVar};
-		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar; 
+		topCancelTerm: simpleTerm topCancelTerm === ptFactor2.terms[0] && topCancelTerm.coeff === btmCancelCoeff && topCancelTerm.var === btmCancelVar;
 		e: Expr pt in e.terms && e.topLevel && e.side === !s {terms: eTerms, side: eSide};
 		otherE: Expr otherE.topLevel && otherE.side === s;
 	} then {
 		modify(ci,"opStr", ci.opStr+'s');
 		modify(ri, "modified", true);
-		
+
 		//
 		var dtNumerExp = dt.factors[0];
 		var dtNumerExpTerms = dtNumerExp.terms.slice();
 		modify(e, "terms", dtNumerExpTerms);
-		
+
 		retract(pt);
 		retract(ptFactor1);
 		retract(dt);
@@ -218,13 +218,13 @@ rule CancelDivisionOtherSide {
 		retract(btmCancelTerm);
 		retract(ptFactor2);
 		retract(topCancelTerm);
-		
+
 		var cancelTermStr = btmCancelCoeff+(btmCancelVar ? btmCancelVar : '');
-		
+
 		var input = eqStr(dtNumerExpTerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, dtNumerExpTerms) : eqStr(dtNumerExpTerms, otherE.terms));
 		//setCTNodeData(fullExp);
-		
+
 		if (inputRepeated(input, eSide)) {
 			backtrack();
 		} else if (ci.selection !== "hint") {
@@ -271,7 +271,7 @@ rule CombineDivTermsOtherSide {
 			topExpr1Terms = topExpr1.terms,
 			numerTerm1 = simpData.numerTerm1,
 			numerTerm2 = simpData.numerTerm2;
-	*/	
+	*/
 		var eSide = e.side;
 		//expression wm stuff
 		var newETerms = eTerms.filter((term) => term !== divTerm2);
@@ -279,7 +279,7 @@ rule CombineDivTermsOtherSide {
 		newTopExprTerms.push(numerTerm2);
 		modify(e, "terms", newETerms);
 		modify(topExpr1, "terms", newTopExprTerms);
-		
+
 		//cycle info stuff
 		modify(ci,"opStr", ci.opStr+'s');
 		var combined = p.combinedDivTerms.slice();
@@ -300,14 +300,14 @@ rule CombineDivTermsOtherSide {
 		}else{
 			modify(currTrans,"terms",newTransTerms);
 		}
-*/		
+*/
 		modify(ri, "modified", true);
 
 		var input = eqStr(newETerms);
 		var fullExp = (s === "left" ? eqStr(otherE.terms, newETerms) : eqStr(newETerms, otherE.terms));
 		//setCTNodeData(fullExp);
 		if (ci.selection === "hint") {
-			
+
 			backtrack();
 		}else if(inputRepeated(input, eSide)){
 			backtrack();
@@ -347,7 +347,7 @@ rule MultiplyOtherSide{
 			factorTerm1 = simpData.factorTerm1,
 			factorTerm2 = simpData.factorTerm2,
 			e = simpData.e,
-	*/		
+	*/
 		var	eSide = e.side;
 		modify(ci,"opStr", ci.opStr+'s');
 		var coeff = factorTerm1.coeff * factorTerm2.coeff;
@@ -400,7 +400,7 @@ rule DivideProductTermOtherSide{
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
         dt: divTerm dt.factNr >= num {factNr : newNum, factors: dtFactors};
-		
+
 		dividendExpr: Expr dividendExpr === dtFactors[0] && dividendExpr.terms.length === 1 {terms: dividendTerms};
 		divisorExpr: Expr divisorExpr === dtFactors[1] && divisorExpr.terms.length === 1 {terms: divisorTerms};
 		dividend: productTerm dividend === dividendTerms[0] {factors: dividendFactors};
@@ -411,7 +411,7 @@ rule DivideProductTermOtherSide{
 		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {   // simplest way may be to modify the coeff of the dividend term and move it to the toplevel
-	/*	
+	/*
 		var dividendExpr = simpData.dividendExpr,
 			dividendTerms = dividendExpr.terms,
 			divisorExpr = simpData.divisorExpr,
@@ -423,7 +423,7 @@ rule DivideProductTermOtherSide{
 			factor1 = simpData.factor1,
 			factor2 = simpData.factor2,
 			e = simpData.e,
-	*/		
+	*/
 		var	eSide = e.side;
 		modify(ci,"opStr", ci.opStr+'s');
 
@@ -488,8 +488,8 @@ rule DivideOtherSide {
 //		currTrans: transformation currTrans === ct;
         ri: rowInfo ;
         ci: cycleInfo !ci.copyOK && !ci.addedToSideAfterDivide && !ci.simplification {focus: s, divFactNum : num, dividedTerms : divTerms};
-        
-		dt: divTerm dt.factNr >= num {factNr : newNum, factors: dtFactors};	
+
+		dt: divTerm dt.factNr >= num {factNr : newNum, factors: dtFactors};
 		dividendExpr: Expr dividendExpr === dtFactors[0] && dividendExpr.terms.length === 1 {terms: dividendTerms};
 		divisorExpr: Expr divisorExpr === dtFactors[1] && divisorExpr.terms.length === 1 {terms: divisorTerms};
 		dividend: simpleTerm dividend === dividendTerms[0];
@@ -510,7 +510,7 @@ rule DivideOtherSide {
 			divisor = simpData.divisor,
 			e = simpData.e,
 			termStr = eqStr([dt]);
-	*/		
+	*/
 		var	eSide = e.side;
 		modify(ci,"opStr", ci.opStr+'s');
 		var newCoeff = dividend.coeff / divisor.coeff;   // convert to integer?
@@ -519,10 +519,10 @@ rule DivideOtherSide {
 		var idx = newTerms.indexOf(dt);
 		newTerms.splice(idx,1,dividend);
 		modify(e, "terms", newTerms);
-		
+
 		//update the divFactNum
 		modify(ci,"divFactNum",newNum);
-		
+
 		//update dividedTerms
 		var newDivTerms = divTerms.slice();
 		newDivTerms.push(dividend.factNr);
@@ -532,7 +532,7 @@ rule DivideOtherSide {
 		if(newTransTerms.indexOf(dt.factNr) >= 0){
 			newTransTerms.splice(newTransTerms.indexOf(dt.factNr),1);
 		}
-		
+
 		if(newTransTerms.length === 0){
 			retract(currTrans);
 			modify(p,"currTransformation",null);
@@ -591,7 +591,7 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 			t2 = simpData.t2,
 			c2 = t2.coeff,
 			e = simpData.e,
-	*/		
+	*/
 		var	eSide = e.side;
 		modify(ci,"opStr", ci.opStr+'s');
 		var i;
@@ -622,14 +622,14 @@ rule CombineLikeTermsOtherSide {   // terms don't cancel
 				modify(currTrans,"terms",newTransTerms);
 			}
 		}
-	*/	
+	*/
 		modify(e, "terms", newTerms);
 		retract(t1);
 		retract(t2);
 		modify(ri, "modified", true);
 		//avoid duplication in tree
 		modify(ci, "combined", true);
-		
+
 		//modify(ci,"cancelCombineNum",t1.factNr);
 		var input = eqStr(newTerms),
 			isConst = !v;
@@ -660,9 +660,9 @@ rule CancelTermsOtherSide {
         t1: simpleTerm ((divCancelExpr === null) || (t1 notIn divCancelExpr.terms) ) && (t1.factNr > cancelCombine) //avoid duplication in search tree
         				{coeff: c1, var: v};
         t2: simpleTerm (t2.var === v) && (t2.factNr > t1.factNr) // avoid duplication in matching
-        				&& (c1 + t2.coeff === 0) 
+        				&& (c1 + t2.coeff === 0)
         				&& ( (divCancelExpr == null) || (t2 notIn divCancelExpr.terms) ) {coeff: c2};
-		e: Expr t1 in e.terms && t2 in e.terms && e.side !== s {terms: allTerms}; 
+		e: Expr t1 in e.terms && t2 in e.terms && e.side !== s {terms: allTerms};
 		otherE: Expr otherE.topLevel && otherE.side === s;
 	}
 	then {
@@ -708,7 +708,7 @@ rule CancelTermsOtherSide {
 		}
 	/*
 		var newTransTerms = currTrans.terms.slice();
-		
+
 		if(newTransTerms.indexOf(t1.factNr) >= 0){
 			newTransTerms.splice(newTransTerms.indexOf(t1.factNr),1);
 		}

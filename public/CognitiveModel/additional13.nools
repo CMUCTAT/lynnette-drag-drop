@@ -1,0 +1,14 @@
+import('productionrulesMB.nools');
+global pName = 'additional13';
+global initLeft = '4(3x+1)+10';
+global initRight = '26';
+global stepSkipLevel = 2;
+global shallowSearch = false;
+global forceSimplify = true;
+global pregenConflictTree = false;
+global parseProblem = true;
+global interfaceType = 'dragndrop';
+global operatorsFirst = true;
+global language = "english";
+global finalX = 1;
+global diagramsFirst = false;

@@ -1,8 +1,0 @@
-import("productionrulesMB.nools");
-
-global pName = "-x+6eq15";
-global initLeft = "-x+6";
-global initRight = "15";
-global dragNDrop = true;
-
-global parseProblem = true;

@@ -32,6 +32,6 @@ global pregenConflictTree = false;
 global finalX = 4;
 
 //this should always be true
-global parseProblem = true; 
+global parseProblem = true;
 
 global allowNonStrategic = true;

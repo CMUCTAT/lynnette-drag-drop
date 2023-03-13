@@ -29,6 +29,7 @@ rule bootstrap {
 			useDiagrams: false,
 			allowNegativeTerms: true,
 			dragNDrop: false,
+			wholeEquation: false,
 			forceSimplify: false,
 			pregenConflictTree: false,
 			operatorsFirst: false,
@@ -37,12 +38,14 @@ rule bootstrap {
 		//set up problem config
 		//amt of step skipping allowed
 		try {
-			config.stepSkipLevel = stepSkipLevel;
+			//config.stepSkipLevel = stepSkipLevel;
+			config.stepSkipLevel = 2;
 		} catch(e) {}
 		
 		//don't deep search if step skipping disallowed (to get bug feedback)
 		try {
-			config.shallowSearch = shallowSearch;
+			//config.shallowSearch = shallowSearch;
+			config.shallowSearch = true;
 		} catch(e) {}
 		
 		//whether this interface uses diagrams 
@@ -50,10 +53,10 @@ rule bootstrap {
 			config.useDiagrams = (interfaceType === "diagrams") || (getInterfaceType() === "diagrams");
 		} catch(e) {}
 		
-		//whether negative terms are allowed to be created by transformations
+		//whether this interface has one input per row or two
 		try {
-			config.allowNegativeTerms = allowNegativeTerms;
-		} catch(e) {}
+			config.wholeEquation = (interfaceType === "typein-whole") || (getInterfaceType() === "typein-whole");
+		} catch (e) {}
 		
 		//whether this interface uses drag n' drop
 		try {
@@ -63,6 +66,16 @@ rule bootstrap {
 			config.shallowSearch = true;
 			config.stepSkipLevel = 1;
 		}
+		
+		//whether student must select both operators before any operands (dnd only)
+		try {
+			config.operatorsFirst = operatorsFirst;
+		} catch (e) {}
+		
+		//whether negative terms are allowed to be created by transformations
+		try {
+			config.allowNegativeTerms = allowNegativeTerms;
+		} catch(e) {}
 		
 		//whether equation must be fully simplified before starting new transformation
 		try {
@@ -74,21 +87,32 @@ rule bootstrap {
 			config.pregenConflictTree = pregenConflictTree;
 		} catch (e) {}
 		
-		//whether student must select both operators before any operands (dnd only)
-		try {
-			config.operatorsFirst = operatorsFirst;
-		} catch (e) {}
-		
 		try {
 			config.allowNonStrategic = allowNonStrategic;
 		} catch (e) {}
 		
-		//setting up interface (two inputs)
-		var initLName = "startLeft";
-		var initRName = "startRight";
-		assert(new interfaceElement(initLName, initLeft, "left"));
-		assert(new interfaceElement(initRName, initRight, "right"));
-		assert(new interfaceRow("row0", initLName, initRName));
+		try {
+			if (language === "spanish") {
+				window.lang = "spanish";
+			}
+		} catch (e) {}
+		
+		//setting up interface 
+		var iElementNames = [];
+		if (config.wholeEquation) {
+			var initName = "start";
+			assert(new interfaceElement(initName));
+			iElementNames.push(initName);
+		} else {
+			var initLName = "startLeft";
+			var initRName = "startRight";
+		
+			assert(new interfaceElement(initLName, initLeft, "left"));
+			assert(new interfaceElement(initRName, initRight, "right"));
+			iElementNames.push(initLName);
+			iElementNames.push(initRName);
+		}
+		assert(new interfaceRow("row0", ...iElementNames));
 		var rowNames = [];
 		if (config.dragNDrop) {
 			assert(new interfaceElementDnd("left", "left"));
@@ -98,16 +122,19 @@ rule bootstrap {
 			//one persistent rowInfo fact for dragNDrop
 			assert(new rowInfo(1));
 		} else {
-			//  Note: row0 should not be in the list of rows (because used already)
 			for (var i = 1; i < 16; i++) {
 				name = "row"+i;
 				lName = "solveLeft"+i;
 				rName = "solveRight"+i;
 				rowNames.push(name);
-				assert(new interfaceElement(lName, null, "left"));
-				assert(new interfaceElement(rName, null, "right"));
-				assert(new interfaceRow(name, lName, rName)); 
-				// Leaving out the explanation fields for now
+				if (config.wholeEquation) {
+					assert(new interfaceElement(lName));
+					assert(new interfaceRow(name, lName));
+				} else {
+					assert(new interfaceElement(lName, null, "left"));
+					assert(new interfaceElement(rName, null, "right"));
+					assert(new interfaceRow(name, lName, rName)); 
+				}
 			}
 		}
 		//setting up internal representation of the equation in working memory
@@ -130,8 +157,12 @@ rule bootstrap {
 			setProblemAttribute("pregen_conflict_tree", true);
 		}
 		
-		addPregenSAI({selection: "solveLeft1"});
-		addPregenSAI({selection: "solveRight1"});
+		if (config.wholeEquation) {
+			addPregenSAI({selection: "solve1"});
+		} else {
+			addPregenSAI({selection: "solveLeft1"});
+			addPregenSAI({selection: "solveRight1"});
+		}
 		addPregenSAI({selection: "done"});
 		
 		//TPAs to set up initial expression
@@ -139,8 +170,12 @@ rule bootstrap {
 		if (config.dragNDrop) {
 			assert(new TPA("left", "start-state", initStr));
 		} else {
-			assert(new TPA(initLName, "UpdateTextField", initLeft));
-			assert(new TPA(initRName, "UpdateTextField", initRight));
+			if (config.wholeEquation) {
+				assert(new TPA(initName, "UpdateTextField", initStr));
+			} else {
+				assert(new TPA(initLName, "UpdateTextField", initLeft));
+				assert(new TPA(initRName, "UpdateTextField", initRight));
+			}
 			//TPA to display tape diagrams for initial exp
 			if (config.useDiagrams) {
 				var argStr = initLeft+','+initRight+','+finalX;
@@ -154,6 +189,7 @@ rule bootstrap {
 			}
 		}
 		
+		setProblemAttribute("auto_hint", "all");
 		
 		halt();
 		
@@ -163,31 +199,38 @@ rule bootstrap {
 rule HintFinishTransformation{
 	salience: 8;
 	when {
-		p: Problem {rows: pRows};
+		p: Problem !p.wholeEquation {rows: pRows};
 		ci: cycleInfo ci.selection === "hint";
 		ri: rowInfo ri.transformations.length {transformations: rowT};
 		r: interfaceRow r.name === pRows[0] {solutionSteps: steps};
 		ie1: interfaceElement ie1.name in steps && !ie1.value {side: s};
 	} then {
+		setChainPriority(2);
 		var transform = rowT[0],
 			expAfter = transform.expAfter,
 			operand = transform.operand,
 			thisSide = s,
 			otherSide = s === "left" ? "right" : "left",
-			input = expAfter.split("=")[thisSide === "left" ? 0 : 1];
+			input = CTATAlgebraParser.theParser.algParse(expAfter.split("=")[thisSide === "left" ? 0 : 1]).toString(),
+			msgVals = {"<term>":operand, "<side1>": otherSide, "<side2>":thisSide}; 
+		
 		switch(transform.operation) {
 			case 'subtraction':
-				assert(new Hint("You subtracted "+operand+" from the "+otherSide+", now do the same on the "+thisSide+"."));
+				assert(new Hint(fixMsg("You subtracted <term> from the <side1>, now do the same on the <side2>.", msgVals)));
 				break;
 			case 'addition':
-				assert(new Hint("You added "+operand+" to the "+otherSide+", now do the same on the "+thisSide+"."));
+				assert(new Hint(fixMsg("You added <term> to the <side1>, now do the same on the <side2>.")));
 				break;
 			case 'division-simple':
 			case 'division-complex':
-				assert(new Hint("You divided the "+otherSide+" by "+operand+", now do the same on the "+thisSide+"."));
+				assert(new Hint(fixMsg("You divided the <side1> by <term>, now do the same on the side2.")));
 				break;
 		}
-		assert(new Hint("Enter "+input+" on the "+thisSide+" side."));
+		assert(new Hint(fixMsg("Enter <term> on the <side> side.", {"<term>":input, "<side>": thisSide})));
+		
+		var selection = "solve" + (thisSide !== "full" ? thisSide.charAt(0).toUpperCase()+thisSide.slice(1) : '') + ri.number; 
+		checkSAI({selection: selection, action: "UpdateTextField", input: input});
+		
 		backtrack();
 	}
 }
@@ -200,6 +243,8 @@ rule HintFinishTransformationDragNDrop {
 		pt: PartialTransformation;
 		ie1: interfaceElementDnd ie1.side === "left";
 		ie2: interfaceElementDnd ie2 !== ie1 {side: s};
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";
 	} then {
 		var hasOperator = [],
 			hasOperand = [];
@@ -212,29 +257,82 @@ rule HintFinishTransformationDragNDrop {
 				hasOperator.push(ie);
 			}
 		});
+		var hintSide, stepType;
 		if (hasOperator.length === 1) {
-			assert(new Hint("Now drag the same operator onto the other side of the equation"));
-		}
-		else if (!hasOperand.length) {
-			var hintStr = "Now fill in the blank boxes with the term you want to ";
-			switch(ie1.operator) {
-				case 'subtraction':
-					hintStr+='subtract';
-					break;
-				case 'multiplication':
-					hintStr += 'multiply by';
-					break;
+			let noOperator = hasOperator[0] === ie1 ? ie2 : ie1;
+			let sign;
+			switch(hasOperator[0].operator) {
 				case 'division':
-					hintStr += 'divide by';
+					sign = "division sign";
+					break;
+				case 'multiplication': 
+					sign = "times sign";
+					break;
+				case 'addition':
+					sign = 'plus sign';
+					break;
+				case 'subtraction':
+					sign = 'minus sign';
 					break;
 			}
-			assert(new Hint(hintStr)); 
-		} else {
-			assert(new Hint("Now fill in the same operand on the other side of the equation"));
+			assert(new Hint(fixMsg("Now drag the <sign> onto the other side of the equation", {"<sign>": sign})));
+			assert(new Hint(fixMsg("Drag the <sign> onto the <side> side.", {"<sign>":sign, "<side>": noOperator.side})));
+			hintSide = noOperator.side;
+			stepType = "operator";
 		}
-	
+		else if (!hasOperand.length) {
+			var hintStr = 'Now fill in the blank boxes with the term you want to <operation_imp>';
+			var op;
+			switch(ie1.operator) {
+				case 'addition': 
+					op = 'add';
+					break;
+				case 'subtraction':
+					op = 'subtract';
+					break;
+				case 'multiplication':
+					op = 'multiply by';
+					break;
+				case 'division':
+					op = 'divide by';
+					break;
+			}
+			assert(new Hint(fixMsg(hintStr, {"<operation_imp>": op})));
+			let operand = simpleTermStr(pt.potentialOperand);
+			if ((pt.operator === "addition" && hasOperator[0].operator === "subtraction") ||
+				(pt.operator === "subtraction" && hasOperator[0].operator === "addition")) {
+				operand = CTATAlgebraParser.theParser.algSimplify('-1*'+operand);
+			}
+			assert(new Hint(fixMsg("Enter <term> in the blank box on the left side of the equation.", {"<term>": operand})));
+			hintSide = "left";
+			stepType = "operand";
+		} else {
+			let noOperand = hasOperand[0] === hasOperator[0] ? hasOperator[1] : hasOperator[0];
+			let operand = hasOperand[0].operand;
+			if ((hasOperand[0].operator === 'addition' && noOperand.operator === "subtraction") ||
+				(hasOperand[0].operator === "subtraction" && noOperand.operator === "addition")) {
+				operand = CTATAlgebraParser.theParser.algSimplify('-1*'+operand);
+			}
+			assert(new Hint(fixMsg("Now fill in the same thing on the other side of the equation.")));
+			assert(new Hint(fixMsg("Enter <term> in the blank box.", {"<term>":operand})));
+			hintSide = noOperand.side;
+			stepType = "operand";
+		}
+		var focusedExp = hintSide === "left" ? e1 : e2;
+		checkSAI({selection: hintSide, action: "UpdateTextField", input: applyPartialTransformation(focusedExp, pt, stepType === "operand")});
 		backtrack();
 	}
+}
+
+global simpList = ["DistributeMultiplication","DistributeDivision","CancelDivision",
+				   "CombineDivTerms","Multiply","DivideProductTerm",
+				   "Divide","CombineLikeTerms","CancelTerms"];
+
+function checkCanSimplify() {
+	var agenda = getAgenda();
+	var canSimp = !!agenda.find((activation)=>simpList.includes(activation.split(":")[0]));
+	console.log("checkCanSimplify returning "+canSimp);
+	return canSimp;
 }
 
 //handles new student input, assert new cycleInfo fact
@@ -242,7 +340,7 @@ rule focusSolutionStep {
 	when {
 		not (h: IsHintMatch);
 		not (ci: cycleInfo);
-		p: Problem {rows: rows};
+		p: Problem !p.wholeEquation {rows: rows};
 		sv: StudentValues sv.tutored {selection: sel};
 		r: interfaceRow r.name === rows[0] {solutionSteps: steps};
 		ie1: interfaceElement ie1.name === sel && ie1.name in steps && !ie1.value {side: s};
@@ -253,12 +351,41 @@ rule focusSolutionStep {
 	then {
 		clearInputHistory();
 		let eStr = eqStr(e1.terms, e2.terms);
-		assert(new cycleInfo(s, sel, !ie2.value, p.nTransLastCycle, eStr));
+		let canSimp;
 		if ( !ie2.value ) {
 			assert(new rowInfo(16-rows.length));
+			let ciOtherSide = assert(new cycleInfo(ie2.side, sel.replace(s.charAt(0).toUpperCase()+s.slice(1), ie2.side.charAt(0)+ie2.side.slice(1)), true, p.nTransLastCycle, eStr));
+			canSimp = checkCanSimplify();
+			retract(ciOtherSide);
 		}
+		
+		let newCI = assert(new cycleInfo(s, sel, !ie2.value, p.nTransLastCycle, eStr));
+		canSimp = canSimp || checkCanSimplify();
+		modify(newCI, "canSimplify", canSimp);
 	}
 }
+
+rule focusSolutionStepWholeEquation {
+	when {
+		not (h: IsHintMatch);
+		not (ci: cycleInfo);
+		p: Problem p.wholeEquation {rows: rows};
+		sv: StudentValues sv.tutored {selection: sel};
+		r: interfaceRow r.name === rows[0] {solutionSteps: steps};
+		ie1: interfaceElement ie1.name === sel && ie1.name in steps && !ie1.value;
+		e1: Expr e1.topLevel && e1.side === "left";
+		e2: Expr e2.topLevel && e2.side === "right";
+	}
+	then {
+		clearInputHistory();
+		let eStr = eqStr(e1.terms, e2.terms);
+		let newCI = assert(new cycleInfo("full", sel, true, p.nTransLastCycle, eStr));
+		assert(new rowInfo(16-rows.length));
+		let canSimp = checkCanSimplify();
+		modify(newCI, "canSimplify", canSimp);
+	}
+}
+
 
 rule focusSolutionStepDragNDrop {
 	when {
@@ -266,7 +393,7 @@ rule focusSolutionStepDragNDrop {
 		not (ci: cycleInfo);
 		p: Problem p.dragNDrop {rows: rows};
 		sv: StudentValues sv.tutored {selection: side, action: stepType};
-		ie1: interfaceElementDnd ie1.side === side && (!ie1.operator || !ie1.operand) {side: s};
+		ie1: interfaceElementDnd ie1.side === side;
 		ie2: interfaceElementDnd ie2.side !== side;   // the  other side
 		e1: Expr e1.topLevel && e1.side === "left";
 		e2: Expr e2.topLevel && e2.side === "right";
@@ -276,17 +403,23 @@ rule focusSolutionStepDragNDrop {
 			clearInputHistory();
 			let eStr = eqStr(e1.terms, e2.terms);
 			stepType = (stepType === "OperatorToExpression" || stepType === "OperatorToToken") ? "operator" : "operand";
-			console.log("focusSolutionStepDragNDrop, sv is ");
-			console.log(sv);
-			console.log("stepType is "+stepType);
 			
 			//change "+ ?" to "- ?"
 			console.log("input before: "+sv.input);
 			let input = sv.input.replace(/\+ ?\?/g, '-?');
 			console.log("input after: "+input);
-			modify(sv, "input", input);
+			if (input !== sv.input) {
+				modify(sv, "changedPlusToMinus", true);
+				modify(sv, "input", input);
+			}
+			let canSimp;
+			let ciOtherSide = assert(new cycleInfo(ie2.side, ie2.side, true, p.nTransLastCycle, eStr, stepType, ie2));
+			canSimp = checkCanSimplify();
+			retract(ciOtherSide);
 			
-			assert(new cycleInfo(side, side, true, p.nTransLastCycle, eStr, stepType, ie1));	
+			let newCI = assert(new cycleInfo(side, side, true, p.nTransLastCycle, eStr, stepType, ie1));
+			canSimp = canSimp || checkCanSimplify();
+			modify(newCI, "canSimplify", canSimp);			
 		} else {
 			backtrack();
 		}
@@ -304,11 +437,18 @@ rule startHintCycle {
 		e1: Expr e1.topLevel && e1.side === "left";
 		e2: Expr e2.topLevel && e2.side === "right";		
 	} then {
+		clearInputHistory();
 		let eStr = eqStr(e1.terms, e2.terms);
-		assert(new cycleInfo(s, "hint", !ie2.value, p.nTransLastCycle, eStr));
+		let canSimp;
 		if ( !ie2.value ) {
 			assert(new rowInfo(16-pRows.length));
+			let ciOtherSide = assert(new cycleInfo(ie2.side, sel.replace(s.charAt(0).toUpperCase()+s.slice(1), ie2.side.charAt(0)+ie2.side.slice(1)), true, p.nTransLastCycle, eStr));
+			canSimp = checkCanSimplify();
+			retract(ciOtherSide);
 		}
+		let newCI = assert(new cycleInfo(s, "hint", !ie2.value, p.nTransLastCycle, eStr));
+		canSimp = canSimp || checkCanSimplify();
+		modify(newCI, "canSimplify", canSimp);
 	}
 }
 
@@ -323,8 +463,17 @@ rule startHintCycleDragNDrop {
 		e1: Expr e1.topLevel && e1.side === "left";
 		e2: Expr e2.topLevel && e2.side === "right";		
 	} then {
+		clearInputHistory();
 		let eStr = eqStr(e1.terms, e2.terms);
-		assert(new cycleInfo(s, "hint", true, p.nTransLastCycle, eStr));
+		
+		let canSimp;
+		let ciOtherSide = assert(new cycleInfo(ie2.side, "hint", true, p.nTransLastCycle, eStr));
+		canSimp = checkCanSimplify();
+		retract(ciOtherSide);
+		
+		let newCI = assert(new cycleInfo(s, "hint", true, p.nTransLastCycle, eStr));
+		canSimp = canSimp || checkCanSimplify();
+		modify(newCI, "canSimplify", canSimp);
 	}
 }
 
@@ -407,7 +556,7 @@ rule write {
 	*/
 		var skippedTooManySteps = false;
 		var ti = os.indexOf('t');
-		var needToSimplify = p.forceSimplify && !parser.algSimplified(expAtStart) && (ti === 0);
+		var needToSimplify = p.forceSimplify && ci.canSimplify && (ti === 0);
 		switch(ssl) {
 			case 1: //1 trans OR 1 simp allowed
 				skippedTooManySteps = (nTrans + nSimp) > 1;
@@ -443,7 +592,7 @@ rule write {
 				} else {
 					message = ci.bugMessage;
 				}
-				setSuccessOrBugMsg(message);
+				setSuccessOrBugMsg(fixMsg(message));
 				backtrack();
 			}else{
 				//correct
@@ -528,7 +677,7 @@ rule writeDragNDropTransformation {
 		console.log("opStr: "+os);
 	*/
 		var ti = os.indexOf('t');
-		var	needToSimplify = p.forceSimplify && !parser.algSimplified(expAtStart) && (ti === 0);
+		var	needToSimplify = p.forceSimplify && ci.canSimplify && (ti === 0);
 		
 		var needSecondOperator = (p.operatorsFirst && ciStepType === "operand" && !pt.operator2Selected);
 		
@@ -540,17 +689,47 @@ rule writeDragNDropTransformation {
 				console.log("bug match");
 				var message;
 				if (needToSimplify) {
-					message = "You need to fully simplify the expression before you can begin a new transformation";
+					message = fixMsg("You need to fully simplify the expression before you can begin a new transformation");
 				} else if (needSecondOperator) {
-					message = "You need to apply the operator to the other side of the equation before choosing an operand";
+					//TODO
+					var chosenOperator = ie1.operator || ie2.operator;
+					var sign, action;
+					switch(chosenOperator) {
+						case 'addition': 
+							sign = "plus sign";
+							action = "add";
+							break;
+						case 'subtraction':
+							sign = "minus sign";
+							action = 'subtract';
+							break;
+						case 'multiplication':
+							sign = "times sign";
+							action = "multiply by";
+							break;
+						case 'division':
+							sign = "division sign";
+							action = "divide by";
+							break;
+					}
+					message = fixMsg("You need to drag the <sign> to the other side of the equation before choosing what to <operation_imp>", {"<sign>":sign, "<operation_imp>": action});
 				} else {
-					message = ci.bugMessage;
+					message = fixMsg(ci.bugMessage);
 				}
 				setSuccessOrBugMsg(message);
 				undoAll();
 			}else{
 				//correct
-				modify(ie1, ciStepType, ciStepType === "operator" ? pt.operator : simpleTermStr(pt.operand));    
+				if (ciStepType === "operator") {
+					let ieOp = (pt.operator === "subtraction" && sv.changedPlusToMinus) ? "addition" : pt.operator;
+					modify(ie1, "operator", ieOp);    
+				} else {
+					let ieOperand = simpleTermStr(pt.operand);
+					if (ie1.operator === "addition") {
+						ieOperand = algSimplify("-1*"+ieOperand);
+					}
+					modify(ie1, "operand", ieOperand);
+				}
 				modify(ri, "modified", false);
 				if ( ie1.operator && ie1.operand && ie2.operator && ie2.operand ) {
 					//whole row completed
@@ -613,7 +792,7 @@ rule writeDragNDropSimplification {
 			if(isBug){
 				console.log("bug match");
 				var message = ci.bugMessage;
-				setSuccessOrBugMsg(message);
+				setSuccessOrBugMsg(fixMsg(message));
 				undoAll();
 			}else{
 				//correct
@@ -633,6 +812,62 @@ rule writeDragNDropSimplification {
 	}
 }
 
+rule DragNDropSimplifyEarly {
+	when {
+		not (h: IsHintMatch);
+		ri: rowInfo !ri.modified;   // too narrow in general, but works for the time being
+		ci: cycleInfo !ci.simplification 
+		{focus: f, selection: s, otherSideFree: free, copyOK: cOK, inputs: inputList, opStr: os, ogStr: expAtStart, stepType: ciStepType};
+		sv: StudentValues sv.selection === s {input : studentInput};
+		ie: interfaceElementDnd ie.side === s;
+		p: Problem p.dragNDrop {rows: rows, stepSkipLevel: ssl};   //  bit  of a hack;  curious whether this works
+		pt: PartialTransformation pt.simplifiedleft || pt.simplifiedright;
+	} then {
+		var studentSideInput = studentInput.split("=")[(f === "left" ? 0 : 1)];
+		var simplified = f === "left" ? pt.simplifiedleft : pt.simplifiedright;
+		if (simplified) {
+			if (typeof simplified === "string") {
+				simplified = [simplified];
+			}
+			if(checkSAI({selection: s, action: "UpdateTextField", input: simplified.join()}, ()=>{
+				let matched = false;
+				for (let i = 0; i < simplified.length; i++) {
+					matched = checkEqualEquation(simplified[i], studentSideInput);
+					if (matched) {
+						break;
+					}
+				}
+				return matched;
+			}, true)) {
+				console.log("bug match");
+				let msg;
+				switch(ie.operator) {
+					case 'addition':
+						msg = "First you need to add <term> to the other side.";
+						break;
+					case 'subtraction':
+						msg = "First you need to subtract <term> from the other side.";
+						break;
+					case "division":
+						msg = "First you need to divide the other side by <term>";
+						break;
+					case "multiplication":
+						msg = "First you need to multiply the other side by <term>";
+						break;
+				}
+				setSuccessOrBugMsg(fixMsg(msg, {"<term>":ie.operand}));
+				undoAll();
+			}else {
+				//wrong
+				//console.log("wrong");
+				backtrack();
+			}
+		} else {
+			backtrack();
+		}
+	}
+}
+
 rule done {
 	when {
 		p: Problem !p.currentDiagram && !p.dragNDrop;
@@ -643,7 +878,7 @@ rule done {
 		t2: simpleTerm t2 in terms2 && t2.var !== v1 && (t2.var === null || t2.coeff === 1);
 	}
 	then {
-		assert(new Hint("You've determined the value of x, so the problem is done.  Click \"Finish Problem\" to move on"));
+		assert(new Hint(fixMsg("You've determined the value of x, so the problem is done.  Click \"Finish Problem\" to move on")));
 		if (checkSAI({selection: "done", action: "ButtonPressed", input: -1})) {
 			halt();
 		} 
@@ -662,7 +897,7 @@ rule doneDragNDrop {
 		t2: simpleTerm t2 in terms2 && t2.var !== v1 && (t2.var === null || t2.coeff === 1);
 	}
 	then {
-		assert(new Hint("You've determined the value of x, so the problem is done.  Click \"Done\" to move on"));
+		assert(new Hint(fixMsg("You've determined the value of x, so the problem is done.  Click \"Finish Problem\" to move on")));
 		if (checkSAI({selection: "done", action: "ButtonPressed", input: -1})) {
 			halt();
 		} 

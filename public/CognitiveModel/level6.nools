@@ -1,11 +1,13 @@
 import('productionrulesMB.nools');
 global pName = 'level6';
-global initLeft = '1+2(2x-1)';
-global initRight = '7';
+global initLeft = '3(2x + 2)';
+global initRight = '12';
 global stepSkipLevel = 3;
 global shallowSearch = false;
 global forceSimplify = true;
 global pregenConflictTree = false;
 global parseProblem = true;
-global dragNDrop = true;
+global interfaceType = 'dragndrop';
 global operatorsFirst = true;
+global language = "spanish";
+global diagramsFirst = false;

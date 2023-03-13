@@ -1,0 +1,11 @@
+import('productionrulesMB.nools');
+global pName = 'level9_4xplus11eqxplus2';
+global initLeft = '4x + 11';
+global initRight = 'x + 2';
+global stepSkipLevel = 3;
+global shallowSearch = false;
+global forceSimplify = true;
+global pregenConflictTree = false;
+global parseProblem = true;
+global dragNDrop = true;
+global operatorsFirst = true;

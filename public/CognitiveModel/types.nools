@@ -48,7 +48,7 @@ define Expr {          // wonder if we should call this type "termArray" or "ter
    constructor: function(s, t, top) {
    		this.side = s;
    		this.terms = t;
-        this.type = "Expr";             // if Nools has function that returns the fact type, would be 
+        this.type = "Expr";             // if Nools has function that returns the fact type, would be
         								//     better to use that instead
 		this.topLevel = top;
         setFactNr(this);
@@ -112,11 +112,12 @@ define PartialTransformation {
 	operator: null,
 	operand: null,
 	operator2Selected: false,
-	constructor: function(e1, e2, operator, operand) {
+	constructor: function(e1, e2, operator, operand, potentialOperand) {
 		this.exp1 = e1;
 		this.exp2 = e2;
 		this.operator = operator;
 		this.operand = operand;
+		this.potentialOperand = potentialOperand; //for hint generation
 	}
 }
 
@@ -130,7 +131,7 @@ define cycleInfo {      // stores info that is needed only for the duration of t
 	//for search space control:
 	divEarlyCancelTerm : null,
 	divEarlyCombineTerm : null,
-	
+
 	swapped : false,
 	combined : false,
 	divided : false,
@@ -154,17 +155,17 @@ define cycleInfo {      // stores info that is needed only for the duration of t
 	skippedTooManySteps : null,
 	opStr: null,
 	ogStr: null,
-	
+
 	//true if model-generated exp is bug prediction
 	inputIsBug: false,
 	bugMessage: '',
-	
+
 	//type of student interaction (dragndrop only)
 	stepType: null,
-	
+
 	//corresponding interfaceElement fact
 	interfaceElement: null,
-	
+
 	constructor: function(f, s, free, nTrans, ogStr, st, ie) {
 		this.focus = f;
 		this.selection = s;
@@ -187,11 +188,11 @@ define cycleInfo {      // stores info that is needed only for the duration of t
 
 		this.opStr = '';
 		this.ogStr = ogStr;
-		
+
 		this.stepType = st;
-		
+
 		this.interfaceElement = ie;
-		
+
 		setFactNr(this);
 	}
 }

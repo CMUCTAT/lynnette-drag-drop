@@ -3,6 +3,12 @@ use algebra parser to compare student input
 */
 global parser = new CTATAlgebraParser(new CTATVariableTable());
 
+function fixMsg(msg, blankValues) {
+	let translate = (window.lang === 'spanish');
+	msg = translate ? window.msgTranslator.toSpanish(msg) : msg;
+	return window.msgTranslator.fillBlanks(msg, blankValues, translate);
+}
+
 function getSkillForTrans(operation, operand) {
 	var skill = '';
 	switch(operation) {
@@ -165,16 +171,38 @@ function compSimpleTerms(t1, t2) {
 function genPartialTransformation(e1, e2, operation, operand, ci) {
 	var ptList = getFacts("PartialTransformation"),
 		pt;
-	if (!ptList.length && ci.stepType === "operator") {
+	if (!ptList.length) { // && ci.stepType === "operator") {
 		//no pt started yet
-		pt = assert(new PartialTransformation(e1, e2, operation));
+		pt = assert(new PartialTransformation(e1, e2, operation, null, operand));
 	} else if (ptList.length === 1) {
 		pt = ptList[0];
-		if (pt.operator === operation) { 
+		if (pt.operator === operation) {
 			if (ci.stepType === "operand") {
 				if (!pt.operand) {
 					//pt started, first operand dragged
 					modify(pt, "operand", operand);
+					var simplified = '';
+					var left = e1.side === "left" ? e1 : e2;
+					var right = e1.side === "right" ? e1 : e2;
+					var focused = ci.focus === "left" ? left : right;
+					//gen simplified ver.
+					var operandStr = simpleTermStr(operand);
+					switch(pt.operator) {
+						case 'subtraction':
+							operandStr = '-'+operandStr;
+							//fall through
+						case 'addition':
+							simplified = mathUtil.combineAllLikePairs(eqStr(focused.terms), operandStr);
+							break;
+						case 'division':
+							simplified = mathUtil.simplifyDivideGeneral(eqStr(focused.terms), operandStr);
+							break;
+						case 'multiplication':
+							simplified = mathUtil.simplifyMultiplyGeneral(eqStr(focused.terms), operandStr);
+							break;
+					}
+					console.log("got simplified: ", simplified);
+					modify(pt, 'simplified'+ci.focus, simplified);
 				} else if (!compSimpleTerms(pt.operand, operand)) {
 					//different operand already set for this pt, backtrack
 					return null;
@@ -195,22 +223,23 @@ function genPartialTransformation(e1, e2, operation, operand, ci) {
 
 function applyPartialTransformation(exp, pt, inclOperand) {
 	var expStr = eqStr(exp.terms),
-		operandStr = inclOperand ? simpleTermStr({var: pt.operand.var, coeff: pt.operand.coeff}) : "?" ;
+		operand = pt.operand || pt.potentialOperand,
+		operandStr = inclOperand ? simpleTermStr({var: operand.var, coeff: operand.coeff}) : "?" ;
 	switch(pt.operator) {
-		case 'addition': 
+		case 'addition':
 			expStr += " + "+operandStr;
 		break;
 		case 'subtraction':
 			expStr += " - "+operandStr;
 		break;
-		case 'division': 
+		case 'division':
 			expStr = '('+expStr+')/'+operandStr;
 		break;
 		case 'multiplication':
 			expStr = operandStr+'*('+expStr+')';
 		break;
 	}
-	
+
 	return expStr;
 }
 
@@ -225,14 +254,14 @@ function clearInterfaceElements(ie1, ie2) {
 function divideExpBy(exp, divisorVal, side, p) {
 	var c = divisorVal.coeff,
 		v = divisorVal.var;
-	
+
 	var newTopTerms = exp.terms.slice();
 	var divisorTerm = assert(new simpleTerm(c, v, side));
 	var newTopExpr = assert(new Expr(side, newTopTerms, false));
 	var newBtmExpr = assert(new Expr(side, [divisorTerm], false));
 	var newDivTerm = assert(new divTerm([newTopExpr, newBtmExpr], side));
 	modify(exp, "terms", [newDivTerm]);
-	
+
 	modify(p, "dividedBy", c+(v?v:''));
 	return exp;
 }
@@ -240,7 +269,7 @@ function divideExpBy(exp, divisorVal, side, p) {
 function multiplyExpBy(exp, multVal, side, p) {
 	var c = multVal.coeff,
 		v = multVal.var;
-	
+
 	var newFactorTerms = exp.terms.slice();
 	var multiplierTerm = assert(new simpleTerm(c, v, side));
 	var newFactorExpr1 = assert(new Expr(side, newFactorTerms, false));
@@ -251,18 +280,20 @@ function multiplyExpBy(exp, multVal, side, p) {
 }
 
 function addTermToExp(probFact, exp, termCoeff, termVar, side, cancelTerm) {
-	
+
+	console.log("addTermToExp; exp:",exp," termCoeff: ",termCoeff," termVar: ",termVar," side: ",side," cancelTerm: ",cancelTerm);
+
 	var movedTerms = probFact.movedSimpleTerms;
 	var termCancel = probFact.termToBeCanceled;
-	var newTerm = assert(new simpleTerm(termCoeff, termVar, side));	
+	var newTerm = assert(new simpleTerm(termCoeff, termVar, side));
 	var newTerms = exp.terms.slice();
 	newTerms.push(newTerm);
 	modify(exp, "terms", newTerms);
-	
+
 	//keep record of all moved Terms
 	var newMovedTerms = movedTerms.slice();
 	newMovedTerms.push(newTerm);
-	
+
 	//keep record of all terms to be canceled
 	if (cancelTerm) {
 		var newTermCancel = termCancel.slice();
@@ -272,16 +303,16 @@ function addTermToExp(probFact, exp, termCoeff, termVar, side, cancelTerm) {
 		modify(probFact,"termToBeCanceled",newTermCancel);
 	}
 	modify(probFact,"movedSimpleTerms",newMovedTerms);
-	
+
 	//keep record of variable and constant side
-	/*
+
 	if (!probFact.variableSide) {
 		let cs = (!!termVar === !!cancelTerm) ? side : (side === "right" ? "left" : "right");
 		let vs = (cs === "right") ? "left" : "right";
 		modify(probFact,"constantSide",cs);
 		modify(probFact,"variableSide",vs);
 	}
-	*/
+
 }
 
 function applyTransformation(probFact, pt) {
@@ -296,7 +327,7 @@ function applyTransformation(probFact, pt) {
 			addTermToExp(probFact, e1, coeff, operand.var, e1.side, (e1.terms.indexOf(operand) >= 0 ? operand : null));
 			addTermToExp(probFact, e2, coeff, operand.var, e2.side, (e2.terms.indexOf(operand) >= 0 ? operand : null));
 		break;
-		case 'division': 
+		case 'division':
 			divideExpBy(e1, operand, e1.side, probFact);
 			divideExpBy(e2, operand, e2.side, probFact);
 		break;
