@@ -3,7 +3,7 @@
           let:dragging let:hovering let:draghovering>
   <div slot="dropzone" class="expression no-highlight dropzone"
        class:dragging class:hovering class:draghovering
-       class:divide={bottom.length > 0} class:parens={expression.node.parens}>
+       class:divide={bottom.length} class:parens={expression.node.parens}>
     <div class="factor">
       {#each top as item, index (item.id || item + index)}
         {#if item instanceof ExpressionNode}
@@ -15,14 +15,14 @@
         {/if}
       {/each}
     </div>
-    {#if bottom.length > 0}
+    {#if bottom.length}
       <div class="bar"/>
       <div class="factor">
         {#each bottom as item, index (item.id || item + index)}
           {#if item instanceof ExpressionNode}
             <svelte:self expression={item}/>
           {:else if item instanceof TokenNode}
-            <Token token={item}/>
+            <Token token={item} {depth}/>
           {:else}
             <Operator operator={item} siblings={[bottom[index - 1], bottom[index + 1]]}/>
           {/if}
@@ -43,28 +43,27 @@
 
   let isAdd = expression.node.operator === 'PLUS',
       top = expression.items,
-      bottom = []
+      bottom = [],
+      depth = 0
 
   $: if (expression) {
     isAdd = expression.node.operator === 'PLUS'
-    top = insertOperators(
-      isAdd ? expression.items : expression.items.filter((item) => item.node.exp > 0),
-      isAdd,
-    )
-    bottom = isAdd ? [] : insertOperators(expression.items.filter((item) => item.node.exp < 0))
+    top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd)
+    bottom = insertOperators(isAdd ? [] : expression.items.filter(item => item.node.exp < 0))
+    if (bottom.length) depth = getDepth(expression) - 1
+    console.log('top', top, 'bottom', bottom)
   }
 
   function insertOperators(items, isAdd = true) {
     return items.reduce((array, item, index) =>
-      isAdd && index === 0 ? [item] :
+      index === 0 || !isAdd && (item.node.parens || items[index - 1].node.parens) ? array.concat(item) :
       isAdd ? array.concat([item.node.sign > 0 ? 'PLUS' : 'MINUS', item]) :
-      index === 0 || isDistribution(item, items[index - 1]) ? array.concat(item) :
       array.concat(['TIMES', item]), []
     )
   }
 
-  function isDistribution(item, prevItem) {
-    return (item.node.parens || prevItem.node.parens) && expression.node.operator === 'TIMES'
+  function getDepth(expression) {
+    return expression.items ? 1 + expression.items.max(item => getDepth(item)) : 0
   }
 
   function handleDragLeave(event) {
@@ -88,7 +87,7 @@
     border: #fff0 3px solid;
     border-radius: 5px;
     box-sizing: border-box;
-    padding: 3px;
+    padding-inline: 5px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -104,8 +103,8 @@
     top: 0px;
     bottom: 0px;
     border-left: solid 3px #fff;
-    border-radius: 50%;
-    width: 8px;
+    border-radius: 75%;
+    width: 16px;
   }
   .parens:after {
     content: '';
@@ -114,8 +113,8 @@
     top: 0px;
     bottom: 0px;
     border-right: solid 3px #fff;
-    border-radius: 50%;
-    width: 8px;
+    border-radius: 75%;
+    width: 16px;
   }
   .hovering.dropzone {
     border: #fff 3px solid;
@@ -124,19 +123,15 @@
     border: var(--drag-highlight-color) 3px solid;
   }
   .factor {
-    margin-block: 5px;
     display: flex;
     justify-content: center;
     align-items: center;
-  }
-  .factor:has(.operator) {
-    margin-block: 0px;
   }
   .divide {
     flex-direction: column;
   }
   .bar {
-    margin: 5px 0px;
+    margin-block: 5px;
     border-radius: 3px;
     width: 100%;
     height: 3px;

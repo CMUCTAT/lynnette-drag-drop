@@ -1,5 +1,6 @@
 import '$/app.css'
 import App from '$/App.svelte'
+import '$utils/nativeClassExtensions.js'
 import '$utils/commShellEventHandlers.js'
 
 window.drag = {}
@@ -12,8 +13,4 @@ const searchParams = new URL(window.location).searchParams,
 if (templates) window.templates = templates
 if (style) document.documentElement.setAttribute('id', style)
 
-const app = new App({
-  target: document.getElementById('app')
-})
-
-export default app
+export default new App({ target: document.getElementById('app') })

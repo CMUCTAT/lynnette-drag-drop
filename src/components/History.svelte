@@ -59,6 +59,7 @@
     overflow: auto;
   }
   .equation {
+    margin-block: 5px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -75,8 +76,7 @@
     display: flex;
   }
   .equals {
-    margin: 5px;
-    height: 20px;
+    margin-inline: 2px;
     display: flex;
     align-items: center;
     font-size: 1em;

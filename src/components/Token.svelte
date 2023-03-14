@@ -1,4 +1,5 @@
-<div class="token" class:unknown={token.unknown} class:parens={token.node.parens}>
+<div class="token" class:unknown={token.unknown} class:parens={token.node.parens}
+     style:--depth={depth}>
   <DragDrop id={token.id} canDrag={!token.unknown}
             dragStart={handleDragStart} dropSend={handleDropSend} dragHover={handleDragHover}
             dragLeave={handleDragLeave} dropSucceed={handleDropSucceed}
@@ -29,6 +30,7 @@
 
   export let token
   export let isSubtract = false
+  export let depth = 0
 
   function handleDragStart(event) {
     dragdropData.setDrag(token)
@@ -64,6 +66,9 @@
     position: relative;
     margin: 10px;
     flex: 0;
+  }
+  :global(.bar) + :global(.factor) .token {
+    margin-block: calc(var(--depth) * 3px + 10px);
   }
   @media only screen and (max-width: 820px) {
     .token {
@@ -138,8 +143,8 @@
     top: -10px;
     bottom: -10px;
     border-left: solid 3px #fff;
-    border-radius: 50%;
-    width: 8px;
+    border-radius: 75%;
+    width: 16px;
   }
   .parens:after {
     content: '';
@@ -148,8 +153,8 @@
     top: -10px;
     bottom: -10px;
     border-right: solid 3px #fff;
-    border-radius: 50%;
-    width: 8px;
+    border-radius: 75%;
+    width: 16px;
   }
   .disabled {
     pointer-events: none !important;

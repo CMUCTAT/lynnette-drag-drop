@@ -1,4 +1,4 @@
-<div class="history-expression" class:divide={bottom.length > 0} class:parens={expression.node.parens}>
+<div class="history-expression" class:divide={bottom.length} class:parens={expression.node.parens}>
   <div class="history-factor">
     {#each top as item, index (item.id || item + index)}
       {#if item instanceof ExpressionNode}
@@ -10,7 +10,7 @@
       {/if}
     {/each}
   </div>
-  {#if bottom.length > 0}
+  {#if bottom.length}
     <div class="bar"/>
     <div class="history-factor">
       {#each bottom as item, index (item.id || item + index)}
@@ -71,7 +71,7 @@
     flex-direction: column;
   }
   .history-expression.parens {
-    margin-inline: 8px;
+    margin-inline: 6px;
     padding-inline: 2px;
   }
   .history-expression.parens:before, .history-expression.parens:after {
@@ -83,11 +83,11 @@
     width: 8px;
   }
   .history-expression.parens:before {
-    left: -4px;
+    left: -3px;
     border-left: solid 2px #333;
   }
   .history-expression.parens:after {
-    right: -4px;
+    right: -3px;
     border-right: solid 2px #333;
   }
   .history-factor {

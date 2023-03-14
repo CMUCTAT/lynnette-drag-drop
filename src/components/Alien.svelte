@@ -38,7 +38,7 @@
     success: {
       body: bodyExcited,
       face: faceExcited,
-    },
+    }
   }
 
   $: body = stateMap[state] ? stateMap[state].body : stateMap.default.body
@@ -54,7 +54,7 @@
     height: 100%;
   }
   .alien svg {
-    width: 100%;
+    width: calc(100% + 30px);
     height: 100%;
   }
   .image-container {

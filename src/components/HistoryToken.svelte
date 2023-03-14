@@ -17,7 +17,7 @@
     text-align: center;
   }
   .history-token.parens {
-    margin-inline: 8px;
+    margin-inline: 6px;
     padding-inline: 2px;
   }
   .history-token.parens:before, .history-token.parens:after {
@@ -29,11 +29,11 @@
     width: 8px;
   }
   .history-token.parens:before {
-    left: -4px;
+    left: -3px;
     border-left: solid 2px #333;
   }
   .history-token.parens:after {
-    right: -4px;
+    right: -3px;
     border-right: solid 2px #333;
   }
   .content.unknown {
