@@ -12,7 +12,7 @@
   "dependencies": {
     "@svgdotjs/svg.js": "^3.1.2",
     "howler": "^2.2.3",
-    "immer": "^5.3.6"
+    "immer": "^9.0.19"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^2.0.2",
