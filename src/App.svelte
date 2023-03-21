@@ -95,6 +95,9 @@
     grid-template-columns: minmax(255px, 2fr) 6fr minmax(165px, 1fr);
     grid-template-rows: 200px 1fr minmax(200px, 25%);
     row-gap: 50px;
+    background: center / cover no-repeat #10213a
+  }
+  :global(#planets) .app{
     background: center / cover no-repeat url('$assets/images/lynnette-sapce-bg.png');
   }
   .main {

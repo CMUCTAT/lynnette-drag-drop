@@ -42,16 +42,19 @@
 
 <style>
   .history {
-    grid-area: steps;
     box-sizing: border-box;
-    border-bottom-right-radius: 40px;
     max-width: 300px;
+    grid-area: 1 / 1 / 5 / auto;
     padding: 0px 10px;
     display: flex;
     flex-direction: column;
     text-align: center;
     font-size: 16px;
     background: #f5f4f3;
+  }
+  :global(#planets) .history{
+    grid-area: steps;
+    border-bottom-right-radius: 40px;
   }
   .stack {
     margin-bottom: 40px;
@@ -83,8 +86,10 @@
   }
   @media only screen and (max-width: 820px) {
     .history {
-      border-bottom-right-radius: 10px;
       padding: 0px;
+    }
+    :global(#planets) .history{
+    border-bottom-right-radius: 10px;
     }
     .history h1 {
       margin: 5px 0px;
