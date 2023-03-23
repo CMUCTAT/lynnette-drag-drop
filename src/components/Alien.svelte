@@ -1,16 +1,13 @@
-
 <div class="alien">
-  {#if window.templates == 'planets'}
   <svg viewBox="0 0 300 270" preserveAspectRatio="none" style="enable-background:new 0 0 300 270;">
     <path style="fill:#FF6E52;" d="M200,0 H0 v270 h300 V120 C300,50, 250,0, 200,0 z"/>
     <path style="fill:#FFC33E;" d="M185,0 H0 v270 h285 V120 C285,50, 235,0, 185,0 z"/>
     <path style="fill:#f5f4f3;" d="M170,0 H0 v270 h270 V120 C270,50, 220,0, 170,0 z"/>
   </svg>
-    <div class="image-container">
-      <img class="display alien-body" src={body} alt=""/>
-      <img class="display alien-face" src={face} alt=""/>
-    </div>
-  {/if}
+  <div class="image-container">
+    <img class="display alien-body" src={body} alt=""/>
+    <img class="display alien-face" src={face} alt=""/>
+  </div>
 </div>
 
 <script>

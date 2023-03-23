@@ -1,6 +1,8 @@
 <div class="app">
   <History/>
-  <Alien state={$alienState}/>
+  {#if window.templates == 'planets'}
+    <Alien state={$alienState}/>
+  {/if}
   <div id="hint-window" class="CTATHintWindow"
        class:visible={$showMessages} class:translucent={$dragdropData.drag}>
     <span class="error-hint" class:visible={$showMessages && $error}>! Press the Undo Button !</span>
@@ -19,17 +21,17 @@
 </div>
 
 <script>
+  // import { onMount, afterUpdate } from 'svelte'
+  // import { SVG } from '@svgdotjs/svg.js'
   import History from '$components/History.svelte'
   import Alien from '$components/Alien.svelte'
   import DraggableOperators from '$components/DraggableOperators.svelte'
   import Equation from '$components/Equation.svelte'
   import Buttons from '$components/Buttons.svelte'
-  // import { onMount, afterUpdate } from 'svelte'
-  // import { SVG } from '@svgdotjs/svg.js'
-  import { parseGrammar } from '$utils/grammarParser.js'
   import { history } from '$stores/history.js'
   import { draftEquation, dragdropData } from '$stores/equation.js'
   import { showMessages, lastCorrect, error, alienState } from '$stores/messageManager.js'
+  import { parseGrammar } from '$utils/grammarParser.js'
 
   // let draw
   // onMount(() => {
@@ -91,13 +93,17 @@
     grid-template-areas:
       'steps operators buttons'
       'steps main buttons'
-      'alien hints buttons';
+      'steps hints buttons';
     grid-template-columns: minmax(255px, 2fr) 6fr minmax(165px, 1fr);
     grid-template-rows: 200px 1fr minmax(200px, 25%);
     row-gap: 50px;
-    background: center / cover no-repeat #10213a
+    background: center / cover no-repeat #10213a;
   }
-  :global(#planets) .app{
+  :global(#planets) .app {
+    grid-template-areas:
+      'steps operators buttons'
+      'steps main buttons'
+      'alien hints buttons';
     background: center / cover no-repeat url('$assets/images/lynnette-sapce-bg.png');
   }
   .main {
@@ -171,21 +177,6 @@
   }
   :global(.CTATHintWindow--next)::after {
     content: '▶';
-  }
-  :global(.titel) {
-    display: none;
-  }
-  :global(.ctatpageoverlay) {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 20px 30px 50px 30px;
-    background: #f5f4f3;
-  }
-  :root {
-    /* --drag-highlight-color: #26ffd0; */
-    --drag-highlight-color: #7b57ff;
   }
   @media only screen and (max-width: 820px) {
     .app {

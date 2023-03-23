@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:800&display=swap');
 
+:root {
+  /* --drag-highlight-color: #26ffd0; */
+  --drag-highlight-color: #7b57ff;
+}
 html, body {
   height: 100%;
 }
@@ -55,4 +59,35 @@ button:focus {
 }
 .no-highlight {
   user-select: none;
+}
+.ctatpageoverlay {
+  position: fixed;
+  inset: 0px;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.fenster {
+  position: absolute;
+  inset: 0px;
+  margin: auto;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 0px 10px 10px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  inline-size: 50vw;
+  block-size: 180px;
+  padding: 20px;
+  background: #f5f4f3;
+  transition: all .25s ease;
+}
+.titel {
+  display: none;
+}
+.fenster .inhalt {
+  box-sizing: border-box;
+  border-radius: 10px;
+  block-size: 140px;
+  overflow: auto;
+  font-size: 16px;
+  color: black;
+  text-align: center;
 }

@@ -10,7 +10,7 @@
   <div class="CTATHintButton button"/>
   <div class="CTATDoneButton button"/>
   {#if window.templates == 'planets'}
-  <button class="mute" class:muted on:click={handleClick}>🔈</button>
+    <button class="mute" class:muted on:click={handleClick}>🔈</button>
   {/if}
 </div>
 
@@ -20,15 +20,8 @@
   export let handleUndo
   export let error
 
-  let muted = document.cookie.split('muted=')[1] === 'true'
-  let soundOff = document.cookie.split('muted=')[1] === 'false'
-
-  if (window.templates == 'planets'){
-    soundEffects.mute(muted)
-  } else {
-    soundEffects.mute(true)
-  }
-  
+  let muted = window.templates != 'planets' || document.cookie.split('muted=')[1] === 'true'
+  soundEffects.mute(muted)
 
   function handleClick() {
     soundEffects.mute(!soundEffects._muted)

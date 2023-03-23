@@ -42,7 +42,7 @@
   .equation.draft {
     position: absolute;
     transform: translateY(-100%);
-    background: rgb(10, 27, 44);
+    background: #10213a;
     opacity: 0.5;
     pointer-events: none;
   }

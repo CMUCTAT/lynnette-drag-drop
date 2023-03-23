@@ -24,12 +24,12 @@
 </dev>
 
 <script>
+  import { afterUpdate } from 'svelte'
   import HistoryExpression from "$components/HistoryExpression.svelte"
   import HistoryToken from "$components/HistoryToken.svelte"
-  import { afterUpdate } from 'svelte'
+  import { history } from "$stores/history.js"
   import { ExpressionNode, TokenNode } from "$utils/classes.js"
   import { parseGrammar } from "$utils/grammarParser.js"
-  import { history } from "$stores/history"
 
   let historyScroll
 
@@ -42,9 +42,9 @@
 
 <style>
   .history {
+    grid-area: steps;
     box-sizing: border-box;
     max-width: 300px;
-    grid-area: 1 / 1 / 5 / auto;
     padding: 0px 10px;
     display: flex;
     flex-direction: column;
@@ -52,8 +52,7 @@
     font-size: 16px;
     background: #f5f4f3;
   }
-  :global(#planets) .history{
-    grid-area: steps;
+  :global(#planets) .history {
     border-bottom-right-radius: 40px;
   }
   .stack {

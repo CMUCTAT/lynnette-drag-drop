@@ -3,8 +3,8 @@
 </div>
 
 <script>
-  import { Operators } from '$utils/classes.js'
   import { draftEquation } from '$stores/equation.js'
+  import { Operators } from '$utils/classes.js'
 
   export let operator
   export let siblings = null

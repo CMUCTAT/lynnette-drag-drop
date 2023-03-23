@@ -16,8 +16,8 @@
 
 <script>
   import { spring } from 'svelte/motion'
-  import { dragdrop } from '$utils/dragdrop.js'
   import { dragdropData } from '$stores/equation.js'
+  import { dragdrop } from '$utils/dragdrop.js'
   import { soundEffects } from '$utils/soundEffect.js'
 
   export let id

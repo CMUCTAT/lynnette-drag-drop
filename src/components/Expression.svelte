@@ -33,11 +33,11 @@
 </DragDrop>
 
 <script>
-  import { TokenNode, ExpressionNode } from '$utils/classes.js'
   import Operator from '$components/Operator.svelte'
   import Token from '$components/Token.svelte'
   import DragDrop from '$components/DragDrop.svelte'
   import { draftEquation, dragdropData } from '$stores/equation.js'
+  import { TokenNode, ExpressionNode } from '$utils/classes.js'
 
   export let expression
 
