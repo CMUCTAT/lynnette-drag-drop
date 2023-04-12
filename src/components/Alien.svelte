@@ -73,9 +73,4 @@
     left: 0px;
     top: 0px;
   }
-  @media only screen and (max-width: 820px) {
-    .alien {
-      display: none;
-    }
-  }
 </style>

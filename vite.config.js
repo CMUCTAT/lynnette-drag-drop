@@ -19,6 +19,7 @@ export default defineConfig({
     target: 'esnext',
     sourcemap: true,
     assetsInlineLimit: 32768,
+    emptyOutDir: false,
     rollupOptions: {
       output: {
         entryFileNames: 'Assets/[name].js',
@@ -28,10 +29,10 @@ export default defineConfig({
     }
   },
   preview: {
-    port: 4000
+    port: 7000
   },
   server: {
-    port: 5000,
+    port: 8000,
     // headers: {
     //   'X-Content-Type-Options': 'nosniff'
     // }

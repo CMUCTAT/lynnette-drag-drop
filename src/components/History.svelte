@@ -83,19 +83,4 @@
     align-items: center;
     font-size: 1em;
   }
-  @media only screen and (max-width: 820px) {
-    .history {
-      padding: 0px;
-    }
-    :global(#planets) .history{
-    border-bottom-right-radius: 10px;
-    }
-    .history h1 {
-      margin: 5px 0px;
-      font-size: 24px;
-    }
-    .stack {
-      margin-bottom: 5px;
-    }
-  }
 </style>
