@@ -89,6 +89,7 @@ function createDraftEquation() {
    * @returns the current draft equation (shouldn't have been modified)
    */
   function apply(eqn) {
+    if (!eqn) return undefined
     try {
       parseGrammar(eqn)
     } catch (exception) {
@@ -195,7 +196,7 @@ function tokenToToken(src, dest, eqn) {
     )
 
     parent = Object.path(next, parentPath)
-    return window.parse.algReplaceExpression(next, parent, window.parse.algApplyRules(parent, ['removeIdentity']))
+    return window.parse.algReplaceExpression(next, parent, window.parse.algApplyRules(parent, ['flatten', 'removeIdentity']))
   } else {
     return eqn
   }
@@ -220,6 +221,7 @@ function tokenToExpression(src, dest, eqn) {
         i1 = parseInt(destPath.at(-1)),
         dist = window.parse.algApplyRulesSelectively(parent, ['distribute'], false, i0, i1),
         next = window.parse.algReplaceExpression(eqn, parent, dist)
+
     //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negative exponent), it only happens with 1/k; this is because of removeIdentity
     return window.parse.algParse(window.parse.algStringify(next))
   } else {

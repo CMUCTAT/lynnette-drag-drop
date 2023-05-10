@@ -51,7 +51,6 @@
     top = insertOperators(isAdd ? expression.items : expression.items.filter(item => item.node.exp > 0), isAdd)
     bottom = insertOperators(isAdd ? [] : expression.items.filter(item => item.node.exp < 0))
     if (bottom.length) depth = getDepth(expression) - 1
-    console.log('top', top, 'bottom', bottom)
   }
 
   function insertOperators(items, isAdd = true) {

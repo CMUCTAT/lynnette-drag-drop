@@ -19,7 +19,7 @@
 <script>
   import Flaggable from "$components/Flaggable.svelte"
   import Expression from "$components/Expression.svelte"
-  import Token from "$components//Token.svelte"
+  import Token from "$components/Token.svelte"
   import { TokenNode, ExpressionNode } from "$utils/classes.js"
 
   export let equation

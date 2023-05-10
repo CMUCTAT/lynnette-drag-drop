@@ -16,8 +16,8 @@ Object.defineProperty(Array.prototype, 'shuffle', {
 })
 
 Object.defineProperty(Array.prototype, 'count', {
-  value(callbackFn = item => item, initialValue = 0) {
-    return this.reduce((count, element) => count + (callbackFn(element) ? 1 : 0), initialValue)
+  value(callbackFn = () => true, initialValue = 0) {
+    return this.sum(element => callbackFn(element) ? 1 : 0, initialValue)
   }
 })
 

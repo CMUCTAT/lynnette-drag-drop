@@ -7,7 +7,7 @@
     <div slot="dropzone" class="token-inner no-highlight dropzone"
          class:disabled={$error} class:dragging class:hovering class:draghovering>
       {#if token.unknown}
-        <input on:change={handleUpdateToken}/>
+        <input on:change={handleUpdateToken} disabled={$error}/>
       {:else}
         <div>{value}</div>
       {/if}
