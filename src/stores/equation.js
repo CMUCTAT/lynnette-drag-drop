@@ -96,7 +96,7 @@ function createDraftEquation() {
       console.error(exception)
       return undefined
     }
-    let sai = new CTATSAI(dragOperation.side, dragOperation.from + 'To' + dragOperation.to, window.parse.algStringify(eqn))
+    let sai = new CTATSAI(dragOperation.side, dragOperation.from + 'To' + dragOperation.to, window.parser.algStringify(eqn))
 
     if (CTATCommShell.commShell) {
       CTATCommShell.commShell.processComponentAction(sai)
@@ -104,7 +104,7 @@ function createDraftEquation() {
     error.set(null)
     history.push(eqn)
     // if (get(history).current !== eqn &&
-    //     window.parse.algStringify(get(history).current) !== window.parse.algStringify(eqn)) {
+    //     window.parser.algStringify(get(history).current) !== window.parser.algStringify(eqn)) {
     //   history.push(eqn)
     // }
     return eqn
@@ -123,13 +123,14 @@ function createDraftEquation() {
     let path = flattenPath(token.node.path)
     dragOperation = { from: 'Update', to: 'Token', side: path[0] }
     let target = Object.path(eqn, path),
-        newToken = window.parse.algParse(value)
+        newToken = window.parser.algParse(value).popNegation()
     if (newToken.sign === -1) {
-      newToken = window.parse.algParse(`(${value})`)
+      newToken = window.parser.algParse(`(${value})`)
     }
     newToken.sign *= target.sign
     newToken.exp = target.exp
-    let next = window.parse.algReplaceExpression(eqn, target, newToken)
+    let next = window.parser.algReplaceExpression(eqn, target, newToken)
+    next = window.parser.algParse(window.parser.algStringify(next))
     return apply(next)
   }
 
@@ -169,34 +170,31 @@ function tokenToToken(src, dest, eqn) {
       destPath = flattenPath(dest.node.path)
   dragOperation = { from: 'Token', to: 'Token', side: destPath[0] }
   if (dest instanceof UnknownTokenNode) {
-    let dest = Object.path(eqn, flattenPath(dest.node.path)),
-        isSubtract = Math.min(...src.indices) !== 0 && src.node.sign < 0,
-        src = window.parse.algParse(src.value(isSubtract ? -1 : 1))
-    if (src.sign === -1) {
-      src = window.parse.algParse(`(${src.value(isSubtract ? -1 : 1)})`)
+    let isSubtract = src.node.operator == 'UMINUS'
+    dest = Object.path(eqn, flattenPath(dest.node.path))
+    let next = window.parser.algParse(src.value())
+    if (isSubtract) {
+      next = window.parser.algParse(`(${src.value(src.node.sign < 0 ? -1 : 1)})`)
     }
-    src.exp = dest.exp
-    src.sign = dest.sign //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
-    return window.parse.algReplaceExpression(eqn, dest, src)
+    next.exp = dest.exp
+    next.sign = dest.sign //have to do this because the grammar will otherwise take the sign of the source e.g. 1 - ? (drag 1 to ?) results in 1 + 1 not 1 - 1 as expected
+    next = window.parser.algReplaceExpression(eqn, dest, next)
+    next = window.parser.algParse(window.parser.algStringify(next))
+    return next
   } else if (src.parent === dest.parent && !(src.parent instanceof EquationNode)) {
     let parentPath = srcPath.slice(0, -2),
         parent = Object.path(eqn, parentPath),
         indices = src.indices.concat(dest.indices)
     indices.sort()
 
-    let next = window.parse.algReplaceExpression(
-      eqn,
-      parent,
-      window.parse.algApplyRulesSelectively(
-        parent,
-        ['flatten', 'computeConstants', 'combineSimilar', 'removeIdentity'],
-        true,
-        ...indices,
-      ),
-    )
+    let next = window.parser.algApplyRulesSelectively(parent, ['flatten', 'computeConstants', 'combineSimilar', 'removeIdentity'], true, ...indices)
+    if (next.value == 0 && next.sign == -1) next.sign = 1
+    next = window.parser.algReplaceExpression(eqn, parent, next)
 
     parent = Object.path(next, parentPath)
-    return window.parse.algReplaceExpression(next, parent, window.parse.algApplyRules(parent, ['flatten', 'removeIdentity']))
+    next = window.parser.algReplaceExpression(next, parent, window.parser.algApplyRules(parent, ['removeIdentity']))
+    next = window.parser.algParse(window.parser.algStringify(removeParens(next)))
+    return next
   } else {
     return eqn
   }
@@ -219,11 +217,12 @@ function tokenToExpression(src, dest, eqn) {
     let parent = Object.path(eqn, srcPath.slice(0, -2)),
         i0 = parseInt(srcPath.at(-1)),
         i1 = parseInt(destPath.at(-1)),
-        dist = window.parse.algApplyRulesSelectively(parent, ['distribute'], false, i0, i1),
-        next = window.parse.algReplaceExpression(eqn, parent, dist)
+        dist = window.parser.algApplyRulesSelectively(parent, ['distribute'], false, i0, i1),
+        next = window.parser.algReplaceExpression(eqn, parent, dist)
 
     //TODO: this shouldn't be necessary, but without it (1+x)/k -> k + x/k (where k has a negative exponent), it only happens with 1/k; this is because of removeIdentity
-    return window.parse.algParse(window.parse.algStringify(next))
+    next = window.parser.algParse(window.parser.algStringify(removeParens(next)))
+    return next
   } else {
     return eqn
   }
@@ -268,28 +267,26 @@ function operatorToToken(src, dest, eqn) {
   if (indices.length > 1) {
     indices.sort()
     let parent = Object.path(eqn, destPath.slice(0, -2))
-    subexp = window.parse.algGetExpression(parent, ...indices)
+    subexp = window.parser.algGetExpression(parent, ...indices)
   } else {
     subexp = Object.path(eqn, destPath)
   }
-  let next = window.parse.algReplaceExpression(
-    window.parse.algParse(window.parse.algStringify(eqn)),
-    subexp,
-    window.parse.algCreateExpression(src, subexp, '?'),
-  )
-  //TODO: unless I do window.parse.algParse(window.parse.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
+  let next = window.parser.algReplaceExpression(eqn, subexp, window.parser.algCreateExpression(src, subexp, '?'))
+  //TODO: unless I do window.parser.algParse(window.parser.algStringify(eqn)), the eqn is broken, breaking the history. It seems to be modifying eqn in place, not immutably
+  next = window.parser.algParse(window.parser.algStringify(removeParens(next)))
   return next
 }
 
 function operatorToExpression(src, dest, eqn) {
   let destPath = flattenPath(dest.node.path)
   dragOperation = { from: 'Operator', to: 'Expression', side: destPath[0] }
-  // eqn = window.parse.algParse(window.parse.algStringify(eqn)); // TODO Weird error unless we do this
+  // eqn = window.parser.algParse(window.parser.algStringify(eqn)); // TODO Weird error unless we do this
 
   // the grammar returns null on algReplaceExpression() if the token is dragged over the 9, then the ? in 3x + 6 = 9 /?, but not if the 9 is avoided
   let sub = Object.path(eqn, destPath),
-      next = window.parse.algReplaceExpression(eqn, sub, window.parse.algCreateExpression(src, sub, '?'))
-  return window.parse.algParse(window.parse.algStringify(next)) //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
+      next = window.parser.algReplaceExpression(eqn, sub, window.parser.algCreateExpression(src, sub, '?'))
+  next = window.parser.algParse(window.parser.algStringify(removeParens(next))) //TODO parentheses won't be included in grammar tree unless we do this; it will stringify nicely, but not remember parens in the object
+  return next
 }
 
 /**
@@ -302,4 +299,13 @@ function operatorToOperator(src, dest, eqn) {
   //TODO this should be technically feasible to code, but it's probably not necessary to implement
   dragOperation = { from: 'Operator', to: 'Operator', side: flattenPath(dest.node.path)[0] }
   return eqn
+}
+
+function removeParens(exp) {
+  exp.parens = 0
+  if (exp instanceof CTATRelationNode) {
+    exp.left.parens = 0
+    exp.right.parens = 0
+  }
+  return exp
 }

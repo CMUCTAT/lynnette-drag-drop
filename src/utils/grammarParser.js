@@ -4,7 +4,7 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
   //return different things depending on what the node's operator is
   if (!expression) return null
   if (expression.operator === 'EQUAL') {
-    let operands = window.parse.algGetOperands(expression),
+    let operands = window.parser.algGetOperands(expression),
         eqn = new EquationNode(null) //null equation has to be made first to pass it in as a parent
     eqn.left = parseGrammar(operands[0], eqn)
     eqn.right = parseGrammar(operands[1], eqn)
@@ -20,12 +20,12 @@ export function parseGrammar(expression, parent = null, parentIndex = null) {
   } else if (expression.operator === 'UNKNOWN') {
     return new UnknownTokenNode(parent, expression, [parentIndex])
   } else if (expression.operator === 'PLUS') {
-    let operands = window.parse.algGetOperands(expression),
+    let operands = window.parser.algGetOperands(expression),
         exp = new ExpressionNode(parent, expression, [])
     exp.items = operands.map((node, index) => parseGrammar(node, exp, index))
     return exp
   } else if (expression.operator === 'TIMES' || expression.operator === 'ITIMES') {
-    let operands = window.parse.algGetOperands(expression),
+    let operands = window.parser.algGetOperands(expression),
         exp = new ExpressionNode(parent, expression, []),
         items = groupNodes(exp, operands)
     if (items.length === 1) {

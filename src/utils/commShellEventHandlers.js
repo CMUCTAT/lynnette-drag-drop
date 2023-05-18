@@ -72,10 +72,10 @@ function handleInterfaceAction(evt, msg) {
   let sai = msg.getSAI(),
       input = sai.getInput()
   if (input) {
-    let parsedInput = window.parse.algParse(input)
+    let parsedInput = window.parser.algParse(input)
     history.push(parsedInput)
     lastCorrect.set(parsedInput)
-    // draftEquation.set(window.parse.algParse(input))
+    // draftEquation.set(window.parser.algParse(input))
     // draftEquation.apply()
   }
 }

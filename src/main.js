@@ -5,7 +5,7 @@ import '$utils/commShellEventHandlers.js'
 
 window.drag = {}
 window.drop = {}
-window.window.parse = new CTATAlgebraParser()
+window.window.parser = new CTATAlgebraParser()
 
 const searchParams = new URL(window.location).searchParams,
       templates = searchParams.get('templates'),
